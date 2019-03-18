@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27004.2005
+VisualStudioVersion = 15.0.26730.16
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IDFObjects", "IDFObjects\IDFObjects.csproj", "{95402E4F-1DEE-4AEB-B2B6-D9C76FF363EF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IDFObjects", "IDFObjects.csproj", "{95402E4F-1DEE-4AEB-B2B6-D9C76FF363EF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,6 +20,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {44F8E325-D70E-4350-B3AA-867BFAE98994}
+		SolutionGuid = {583E55B1-EE00-4210-96B7-300BEF6B1FE5}
 	EndGlobalSection
 EndGlobal
