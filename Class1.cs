@@ -1252,11 +1252,13 @@ namespace IDFFile
 
             iFloorHeatFlow -= izFloors.Select(s => s.HeatFlow).Sum();
             iWallHeatFlow -= izWalls.Select(s => s.HeatFlow).Sum();
-            TotalHeatFlows = wallHeatFlow + gFloorHeatFlow + iFloorHeatFlow + iWallHeatFlow + windowHeatFlow + roofHeatFlow;
+            
             SolarRadiation = (walls.SelectMany(w => w.fenestrations).Select(f => f.area * f.SolarRadiation)).Sum();
 
             infiltrationFlow = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy")))].Sum() -
                     data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy")))].Sum();
+            TotalHeatFlows = wallHeatFlow + gFloorHeatFlow + iFloorHeatFlow + iWallHeatFlow + windowHeatFlow + roofHeatFlow + infiltrationFlow;
+
             HeatingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Heating Energy")))].Sum();
             CoolingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Cooling Energy")))].Sum();
             LightingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy")))].Sum();

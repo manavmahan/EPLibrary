@@ -10,3 +10,9 @@ C:\Users\manav\source\repos\IDFObjects\IDFObjects\bin\Debug\IDFObjects.dll
 C:\Users\manav\source\repos\IDFObjects\IDFObjects\bin\Debug\IDFObjects.pdb
 C:\Users\manav\source\repos\IDFObjects\IDFObjects\obj\Debug\IDFObjects.dll
 C:\Users\manav\source\repos\IDFObjects\IDFObjects\obj\Debug\IDFObjects.pdb
+C:\Users\manav\source\repos\IDFObjects\bin\Debug\IDFObjects.dll
+C:\Users\manav\source\repos\IDFObjects\bin\Debug\IDFObjects.pdb
+C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.csprojResolveAssemblyReference.cache
+C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.csproj.CoreCompileInputs.cache
+C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.dll
+C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.pdb
