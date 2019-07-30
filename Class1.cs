@@ -6,9 +6,10 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace IDFFile
+
 {
     public enum SurfaceType { Floor, Ceiling, Wall, Roof, InternalWall, Window };
-    public enum Direction { North, East, South, West};
+    public enum Direction { North, East, South, West };
     public static class Utility
     {
         public static int[] hourToHHMM(double hours)
@@ -39,7 +40,7 @@ namespace IDFFile
             string lastLine = info.Last();
             string[] splitLine = lastLine.Split(',');
 
-            string joinedLine = string.Join(",", splitLine.Take(splitLine.Count()-1));
+            string joinedLine = string.Join(",", splitLine.Take(splitLine.Count() - 1));
             joinedLine = joinedLine + ";" + splitLine.Last();
             info[info.Count - 1] = joinedLine;
             return info;
@@ -59,7 +60,7 @@ namespace IDFFile
         {
             return new XYZ(xyz.X, xyz.Y, xyz.Z);
         }
-        public static string IDFLineFormatter (object attribute, string definition)
+        public static string IDFLineFormatter(object attribute, string definition)
         {
             //Console.WriteLine(attribute.ToString() + ",\t\t\t\t\t\t ! - " + definition);
             //Console.ReadKey();
@@ -108,7 +109,7 @@ namespace IDFFile
 
         public Output output;
 
-        public IDFFile(){ }
+        public IDFFile() { }
         public IDFFile deepCopy(string name)
         {
             if (!typeof(IDFFile).IsSerializable)
@@ -130,7 +131,7 @@ namespace IDFFile
                 return other;
             }
         }
-        
+
         public List<string> WriteFile()
         {
             //Version, Simulation Control, Building, TimeStep, ConvergenceLimits, Site:Location, SizingPeriod, RunPeriod, GroundTemperature
@@ -159,7 +160,7 @@ namespace IDFFile
             info.AddRange(writeWindowMaterial());
             info.AddRange(writeConstruction());
             info.AddRange(writeZone());
-            info.AddRange(writeZoneList()); 
+            info.AddRange(writeZoneList());
             info.AddRange(writeBuildingSurfaceList());
             info.AddRange(writeFenestrationSurfaceList());
             info.AddRange(writeShading());
@@ -170,7 +171,24 @@ namespace IDFFile
             info.AddRange(writeElectricEquipment()); info.AddRange(writeZoneInfiltration()); info.AddRange(writeZoneVentilation());
             info.AddRange(writeHVACTemplate());
 
+            info.AddRange(WritePVPanels());
+            building.zones.Where(z => z.NaturalVentiallation != null).ToList().ForEach(z => info.AddRange(z.NaturalVentiallation.WriteInfo()));
+
             info.AddRange(output.writeInfo());
+            return info;
+        }
+
+        private IEnumerable<string> WritePVPanels()
+        {
+            List<string> info = new List<string>();
+            if (building.electricLoadCenterDistribution != null)
+            {
+                ElectricLoadCenterDistribution dist = building.electricLoadCenterDistribution;
+                info.AddRange(dist.WriteInfo());
+                info.AddRange(dist.GeneratorList.WriteInfo());
+                dist.GeneratorList.Generator.ForEach(g => info.AddRange(g.WriteInfo()));
+                dist.GeneratorList.Generator.Select(g => g.pperformance).Distinct().ToList().ForEach(p => info.AddRange(p.WriteInfo()));
+            }
             return info;
         }
         private List<string> WriteDayLightControl()
@@ -183,7 +201,6 @@ namespace IDFFile
             }
             return info;
         }
-
         private List<string> writeMaterial()
         {
             List<string> info = new List<string>();
@@ -209,14 +226,14 @@ namespace IDFFile
         {
             List<string> info = new List<string>();
             info.Add("!-   ===========  ALL OBJECTS IN CLASS: CONSTRUCTION ===========");
-            building.constructions.ForEach(c=> info.AddRange(c.WriteInfo()));
+            building.constructions.ForEach(c => info.AddRange(c.WriteInfo()));
             return info;
         }
         private List<string> writeZone()
         {
             List<string> info = new List<string>();
             info.Add("\r!-   ===========  ALL OBJECTS IN CLASS: ZONE ===========");
-            building.zones.ForEach(z => info.Add("Zone,\r\t" + z.name + ";\t\t\t\t\t\t!-Name"));        
+            building.zones.ForEach(z => info.Add("Zone,\r\t" + z.name + ";\t\t\t\t\t\t!-Name"));
             return info;
         }
         private List<string> writeZoneList()
@@ -235,7 +252,7 @@ namespace IDFFile
                     idfString.Add(Utility.IDFLineFormatter(z.name, "Zone " + (zl.listZones.IndexOf(z) + 1) + " Name"));
                 }
                 idfString.ReplaceLastComma();
-            }          
+            }
             return idfString;
         }
         private List<String> writeBuildingSurfaceList()
@@ -398,14 +415,14 @@ namespace IDFFile
 
             try
             {
-                try{ building.zones.ForEach(z =>
-                { ZoneFanCoilUnit zFCU = z.hvac as ZoneFanCoilUnit; info.AddRange(zFCU.writeInfo()); }); }
+                try { building.zones.ForEach(z =>
+                 { ZoneFanCoilUnit zFCU = z.hvac as ZoneFanCoilUnit; info.AddRange(zFCU.writeInfo()); }); }
                 catch { building.zones.ForEach(z => info.AddRange((z.hvac as ZoneVAV).writeInfo())); info.AddRange(building.vav.writeInfo()); }
                 info.AddRange(building.cWaterLoop.writeInfo());
                 info.AddRange(building.chiller.writeInfo());
                 info.AddRange(building.tower.writeInfo());
                 info.AddRange(building.hWaterLoop.writeInfo());
-                info.AddRange(building.boiler.writeInfo()); 
+                info.AddRange(building.boiler.writeInfo());
             }
             catch
             {
@@ -447,12 +464,12 @@ namespace IDFFile
                 info.AddRange((building.zones.SelectMany(z => z.surfaces.SelectMany(s => s.shading))).SelectMany(s => s.shadingInfo()));
             }
             catch { }
-            
+
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: SHADING:OVERHANG:PROJECTION ===========\r\n");
 
             try
             {
-                info.AddRange((building.zones.SelectMany(z => z.surfaces.SelectMany(s => s.fenestrations.Select(f=>f.overhang)))).SelectMany(s => s.OverhangInfo()));
+                info.AddRange((building.zones.SelectMany(z => z.surfaces.SelectMany(s => s.fenestrations.Select(f => f.overhang)))).SelectMany(s => s.OverhangInfo()));
             }
             catch { }
 
@@ -476,7 +493,6 @@ namespace IDFFile
 
             return info;
         }
-
         public void GenerateOutput(bool heatFlow, string frequency)
         {
             Dictionary<string, string> outputvars = new Dictionary<string, string>();
@@ -491,16 +507,18 @@ namespace IDFFile
 
             outputvars.Add("Zone Lights Electric Energy", frequency);
             outputvars.Add("Zone Electric Equipment Electric Energy", frequency);
-           
+
+            outputvars.Add("Facility Total Purchased Electric Energy", frequency); 
+
             if (heatFlow)
             {
                 outputvars.Add("Zone Infiltration Total Heat Loss Energy", frequency);
                 outputvars.Add("Zone Infiltration Total Heat Gain Energy", frequency);
                 outputvars.Add("Surface Window Net Heat Transfer Energy", frequency);
                 outputvars.Add("Surface Inside Face Conduction Heat Transfer Energy", frequency);
-                outputvars.Add("Surface Outside Face Incident Solar Radiation Rate per Area", frequency);          
+                outputvars.Add("Surface Outside Face Incident Solar Radiation Rate per Area", frequency);
             }
-              
+
             output = new Output(outputvars);
         }
     }
@@ -586,7 +604,24 @@ namespace IDFFile
         public HotWaterLoop hWaterLoop;
         public Boiler boiler;
 
+        //PV Panel on Roof
+        public ElectricLoadCenterDistribution electricLoadCenterDistribution;
 
+        public void CreatePVPanelsOnRoof()
+        {
+            PhotovoltaicPerformanceSimple photovoltaicPerformanceSimple = new PhotovoltaicPerformanceSimple();
+            List<GeneratorPhotovoltaic> listPVs = new List<GeneratorPhotovoltaic>();
+            List<BuildingSurface> roofs = bSurfaces.FindAll(s => s.surfaceType == SurfaceType.Roof);
+
+            ScheduleCompact scheduleOn = schedulescomp.First(s => s.name.Contains("AlwaysOn"));
+            roofs.ForEach(s => listPVs.Add(new GeneratorPhotovoltaic(s, photovoltaicPerformanceSimple, scheduleOn)));
+            ElectricLoadCenterGenerators electricLoadCenterGenerators= new ElectricLoadCenterGenerators(listPVs);
+            electricLoadCenterDistribution = new ElectricLoadCenterDistribution(electricLoadCenterGenerators);
+        }
+        public void CreateNaturalVentilation()
+        {
+            zones.ForEach(z => z.CreateNaturalVentillation());
+        }
         public void CreateSchedules(double[] heatingSetpoints, double[] coolingSetpoints, double equipmentoffFract)
         {
             int[] time = Utility.hourToHHMM(operatingHours);
@@ -759,14 +794,21 @@ namespace IDFFile
                 daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
                     { "AllDays", new Dictionary<string, double>() {{"24:00", 1} } } }
             };
-
-            schedulescomp.Add(heatingSP);           
+            ScheduleCompact alwaysOn = new ScheduleCompact()
+            {
+                name = "AlwaysOn",
+                scheduleLimits = fractional,
+                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
+                    { "AllDays", new Dictionary<string, double>() {{"24:00", 1} } } }
+            };
+            schedulescomp.Add(alwaysOn);
+            schedulescomp.Add(heatingSP);
             schedulescomp.Add(coolingSP);
             schedulescomp.Add(heatingSP18);
             schedulescomp.Add(nocooling);
             schedulescomp.Add(occupSchedule);
             schedulescomp.Add(ventilSchedule);
-            schedulescomp.Add(lehgSchedule);           
+            schedulescomp.Add(lehgSchedule);
             schedulescomp.Add(activity);
             schedulescomp.Add(workEff);
             schedulescomp.Add(airVelo);
@@ -782,8 +824,8 @@ namespace IDFFile
             double lambda_iFloor = (uIFloor * 0.075) / (1 - uIFloor * (0.1 / 2));
             double lambda_Roof = (uRoof * 0.08) / (1 - uRoof * (0.175 / 0.165 + 0.025 / 0.075 + 0.15 / 0.55));
             double lambda_IWall = (uIWall * 2 * 0.012);
-            
-            if (lambda_gFloor <= 0 || lambda_Wall <= 0 || lambda_Roof <= 0 || lambda_iFloor <= 0 || lambda_IWall<=0)
+
+            if (lambda_gFloor <= 0 || lambda_Wall <= 0 || lambda_Roof <= 0 || lambda_iFloor <= 0 || lambda_IWall <= 0)
             {
                 Console.WriteLine("Check U Values {0}, {1}, {2}, {3}, {4}", lambda_gFloor, lambda_Wall, lambda_Roof, lambda_iFloor, lambda_IWall);
                 Console.ReadKey();
@@ -871,7 +913,7 @@ namespace IDFFile
             tStats.Add(otherAreasT);
 
             zoneLists.FirstOrDefault(zl => zl.name.Contains("Office")).listZones.ForEach(z => z.thermostat = officeT);
-            zoneLists.Where(zl => !zl.name.Contains("Office")).ToList().ForEach(zl=>zl.listZones.ForEach(z => z.thermostat = otherAreasT));
+            zoneLists.Where(zl => !zl.name.Contains("Office")).ToList().ForEach(zl => zl.listZones.ForEach(z => z.thermostat = otherAreasT));
             if (IsFCU)
             {
                 zones.ForEach(z => { ZoneFanCoilUnit zFCU = new ZoneFanCoilUnit(z, z.thermostat); HVACS.Add(zFCU); z.hvac = zFCU; });
@@ -888,7 +930,6 @@ namespace IDFFile
                 zones.ForEach(z => { ZoneIdealLoad zIdeal = new ZoneIdealLoad(z, z.thermostat); HVACS.Add(zIdeal); z.hvac = zIdeal; });
             }
         }
-
         private void GenerateWaterLoopsAndSystem()
         {
             hWaterLoop = new HotWaterLoop();
@@ -897,10 +938,7 @@ namespace IDFFile
             chiller = new Chiller(chillerCOP);
             tower = new Tower();
         }
-        
-
         public Building() { }
-
         public void AssociateEnergyPlusResults(IList<string> outputHeader, List<double[]> data)
         {
             foreach (BuildingSurface surf in bSurfaces)
@@ -924,7 +962,7 @@ namespace IDFFile
             }
             foreach (Zone zone in zones)
             {
-                zone.CalcAreaVolumeHeatCapacity(); zone.AssociateEnergyPlusResults(outputHeader, data);          
+                zone.CalcAreaVolumeHeatCapacity(); zone.AssociateEnergyPlusResults(outputHeader, data);
             }
             TotalArea = zones.Select(z => z.area).Sum(); TotalVolume = zones.Select(z => z.volume).Sum();
             TotalHeatingEnergy = zones.Select(z => z.HeatingEnergy).Sum(); TotalCoolingEnergy = zones.Select(z => z.CoolingEnergy).Sum();
@@ -935,7 +973,6 @@ namespace IDFFile
             ChillerEnergy += data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Cooling Tower Fan Electric Energy")))].Sum();
             TotalEnergy = ChillerEnergy + BoilerEnergy + LightingEnergy + EquipmentEnergy;
         }
-
         public Building AddZone(Zone zone)
         {
             zones.Add(zone);
@@ -1151,7 +1188,7 @@ namespace IDFFile
         public double bMultiplier = 0.5;
         public double lMultiplier = 0.5;
         public double rMultiplier = 0;
-        public string airPermeability ="";
+        public string airPermeability = "";
 
         public WindowMaterialShade() { }
         public List<string> writeInfo()
@@ -1192,13 +1229,14 @@ namespace IDFFile
         public ZoneHVAC hvac { get; set; }
         public Thermostat thermostat { get; set; }
         public ZoneVentilation vent { get; set; }
+        public ZoneVentilation NaturalVentiallation { get; set; }
         public ZoneInfiltration infiltration { get; set; }
         public string name { get; set; }
         public int level { get; set; }
         public Building building;
 
-        public double totalWallArea, totalWindowArea, totalGFloorArea, totalIFloorArea, totalIWallArea, totalRoofArea, 
-            heatCapacity, SurfAreaU, SolarRadiation, TotalHeatFlows, ExSurfAreaU, GSurfAreaU, ISurfAreaU, 
+        public double totalWallArea, totalWindowArea, totalGFloorArea, totalIFloorArea, totalIWallArea, totalRoofArea,
+            heatCapacity, SurfAreaU, SolarRadiation, TotalHeatFlows, ExSurfAreaU, GSurfAreaU, ISurfAreaU,
             wallAreaU, windowAreaU, gFloorAreaU, roofAreaU, iFloorAreaU, iWallAreaU,
             wallHeatFlow, windowHeatFlow, gFloorHeatFlow, iFloorHeatFlow, iWallHeatFlow, roofHeatFlow, infiltrationFlow;
         public List<BuildingSurface> walls, gFloors, iWalls, iFloors, roofs, izFloors, izWalls;
@@ -1211,7 +1249,7 @@ namespace IDFFile
             volume = area * height;
 
             walls = surfaces.Where(w => w.surfaceType == SurfaceType.Wall).ToList();
-            windows = (walls.Where(w=>w.fenestrations.Count!=0)).SelectMany(w => w.fenestrations).ToList();
+            windows = (walls.Where(w => w.fenestrations.Count != 0)).SelectMany(w => w.fenestrations).ToList();
             gFloors = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList();
             roofs = surfaces.Where(w => w.surfaceType == SurfaceType.Roof).ToList();
             iFloors = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").ToList();
@@ -1221,7 +1259,7 @@ namespace IDFFile
 
             totalWallArea = walls.Select(w => w.area).Sum();
             totalGFloorArea = gFloors.Select(gF => gF.area).Sum();
-            totalIFloorArea = iFloors.Select(iF => iF.area).Sum()+ izFloors.Select(iF => iF.area).Sum();
+            totalIFloorArea = iFloors.Select(iF => iF.area).Sum() + izFloors.Select(iF => iF.area).Sum();
             totalIWallArea = iWalls.Select(iF => iF.area).Sum() + izWalls.Select(iF => iF.area).Sum();
             totalRoofArea = roofs.Select(r => r.area).Sum();
             totalWindowArea = windows.Select(wi => wi.area).Sum();
@@ -1252,7 +1290,7 @@ namespace IDFFile
 
             iFloorHeatFlow -= izFloors.Select(s => s.HeatFlow).Sum();
             iWallHeatFlow -= izWalls.Select(s => s.HeatFlow).Sum();
-            
+
             SolarRadiation = (walls.SelectMany(w => w.fenestrations).Select(f => f.area * f.SolarRadiation)).Sum();
 
             infiltrationFlow = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy")))].Sum() -
@@ -1264,7 +1302,7 @@ namespace IDFFile
             LightingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy")))].Sum();
             EquipmentEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy")))].Sum();
         }
-        
+
         public Zone() { surfaces = new List<BuildingSurface>(); }
         public Zone(Building building, string n, int l)
         {
@@ -1284,6 +1322,10 @@ namespace IDFFile
                 other.surfaces.Add(bSurf.Clone(name));
             }
             return other;
+        }
+        public void CreateNaturalVentillation()
+        {
+            NaturalVentiallation = new ZoneVentilation(this, true);
         }
     }
     [Serializable]
@@ -1372,7 +1414,7 @@ namespace IDFFile
                     OutsideCondition = "Outdoors";
                     SunExposed = "SunExposed";
                     WindExposed = "WindExposed";
-                    AssociateWWRandShadingLength();                   
+                    AssociateWWRandShadingLength();
                     ConstructionName = "Wall ConcreteBlock";
                     break;
                 case (SurfaceType.InternalWall):
@@ -1473,7 +1515,7 @@ namespace IDFFile
 
         public List<Fenestration> CreateFenestration(int count)
         {
-            List<Fenestration> fenestrationList = new List<Fenestration>();          
+            List<Fenestration> fenestrationList = new List<Fenestration>();
             for (int i = 0; i < count; i++)
             {
                 Fenestration fen = new Fenestration(this);
@@ -1483,7 +1525,7 @@ namespace IDFFile
                 XYZ P4 = verticesList.xyzs.ElementAt(3);
                 double openingFactor = Math.Sqrt(wWR / count);
 
-                XYZ pMid = new XYZ((P1.X + P3.X) / (count -i + 1), (P1.Y + P3.Y) / (count - i + 1), (P1.Z + P3.Z) / 2);
+                XYZ pMid = new XYZ((P1.X + P3.X) / (count - i + 1), (P1.Y + P3.Y) / (count - i + 1), (P1.Z + P3.Z) / 2);
 
                 fen.verticesList = new XYZList(verticesList.xyzs.Select(v => new XYZ(pMid.X + (v.X - pMid.X) * openingFactor,
                                                             pMid.Y + (v.Y - pMid.Y) * openingFactor,
@@ -1492,7 +1534,7 @@ namespace IDFFile
                 fenestrationList.Add(fen);
             }
             fenestrations = fenestrationList;
-            area = area * (1-wWR);
+            area = area * (1 - wWR);
             return fenestrationList;
         }
 
@@ -1555,7 +1597,7 @@ namespace IDFFile
                 XYZ v4 = v1.OffsetHeight(height);
 
                 XYZList vList = new XYZList(new List<XYZ>() { v4, v3, v2.Copy(), v1.Copy() });
-                BuildingSurface wall = new BuildingSurface(z, vList, v1.DistanceTo(v2)*height, SurfaceType.Wall);
+                BuildingSurface wall = new BuildingSurface(z, vList, v1.DistanceTo(v2) * height, SurfaceType.Wall);
                 walls.Add(wall);
             }
 
@@ -1603,7 +1645,7 @@ namespace IDFFile
         {
             XYZ v1 = xyzs[0]; XYZ v2 = xyzs[1]; XYZ v3 = xyzs[2];
             XYZ nVector1 = v2.Subtract(v1).CrossProduct(v3.Subtract(v1));
-            return nVector1.AngleOnPlaneTo(new XYZ(0,1,0), new XYZ(0,0,1));
+            return nVector1.AngleOnPlaneTo(new XYZ(0, 1, 0), new XYZ(0, 0, 1));
         }
         public XYZList ChangeZValue(double newZ)
         {
@@ -1634,7 +1676,7 @@ namespace IDFFile
         public double AngleOnPlaneTo(XYZ right, XYZ normalPlane)
         {
             double nDouble = DotProduct(right);
-            double anglePI = Math.Atan2(CrossProduct(right).DotProduct(normalPlane), nDouble - (right.DotProduct(normalPlane))*DotProduct(normalPlane));
+            double anglePI = Math.Atan2(CrossProduct(right).DotProduct(normalPlane), nDouble - (right.DotProduct(normalPlane)) * DotProduct(normalPlane));
             if (anglePI < 0) { anglePI = Math.PI * 2 + anglePI; }
             return Math.Round(180 * anglePI / Math.PI);
         }
@@ -1644,12 +1686,12 @@ namespace IDFFile
         }
         public double DistanceTo(XYZ newXYZ)
         {
-            return Math.Sqrt(Math.Pow(X-newXYZ.X,2) + Math.Pow(Y-newXYZ.Y,2) + Math.Pow(Z-newXYZ.Z,2));
+            return Math.Sqrt(Math.Pow(X - newXYZ.X, 2) + Math.Pow(Y - newXYZ.Y, 2) + Math.Pow(Z - newXYZ.Z, 2));
         }
         public double AbsoluteValue()
         {
             return Math.Sqrt(X * X + Y * Y + Z * Z);
-        }   
+        }
     }
     [Serializable]
     public class Fenestration
@@ -1668,7 +1710,7 @@ namespace IDFFile
         public Fenestration(BuildingSurface wallFace)
         {
             face = wallFace;
-            surfaceType = SurfaceType.Window;            
+            surfaceType = SurfaceType.Window;
             constructionName = "Glazing";
             switch (face.direction)
             {
@@ -1679,27 +1721,27 @@ namespace IDFFile
                 case Direction.South:
                 case Direction.West:
                     shadingControl = "CONTROL ON ZONE TEMP";
-                    break;             
+                    break;
             }
             name = surfaceType + "_On_" + face.name;
             verticesList = new XYZList(new List<XYZ>());
-        }        
+        }
 
         public List<string> WriteInfo()
         {
             List<string> info = new List<string>();
             info.Add("FenestrationSurface:Detailed,");
-                info.Add("\t" + surfaceType + "_On_" + face.name + ",\t!- Name");
-                info.Add("\t" + surfaceType + ",\t\t\t\t\t\t!- Surface Type");
-                info.Add("\t" + constructionName + ",\t\t\t\t\t\t!- Construction Name");
-                info.Add("\t" + face.name + ",\t!-Building Surface Name)");
-                info.Add("\t,\t\t\t\t\t\t!-Outside Boundary Condition Object");
-                info.Add("\t,\t\t\t\t\t\t!-View Factor to Ground");
-                info.Add("\t" + shadingControl +",\t\t\t\t\t\t!- Shading Control Name");
-                info.Add("\t,\t\t\t\t\t\t!- Frame and Divider Name");
-                info.Add("\t,\t\t\t\t\t\t!-Multiplier");
+            info.Add("\t" + surfaceType + "_On_" + face.name + ",\t!- Name");
+            info.Add("\t" + surfaceType + ",\t\t\t\t\t\t!- Surface Type");
+            info.Add("\t" + constructionName + ",\t\t\t\t\t\t!- Construction Name");
+            info.Add("\t" + face.name + ",\t!-Building Surface Name)");
+            info.Add("\t,\t\t\t\t\t\t!-Outside Boundary Condition Object");
+            info.Add("\t,\t\t\t\t\t\t!-View Factor to Ground");
+            info.Add("\t" + shadingControl + ",\t\t\t\t\t\t!- Shading Control Name");
+            info.Add("\t,\t\t\t\t\t\t!- Frame and Divider Name");
+            info.Add("\t,\t\t\t\t\t\t!-Multiplier");
 
-                info.AddRange(verticesList.verticeInfo());
+            info.AddRange(verticesList.verticeInfo());
             return info;
         }
 
@@ -1708,11 +1750,11 @@ namespace IDFFile
             Fenestration other = (Fenestration)this.MemberwiseClone();
             other.name = name + "_" + other.name;
             other.verticesList = new XYZList(verticesList.xyzs.Select(v => v.Copy()).ToList());
-            
+
             return other;
         }
     }
-    public enum ControlType {none, Continuous, Stepped, ContinuousOff}
+    public enum ControlType { none, Continuous, Stepped, ContinuousOff }
     [Serializable]
     public class DayLightRefPoint
     {
@@ -1733,7 +1775,7 @@ namespace IDFFile
             };
             return info.ReplaceLastComma();
         }
-        
+
     }
     [Serializable]
     public class DayLighting
@@ -1752,7 +1794,7 @@ namespace IDFFile
         public double ProbabilityManual = 1;
         public ScheduleCompact AvailabilitySchedule { get; set; }
         public double DELightGridResolution = 2;
-        
+
         public DayLighting() { }
         public List<DayLightRefPoint> CreateZoneDayLightReferencePoints(Zone zone, List<XYZ> points, double illuminance)
         {
@@ -1791,7 +1833,7 @@ namespace IDFFile
                 Utility.IDFLineFormatter(null, "Glare Calculation Reference Point Name"),
                 Utility.IDFLineFormatter(GlareCalcAngle, "Azimuth angle of view direction for glare calculation {deg}"),
                 Utility.IDFLineFormatter(DiscomGlare, "Maximum discomfort glare index for window shade control"),
-                Utility.IDFLineFormatter(DELightGridResolution, "DE Light Gridding Resolution")                
+                Utility.IDFLineFormatter(DELightGridResolution, "DE Light Gridding Resolution")
             };
             ReferencePoints.ForEach(p => info.AddRange(new List<string>() {
                 Utility.IDFLineFormatter(p.Name, "Reference Point"),
@@ -2017,7 +2059,7 @@ namespace IDFFile
             scheduleName = "Electric Equipment and Lighting Schedule";
 
             //name = "Lights " + zone.name;
-            
+
 
             returnAirFraction = 0;
             fractionRadiant = 0.1;
@@ -2058,11 +2100,11 @@ namespace IDFFile
         }
     }
     [Serializable]
-    public class ZoneVAV:ZoneHVAC
+    public class ZoneVAV : ZoneHVAC
     {
         VAV vav;
         Zone zone;
-        public ZoneVAV(VAV v, Zone z, Thermostat t):base(t)
+        public ZoneVAV(VAV v, Zone z, Thermostat t) : base(t)
         {
             zone = z;
             vav = v;
@@ -2072,11 +2114,11 @@ namespace IDFFile
         public List<String> writeInfo()
         {
             List<string> info = new List<string>();
-            
+
 
             info.Add("\r\nHVACTemplate:Zone:VAV,");
             info.Add("\t" + zone.name + ", \t\t\t\t!- Zone Name");
-            info.Add("\t" + vav.name +",\t\t\t\t!-Template VAV System Name");
+            info.Add("\t" + vav.name + ",\t\t\t\t!-Template VAV System Name");
             info.Add("\t" + thermostat.name + ",\t\t\t\t!-Template Thermostat Name");
             info.Add("\tautosize" + ",\t\t\t\t!-Supply Air Maximum Flow Rate {m3/s}");
             info.Add("\t" + ",\t\t\t\t!-Zone Heating Sizing Factor");
@@ -2107,17 +2149,17 @@ namespace IDFFile
             info.Add("\tSupplyAirTemperature" + ",\t\t\t\t!-Zone Heating Design Supply Air Temperature Input Method");
             info.Add("\t50" + ",\t\t\t\t!-Zone Heating Design Supply Air Temperature {C}");
             info.Add("\t" + ";\t\t\t\t!-Zone Heating Design Supply Air Temperature Difference {deltaC}");
-            
+
 
 
             return info;
         }
     }
     [Serializable]
-    public class ZoneFanCoilUnit:ZoneHVAC
+    public class ZoneFanCoilUnit : ZoneHVAC
     {
         Zone zone;
-        public ZoneFanCoilUnit(Zone z, Thermostat thermostat): base(thermostat)
+        public ZoneFanCoilUnit(Zone z, Thermostat thermostat) : base(thermostat)
         {
             zone = z;
         }
@@ -2162,7 +2204,7 @@ namespace IDFFile
                 ",                        !- Baseboard Heating Availability Schedule Name",
                 "Autosize; !-Baseboard Heating Capacity { W}"
             };
-            
+
             return info;
         }
     }
@@ -2195,17 +2237,17 @@ namespace IDFFile
                 "0.0, !-Outdoor Air Flow Rate per Zone Floor Area { m3 / s - m2}",
                 "0.0, !-Outdoor Air Flow Rate per Zone { m3 / s}",
                 ", !-Design Specification Outdoor Air Object Name",
-                "; !-Design Specification Zone Air Distribution Object Name"             
+                "; !-Design Specification Zone Air Distribution Object Name"
             };
 
             return info;
         }
     }
     [Serializable]
-    public class ZoneIdealLoad:ZoneHVAC
+    public class ZoneIdealLoad : ZoneHVAC
     {
         Zone zone;
-        public ZoneIdealLoad(Zone z, Thermostat thermostat):base(thermostat)
+        public ZoneIdealLoad(Zone z, Thermostat thermostat) : base(thermostat)
         {
             zone = z;
         }
@@ -2323,7 +2365,7 @@ namespace IDFFile
             info.Add("\t0.9" + ", \t\t\t\t!- Return Fan Motor Efficiency");
             info.Add("\t1" + ", \t\t\t\t!- Return Fan Motor in Air Stream Fraction");
             info.Add("\tInletVaneDampers" + "; \t\t\t\t!- Return Fan Part-Load Power Coefficients");
-            
+
             return info;
         }
 
@@ -2378,7 +2420,7 @@ namespace IDFFile
                 "SequentialLoad,          !- Chilled Water Load Distribution Scheme",
                 "SequentialLoad; !-Condenser Water Load Distribution Scheme"
             };
-            
+
             return info;
         }
 
@@ -2420,7 +2462,7 @@ namespace IDFFile
     [Serializable]
     public class Tower
     {
-        string name; 
+        string name;
 
         public Tower()
         {
@@ -2539,8 +2581,26 @@ namespace IDFFile
     [Serializable]
     public class ZoneVentilation
     {
-        public double airChangesHour { get; set; }
-        public string scheduleName { get; set; }
+        public string Name;
+        public Zone zone;
+        public string scheduleName = "Ventilation Schedule";
+        public string CalculationMethod = "AirChanges/Hour";
+        public double DesignFlowRate = 0;
+        public double FlowRateZoneArea = 0;
+        public double FlowRatePerson = 0.00944;
+        public double airChangesHour = 1;
+        public string VentilationType = "Balanced";
+        public double FanPressure = 1;
+        public double FanEfficiency = 1;
+        public double ConstantCoefficient = 1;
+        public double TemperatureCoefficient = 0;
+        public double VelocityCoefficient = 0;
+        public double VelocitySqCoefficient = 0;
+        public double minIndoorTemp = -100;
+        public double maxIndoorTemp = 100;
+        public string minIndoorTempSchedule = " ";
+        public string maxIndoorTempSchedule = " ";
+        public double deltaC = 1;
         public ZoneVentilation(double acH)
         {
             scheduleName = "Ventilation Schedule";
@@ -2551,6 +2611,46 @@ namespace IDFFile
         {
             scheduleName = "Ventilation Schedule";
             airChangesHour = 0;
+        }
+
+        public ZoneVentilation(Zone zone, bool natural)
+        {
+            if (natural)
+            {
+                Name = zone.name + "-Natural Ventilation";
+                this.zone = zone;
+                VentilationType = "Natural";
+                minIndoorTemp = 22;
+                maxIndoorTemp = 26;
+            }
+        }
+
+        public List<string> WriteInfo()
+        {
+            return new List<string>()
+            {
+                "ZoneVentilation:DesignFlowRate,",
+                Utility.IDFLineFormatter(Name, "Name"),
+                Utility.IDFLineFormatter(zone.name, "Zone or ZoneList Name"),
+                Utility.IDFLineFormatter(scheduleName, "Schedule Name"),
+                Utility.IDFLineFormatter(CalculationMethod, "Design Flow Rate Calculation Method"),
+                Utility.IDFLineFormatter(DesignFlowRate, "Design Flow Rate {m3/s}"),
+                Utility.IDFLineFormatter(FlowRateZoneArea, "Flow Rate per Zone Floor Area {m3/s-m2}"),
+                Utility.IDFLineFormatter(FlowRatePerson, "Flow Rate per Person {m3/s-person}"),
+                Utility.IDFLineFormatter(airChangesHour, "Air Changes per Hour {1/hr}"),
+                Utility.IDFLineFormatter(VentilationType, "Ventilation Type"),
+                Utility.IDFLineFormatter(FanPressure, "Fan Pressure Rise {Pa}"),
+                Utility.IDFLineFormatter(FanEfficiency, "Fan Total Efficiency"),
+                Utility.IDFLineFormatter(ConstantCoefficient, "Constant Term Coefficient"),
+                Utility.IDFLineFormatter(TemperatureCoefficient, "Temperature Term Coefficient"),
+                Utility.IDFLineFormatter(VelocityCoefficient, "Velocity Term Coefficient"),
+                Utility.IDFLineFormatter(VelocitySqCoefficient, "Velocity Squared Term Coefficient"),
+                Utility.IDFLineFormatter(minIndoorTemp, "Minimum Indoor Temperature {C}"),
+                Utility.IDFLineFormatter(minIndoorTempSchedule, "Maximum Indoor Temperature Schedule"),
+                Utility.IDFLineFormatter(maxIndoorTemp, "Maximum Indoor Temperature {C}"),
+                Utility.IDFLineFormatter(maxIndoorTempSchedule, "Maximum Indoor Temperature Schedule"),
+                Utility.IDFLastLineFormatter(deltaC, "Delta Temperature { deltaC}")
+            };
         }
     }
     [Serializable]
@@ -2686,7 +2786,7 @@ namespace IDFFile
             info.Add("\t90,\t\t\t\t\t\t!-Tilt Angle from Window/Door {deg}");
             info.Add("\t.2,\t\t\t\t\t\t!-Left extension from Window/Door Width {m}");
             info.Add("\t.2,\t\t\t\t\t\t!-Right extension from Window/Door Width {m}");
-            info.Add("\t" + depthf +";\t\t\t\t\t\t!-Depth as Fraction of Window/Door Height {m}");
+            info.Add("\t" + depthf + ";\t\t\t\t\t\t!-Depth as Fraction of Window/Door Height {m}");
 
 
             return info;
@@ -2701,7 +2801,7 @@ namespace IDFFile
         public ScheduleLimits scheduleLimits { get; set; }
         public int startDay { get; set; }
         public int startMonth { get; set; }
-        public int endDay { get; set;}
+        public int endDay { get; set; }
         public int endMonth { get; set; }
         public List<string> writeSchedule()
         {
@@ -2833,7 +2933,7 @@ namespace IDFFile
             info.Add(value1 + ";  \t\t\t\t!- Value Until Time end");
             return info;
         }
-    
+
     }
     [Serializable]
     public class ScheduleLimits
@@ -2851,7 +2951,7 @@ namespace IDFFile
             info.Add(name + ",\t\t\t\t!-Name");
             info.Add(lowerLimit + ", \t\t\t\t!- Lower Limit Value");
 
-            if(upperLimit > lowerLimit) info.Add(upperLimit + ",  \t\t\t\t!- Upper Limit Value");
+            if (upperLimit > lowerLimit) info.Add(upperLimit + ",  \t\t\t\t!- Upper Limit Value");
             else info.Add(",  \t\t\t\t!- Upper Limit Value");
 
             info.Add(numericType + ",  \t\t\t\t!- Numeric Type");
@@ -2881,7 +2981,7 @@ namespace IDFFile
             else { info.Add(", \t\t\t\t!-Schedule Type Limits Name"); }
             info.Add("Through: 12/31,  \t\t\t\t!-Field1");
 
-            foreach(KeyValuePair<string, Dictionary<string, double>> kV in daysTimeValue)
+            foreach (KeyValuePair<string, Dictionary<string, double>> kV in daysTimeValue)
             {
                 info.Add("For: " + kV.Key + ",");
                 foreach (KeyValuePair<string, double> tValue in kV.Value)
@@ -3000,7 +3100,7 @@ namespace IDFFile
                     timeZone = 1.0;
                     elevation = 529.0;
                     break;
-                default: 
+                default:
                     name = "MUNICH_DEU";
                     latitude = 48.13;
                     longitude = 11.7;
@@ -3051,7 +3151,7 @@ namespace IDFFile
         public double skyClearness { get; set; }
 
         public SizingPeriodDesignDay(string name, int month, int day, string dayType, double maxDryBulbT, double dailyDryBulbTR, double wetbulbOrDawPointAtMaxDryBulb, double enthalpyAtMaxDryBulb, double baromPress,
-            double windspeed, double windDir,string rainInd, string snowInd, string daylightSavTimeInd, string solarModelInd, double skyClearness)
+            double windspeed, double windDir, string rainInd, string snowInd, string daylightSavTimeInd, string solarModelInd, double skyClearness)
         {
             this.name = name;
             this.month = month;
@@ -3078,20 +3178,20 @@ namespace IDFFile
         {
             List<string> info = new List<string>();
             info.Add("\nSizingPeriod:DesignDay,");
-            info.Add("\t" +name +                 ",\t\t\t\t!-Name");
-            info.Add("\t" + month +  ", \t\t\t\t!-Month");
-            info.Add("\t" + day +                 ",\t\t\t\t!-Day of Month");
-            info.Add("\t" + dayType +  ", \t\t\t\t!-Day Type");
-            info.Add("\t" + maxDryBulbT +                 ", \t\t\t\t!-Maximum Dry-Bulb Temperature {C}");
+            info.Add("\t" + name + ",\t\t\t\t!-Name");
+            info.Add("\t" + month + ", \t\t\t\t!-Month");
+            info.Add("\t" + day + ",\t\t\t\t!-Day of Month");
+            info.Add("\t" + dayType + ", \t\t\t\t!-Day Type");
+            info.Add("\t" + maxDryBulbT + ", \t\t\t\t!-Maximum Dry-Bulb Temperature {C}");
             info.Add("\t" + dailyDryBulbTR + ", \t\t\t\t!-Daily Dry-Bulb Temperature Range {deltaC}");
             info.Add("\t" + dryBulbTRModifierType + ",\t\t\t\t!-Dry-Bulb Temperature Range Modifier Type");
-            info.Add( ",\t\t\t\t!-Dry-Bulb Temperature Range Modifier Day Schedule Name");
+            info.Add(",\t\t\t\t!-Dry-Bulb Temperature Range Modifier Day Schedule Name");
             info.Add("\t" + humidityConditionType + ",\t\t\t\t!-Humidity Condition Type");
             info.Add("\t" + wetbulbOrDawPointAtMaxDryBulb + ",\t\t\t\t!-Wetbulb or DewPoint at Maximum Dry-Bulb {C}");
-            info.Add( ",\t\t\t\t!-Humidity Condition Day Schedule Name");
-            info.Add( ",\t\t\t\t!-Humidity Ratio at Maximum Dry-Bulb {kgWater/kgDryAir}");
+            info.Add(",\t\t\t\t!-Humidity Condition Day Schedule Name");
+            info.Add(",\t\t\t\t!-Humidity Ratio at Maximum Dry-Bulb {kgWater/kgDryAir}");
             info.Add(enthalpyAtMaxDryBulb + ",\t\t\t\t!-Enthalpy at Maximum Dry-Bulb {J/kg}");
-            info.Add( ",\t\t\t\t!-Daily Wet-Bulb Temperature Range {deltaC}");
+            info.Add(",\t\t\t\t!-Daily Wet-Bulb Temperature Range {deltaC}");
             info.Add("\t" + baromPress + ",\t\t\t\t!-Barometric Pressure {Pa}");
             info.Add("\t" + windspeed + ",\t\t\t\t!-Wind Speed {m/s}");
             info.Add("\t" + windDir + ",\t\t\t\t!-Wind Direction {deg}");
@@ -3099,10 +3199,10 @@ namespace IDFFile
             info.Add("\t" + snowInd + ",\t\t\t\t!-Snow Indicator");
             info.Add("\t" + daylightSavTimeInd + ",\t\t\t\t!-Daylight Saving Time Indicator");
             info.Add("\t" + solarModelInd + ",\t\t\t\t!-Solar Model Indicator");
-            info.Add( ",\t\t\t\t!-Beam Solar Day Schedule Name");
+            info.Add(",\t\t\t\t!-Beam Solar Day Schedule Name");
             info.Add(",\t\t\t\t!-Diffuse Solar Day Schedule Name");
             info.Add(",\t\t\t\t!-ASHRAE Clear Sky Optical Depth for Beam Irradiance (taub) {dimensionless}");
-            info.Add( ",\t\t\t\t!-ASHRAE Clear Sky Optical Depth for Diffuse Irradiance (taud) {dimensionless}");
+            info.Add(",\t\t\t\t!-ASHRAE Clear Sky Optical Depth for Diffuse Irradiance (taud) {dimensionless}");
             info.Add("\t" + skyClearness + ";\t\t\t\t!-Sky Clearness");
 
             return info;
@@ -3188,7 +3288,7 @@ namespace IDFFile
                     jan = 6.17; feb = 5.07; mar = 5.33; apr = 6.27; may = 9.35; jun = 12.12;
                     jul = 14.32; aug = 15.48; sep = 15.20; oct = 13.62; nov = 11.08; dec = 8.41;
                     break;
-            }   
+            }
         }
         public List<string> WriteInfo()
         {
@@ -3239,7 +3339,7 @@ namespace IDFFile
         public OutputDiagnostics diagn;
         public List<OutputPreProcessorMessage> preprocessormess;
 
-        public Output(Dictionary<string,string> variables)
+        public Output(Dictionary<string, string> variables)
         {
             varDict = new OutputVariableDictionary();
             report = new Report();
@@ -3249,7 +3349,7 @@ namespace IDFFile
 
             preprocessormess = new List<OutputPreProcessorMessage>();
             preprocessormess.Add(new OutputPreProcessorMessage(new List<String>(new string[] { "Cannot find Energy +.idd as specified in Energy +.ini." })));
-            preprocessormess.Add(new OutputPreProcessorMessage(new List<String>(new string[] { "Since the Energy+.IDD file cannot be read no range or choice checking was","performed." })));
+            preprocessormess.Add(new OutputPreProcessorMessage(new List<String>(new string[] { "Since the Energy+.IDD file cannot be read no range or choice checking was", "performed." })));
 
             vars = new List<OutputVariable>();
             foreach (string key in variables.Keys)
@@ -3267,7 +3367,7 @@ namespace IDFFile
 
             info.Add("\n\n!-   ===========  ALL OBJECTS IN CLASS: REPORT ===========");
             info.AddRange(report.writeInfo());
-            
+
             info.Add("\n\n!-   ===========  ALL OBJECTS IN CLASS: OUTPUT:TABLE:SUMMARYREPORTS ===========");
             info.AddRange(tableSumReports.writeInfo());
 
@@ -3275,11 +3375,11 @@ namespace IDFFile
             info.AddRange(tableStyle.writeInfo());
 
             info.Add("\n\n!-   ===========  ALL OBJECTS IN CLASS: OUTPUT:VARIABLE ===========");
-            foreach(OutputVariable var in vars)
+            foreach (OutputVariable var in vars)
             { info.AddRange(var.writeInfo()); }
 
             info.Add("\n\n!-   ===========  ALL OBJECTS IN CLASS: OUTPUT:DIAGNOSTICS ===========");
-            info.AddRange(diagn.writeInfo()); 
+            info.AddRange(diagn.writeInfo());
 
             info.Add("\n\n!-   ===========  ALL OBJECTS IN CLASS: OUTPUT:PREPROCESSORMESSAGE ===========");
             foreach (OutputPreProcessorMessage mes in preprocessormess)
@@ -3287,7 +3387,7 @@ namespace IDFFile
 
             return info;
         }
-            
+
     }
     [Serializable]
     public class OutputVariableDictionary
@@ -3445,17 +3545,140 @@ namespace IDFFile
             info.Add("\nOutput:PreprocessorMessage,");
             info.Add("\t" + preprocessorName + ",\t\t\t\t!-Preprocessor Name");
             info.Add("\t" + errorSeverity + ",\t\t\t\t!-Error Severity");
-            for(int i = 1; i<messageLines.Count; i++)
+            for (int i = 1; i < messageLines.Count; i++)
             {
                 info.Add("\t" + messageLines[i - 1] + ",\t\t\t\t!-Message Line " + i);
             }
-            info.Add("\t" + messageLines[messageLines.Count-1] + ";\t\t\t\t!-Message Line " + messageLines.Count);
+            info.Add("\t" + messageLines[messageLines.Count - 1] + ";\t\t\t\t!-Message Line " + messageLines.Count);
 
 
             return info;
         }
 
     }
+    [Serializable]
+    public class PhotovoltaicPerformanceSimple
+    {
+        public string Name = "Simple Flat PV";
+        public string Type = "PhotovoltaicPerformance:Simple";
+        public double FractionSurface = 0.7;
+        public string ConversionEff = "FIXED";
+        public double CellEff = 0.12;
+        public PhotovoltaicPerformanceSimple() { }
+        public List<string> WriteInfo()
+        {
+            return new List<string>()
+            {
+                "PhotovoltaicPerformance:Simple,",
+                Utility.IDFLineFormatter(Name, "Name"),
+                Utility.IDFLineFormatter(FractionSurface, "Fraction of Surface Area with Active Solar Cells {dimensionless}"),
+                Utility.IDFLineFormatter(ConversionEff, "Conversion Efficiency Input Mode"),
+                Utility.IDFLastLineFormatter(CellEff, "Value for Cell Efficiency if Fixed")
+            };
+        }
+    }
+    public class GeneratorPhotovoltaic
+    {
+        public string Name;
+        public string Type = "Generator:Photovoltaic";
+        public BuildingSurface bSurface;
+        public string PhotovoltaicPerformanceObjectType;
+        public PhotovoltaicPerformanceSimple pperformance;
+        public string HeatTransferIntegrationMode = "Decoupled";
+
+        public double GeneratorPowerOutput = 50000;
+        public ScheduleCompact Schedule;
+        public double RatedThermalElectricalPowerRatio = 0;
+
+
+        public GeneratorPhotovoltaic() { }
+        public GeneratorPhotovoltaic(BuildingSurface Surface, PhotovoltaicPerformanceSimple Performance, ScheduleCompact scheduleOn)
+        {
+            Name = "PV on " + Surface.name;
+            bSurface = Surface;
+            pperformance = Performance;
+            PhotovoltaicPerformanceObjectType = Performance.Type;
+            Schedule = scheduleOn;
+        }
+        public List<string> WriteInfo()
+        {
+            return new List<string>()
+            {
+                "Generator:Photovoltaic,",
+                Utility.IDFLineFormatter(Name, "Name"),
+                Utility.IDFLineFormatter(bSurface.name, "Surface Name"),
+                Utility.IDFLineFormatter(PhotovoltaicPerformanceObjectType, "Photovoltaic Performance Object Type"),
+                Utility.IDFLineFormatter(pperformance.Name, "Module Performance Name"),
+                Utility.IDFLastLineFormatter(HeatTransferIntegrationMode, "Heat Transfer Integration Mode")
+            };
+        }
+    }
+    public class ElectricLoadCenterGenerators
+    {
+        public string Name = "Supplementary Generator";
+        public List<GeneratorPhotovoltaic> Generator = new List<GeneratorPhotovoltaic>();
+
+        public ElectricLoadCenterGenerators() { }
+
+        public ElectricLoadCenterGenerators(List<GeneratorPhotovoltaic> Generators)
+        {
+            Generator = Generators;
+        }
+        public List<string> WriteInfo()
+        {
+            List<string> GeneratorInfo = new List<string>
+            {
+                "ElectricLoadCenter:Generators,",
+                Utility.IDFLineFormatter(Name, "Name")
+            };
+            Generator.ForEach
+            (
+                g => GeneratorInfo.AddRange(new List<string>()
+                {
+                    Utility.IDFLineFormatter(g.Name, "Generator Name"),
+                    Utility.IDFLineFormatter(g.Type, "Generator Type"),
+                    Utility.IDFLineFormatter(g.GeneratorPowerOutput, "Generator Power Output"),
+                    Utility.IDFLineFormatter(g.Schedule.name, "Generator Schedule"),
+                    Utility.IDFLineFormatter(g.RatedThermalElectricalPowerRatio, "Generator Rated Thermal to Electrical Power Ratio")
+                })
+            );
+            Utility.ReplaceLastComma(GeneratorInfo);
+            return GeneratorInfo;
+        }
+    }
+    public class ElectricLoadCenterDistribution
+    {
+        public string Name = "Electric Load Center";
+        public ElectricLoadCenterGenerators GeneratorList;
+        public string GeneratorOperationSchemeType = "DemandLimit";
+        public double DemandLimitSchemePurchasedElectricDemandLimit = 100000;
+        public string TrackScheduleNameSchemeScheduleName = " ";
+        public string TrackMeterSchemeMeterName = " ";
+        public string ElectricalBussType = "AlternatingCurrent";
+        public string InverterObjectName = " ";
+        public string ElectricalStorageObjectName = " ";
+
+        public ElectricLoadCenterDistribution() { }
+        public ElectricLoadCenterDistribution(ElectricLoadCenterGenerators GeneratorList1)
+        {
+            GeneratorList = GeneratorList1;
+        }
+        public List<string> WriteInfo()
+        {
+            return new List<string>()
+            {
+                "ElectricLoadCenter:Distribution,",
+                Utility.IDFLineFormatter(Name, "Name"),
+                Utility.IDFLineFormatter(GeneratorList.Name,  "Generator List Name"),
+                Utility.IDFLineFormatter(GeneratorOperationSchemeType, "Generator Operation Scheme Type"),
+                Utility.IDFLineFormatter(DemandLimitSchemePurchasedElectricDemandLimit, "Demand Limit Scheme Purchased Electric Demand Limit {W}"),
+                Utility.IDFLineFormatter(TrackScheduleNameSchemeScheduleName, "Track Schedule Name Scheme Schedule Name"),
+                Utility.IDFLineFormatter(TrackMeterSchemeMeterName, "Track Meter Scheme Meter Name"),
+                Utility.IDFLineFormatter(ElectricalBussType, "Electrical Buss Type"),
+                Utility.IDFLineFormatter(InverterObjectName, "Inverter Object Name"),
+                Utility.IDFLastLineFormatter(ElectricalStorageObjectName, "Electrical Storage Object Name")
+            };
+        }
+    }
+
 }
-
-
