@@ -12,6 +12,46 @@ namespace IDFFile
     public enum Direction { North, East, South, West };
     public static class Utility
     {
+        public static double[] FillZeroes(this double[] Array, int length)
+        {
+            int n1 = Array.Count();
+            if (n1 < length)
+            {
+                double[] a1 = new double[n1 - length];
+                Array = Array.Concat(a1).ToArray();
+            }
+            return Array;
+        }
+        public static double[] AddArrayElementWise(this List<double[]> AllArrays)
+        {
+            List<int> counts = AllArrays.Select(a => a.Count()).ToList();
+            int n = counts.Max();
+
+            AllArrays.Select(a => a.FillZeroes(n));
+
+            double[] array = new double[n];
+
+            for (int i = 0; i < n; i++)
+            {
+                array[i] = AllArrays.Select(a=> a[i]).Sum();
+            }
+            return array;
+            
+        }
+        public static double[] SubtractArrayElementWise(this double[] FirstArray, double[] SecondArray)
+        {
+            List<int> counts = new List<int>() { FirstArray.Count(), SecondArray.Count() };
+            int n = counts.Max();
+
+            FirstArray.FillZeroes(n); SecondArray.FillZeroes(n);
+
+            double[] array = new double[n];
+            for (int i = 0; i < n; i++)
+            {
+                array[i] = FirstArray[i] - SecondArray[i];
+            }
+            return array;
+        }
         public static int[] hourToHHMM(double hours)
         {
             double h = hours / 2;
@@ -499,9 +539,11 @@ namespace IDFFile
             outputvars.Add("Zone Air System Sensible Heating Energy", frequency);
             outputvars.Add("Zone Air System Sensible Cooling Energy", frequency);
 
-            if (building.boiler.fuelType.Contains("Electricity")) { outputvars.Add("Boiler Electric Energy", frequency); }
-            else { outputvars.Add("Boiler Gas Energy", frequency); }
-
+            if (building.boiler != null)
+            {
+                if (building.boiler.fuelType.Contains("Electricity")) { outputvars.Add("Boiler Electric Energy", frequency); }
+                else { outputvars.Add("Boiler Gas Energy", frequency); }
+            }
             outputvars.Add("Chiller Electric Energy", frequency);
             outputvars.Add("Cooling Tower Fan Electric Energy", frequency);
 
@@ -543,14 +585,14 @@ namespace IDFFile
         public double[] pBoilerEfficiency = new double[2];
         public double[] pChillerCOP = new double[2];
 
-        //Probabilistic Energy Load
-        public double[] annualHeatingLoad = new double[4];
-        public double[] annualCoolingLoad = new double[4];
-
         //Probabilistic Operational Energy
-        public double[] annualThermalEnergy = new double[4];
-        public double[] annualLEEbergy = new double[4];
-        public double[] annualEnergy = new double[4];
+        public double[] p_annualHeatingEnergy;
+        public double[] p_annualCoolingEnergy;
+        public double[] p_annualLEEnergy;
+        public double[] p_annualEnergy;
+
+        public double[] p_BoilerEnergy, p_ChillerEnergy, p_TotalEnergy;
+        public double[] p_TotalHeatingEnergy, p_TotalCoolingEnergy, p_LightingEnergy, p_EquipmentEnergy;
 
         //EnergyPlus Output
         public double BoilerEnergy, ChillerEnergy, TotalEnergy;
@@ -973,6 +1015,43 @@ namespace IDFFile
             ChillerEnergy += data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Cooling Tower Fan Electric Energy")))].Sum();
             TotalEnergy = ChillerEnergy + BoilerEnergy + LightingEnergy + EquipmentEnergy;
         }
+        public void AssociateProbabilisticEnergyPlusResults(IList<string> outputHeader, List<double[]> data)
+        {
+            foreach (BuildingSurface surf in bSurfaces)
+            {
+                if (surf.surfaceType == SurfaceType.Wall || surf.surfaceType == SurfaceType.Roof)
+                {
+                    if (surf.surfaceType == SurfaceType.Wall)
+                    {
+                        Fenestration win = surf.fenestrations[0];
+                        string strWinRad = outputHeader.First(a => a.Contains(win.name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"));
+                        win.p_SolarRadiation = data[outputHeader.IndexOf(strWinRad)];
+                        //Console.WriteLine(string.Join(" - ", win.name, win.face.zone.name, win.area, win.SolarRadiation));
+                        string winHeatFlow = outputHeader.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"));
+                        win.p_HeatFlow = data[outputHeader.IndexOf(winHeatFlow)];
+                    }
+                    string radStr = outputHeader.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"));
+                    surf.p_SolarRadiation = data[outputHeader.IndexOf(radStr)];
+                }
+                string heatStr = outputHeader.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Energy"));
+                surf.p_HeatFlow = data[outputHeader.IndexOf(heatStr)];
+            }
+            foreach (Zone zone in zones)
+            {
+                zone.CalcAreaVolumeHeatCapacity(); zone.AssociateProbabilisticEnergyPlusResults(outputHeader, data);
+            }
+            TotalArea = zones.Select(z => z.area).Sum(); TotalVolume = zones.Select(z => z.volume).Sum();
+            p_TotalHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise();
+            p_TotalCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise();
+            p_LightingEnergy = zones.Select(z => z.p_LightingEnergy).ToList().AddArrayElementWise();
+            p_EquipmentEnergy = zones.Select(z => z.p_EquipmentEnergy).ToList().AddArrayElementWise();
+
+            p_BoilerEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Boiler Electric Energy")))];
+            p_ChillerEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Chiller Electric Energy")))];
+            p_ChillerEnergy = new List<double[]>() { p_ChillerEnergy, data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Cooling Tower Fan Electric Energy")))] }.AddArrayElementWise();
+
+            p_TotalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy, p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
+        }
         public Building AddZone(Zone zone)
         {
             zones.Add(zone);
@@ -1217,7 +1296,9 @@ namespace IDFFile
     [Serializable]
     public class Zone
     {
-        public double HeatingEnergy, CoolingEnergy, LightingEnergy, EquipmentEnergy;
+        public double HeatingEnergy, CoolingEnergy, LightingEnergy, EquipmentEnergy, LightingEquipmentEnergy;
+
+        public double[] p_HeatingEnergy, p_CoolingEnergy, p_LightingEnergy, p_EquipmentEnergy, p_LightingEquipmentEnergy;
         public List<BuildingSurface> surfaces { get; set; }
         public double area;
         public double volume;
@@ -1239,6 +1320,9 @@ namespace IDFFile
             heatCapacity, SurfAreaU, SolarRadiation, TotalHeatFlows, ExSurfAreaU, GSurfAreaU, ISurfAreaU,
             wallAreaU, windowAreaU, gFloorAreaU, roofAreaU, iFloorAreaU, iWallAreaU,
             wallHeatFlow, windowHeatFlow, gFloorHeatFlow, iFloorHeatFlow, iWallHeatFlow, roofHeatFlow, infiltrationFlow;
+
+        public double[] p_TotalHeatFlows, p_wallHeatFlow, p_windowHeatFlow, p_gFloorHeatFlow, p_iFloorHeatFlow, p_iWallHeatFlow, p_roofHeatFlow, p_infiltrationFlow, p_SolarRadiation;
+
         public List<BuildingSurface> walls, gFloors, iWalls, iFloors, roofs, izFloors, izWalls;
         public List<Fenestration> windows;
 
@@ -1301,6 +1385,31 @@ namespace IDFFile
             CoolingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Cooling Energy")))].Sum();
             LightingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy")))].Sum();
             EquipmentEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy")))].Sum();
+            LightingEquipmentEnergy = LightingEnergy + EquipmentEnergy;
+        }
+        public void AssociateProbabilisticEnergyPlusResults(IList<string> outputHeader, List<double[]> data)
+        {
+            p_wallHeatFlow = walls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_gFloorHeatFlow = gFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_iFloorHeatFlow = iFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_iWallHeatFlow = iWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_windowHeatFlow = walls.Select(s => s.fenestrations[0]).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_roofHeatFlow = roofs.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+
+            p_iFloorHeatFlow = p_iFloorHeatFlow.SubtractArrayElementWise(izFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
+            p_iWallHeatFlow  = p_iWallHeatFlow.SubtractArrayElementWise(izWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
+
+            p_SolarRadiation = (walls.SelectMany(w => w.fenestrations).Select(f => f.p_SolarRadiation)).ToList().AddArrayElementWise();
+
+            p_infiltrationFlow = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy")))].SubtractArrayElementWise(
+                    data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy")))]);
+            p_TotalHeatFlows = new List<double[]>() { p_wallHeatFlow, p_gFloorHeatFlow, p_iFloorHeatFlow, p_iWallHeatFlow, p_windowHeatFlow, p_roofHeatFlow, p_infiltrationFlow }.AddArrayElementWise();
+
+            p_HeatingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Heating Energy")))];
+            p_CoolingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Cooling Energy")))];
+            p_LightingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy")))];
+            p_EquipmentEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy")))];
+            p_LightingEquipmentEnergy = new List<double[]>() { p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
         }
 
         public Zone() { surfaces = new List<BuildingSurface>(); }
@@ -1331,7 +1440,7 @@ namespace IDFFile
     [Serializable]
     public class BuildingSurface
     {
-        public double[] annualHeatFlow;
+        public double[] p_HeatFlow;
         public XYZList verticesList;
         public string name { get; set; }
         public Zone zone { get; set; }
@@ -1351,6 +1460,8 @@ namespace IDFFile
         public double df { get; set; }
         public double SolarRadiation;
         public double HeatFlow;
+        public double[] p_SolarRadiation;
+
         private void addName()
         {
             name = zone.name + ":" + zone.level + ":" + ConstructionName + "_" + (zone.surfaces.Count + 1);
@@ -1700,6 +1811,7 @@ namespace IDFFile
         public double area;
         public double SolarRadiation;
         public double HeatFlow;
+        public double[] p_HeatFlow;
         public BuildingSurface face { get; set; }
         public XYZList verticesList { get; set; }
         public string constructionName { get; set; }
@@ -1707,6 +1819,8 @@ namespace IDFFile
         public string name { get; set; }
         public string shadingControl { get; set; }
         public OverhangProjection overhang { get; set; }
+        public double[] p_SolarRadiation { get; set; }
+
         public Fenestration(BuildingSurface wallFace)
         {
             face = wallFace;
