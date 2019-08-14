@@ -8,7 +8,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 namespace IDFFile
 
 {
-    public enum SurfaceType { Floor, Ceiling, Wall, Roof, InternalWall, Window };
+    public enum SurfaceType { Floor, InternalFloor, Wall, Roof, InternalWall, Window };
     public enum Direction { North, East, South, West };
     public static class Utility
     {
@@ -1530,15 +1530,15 @@ namespace IDFFile
                     break;
                 case (SurfaceType.InternalWall):
                     OutsideObject = "Surface";
-                    OutsideCondition = "";
+                    OutsideCondition = "Zone";
                     SunExposed = "NoSun";
                     WindExposed = "NoWind";
                     ConstructionName = "Internal Wall";  //?
                     break;
-                case (SurfaceType.Ceiling):
+                case (SurfaceType.InternalFloor):
                     pointList.Reverse();
                     ConstructionName = "General_Floor_Ceiling";
-                    OutsideCondition = "Adiabatic";
+                    OutsideCondition = "Zone";
                     SunExposed = "NoSun";
                     WindExposed = "NoWind";
                     break;
@@ -1588,7 +1588,7 @@ namespace IDFFile
                     WindExposed = "NoWind";
                     ConstructionName = "InternalWall";
                     break;
-                case (SurfaceType.Ceiling):
+                case (SurfaceType.InternalFloor):
                     pointList.Reverse();
                     ConstructionName = "General_Floor_Ceiling";
                     OutsideCondition = "Zone";
