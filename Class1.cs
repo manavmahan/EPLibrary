@@ -8,7 +8,7 @@ using System.Runtime.Serialization.Formatters.Binary;
 namespace IDFFile
 
 {
-    public enum SurfaceType { Floor, InternalFloor, Wall, Roof, InternalWall, Window };
+    public enum SurfaceType { Floor, Ceiling, Wall, Roof, InternalWall, Window };
     public enum Direction { North, East, South, West };
     public static class Utility
     {
@@ -578,6 +578,7 @@ namespace IDFFile
 
         //Probablistic Attributes
         public ProbabilisticBuildingConstruction pBuildingConstruction;
+        public ProbabilisticBuildingOperation pBuildingParameters;
         public ProbabilisticWWR pWWR;
         public double[] pOperatingHours = new double[2];
         public double[] pInfiltration = new double[2];
@@ -601,6 +602,8 @@ namespace IDFFile
 
         //Deterministic Attributes
         public BuildingConstruction buildingConstruction;
+        public BuildingOperation buildingOperation;
+
         public double FloorHeight;
         public WWR WWR { get; set; } = new WWR(0.5, 0.5, 0.5, 0.5); //North, West, South, East
         public ShadingLength shadingLength { get; set; } = new ShadingLength(0, 0, 0, 0); //North, West, South, East
@@ -610,6 +613,7 @@ namespace IDFFile
         public double ElectricHeatGain = 10;
         public double boilerEfficiency = 0.8;
         public double chillerCOP = 4;
+        
 
         //Schedules Limits and Schedule
         public List<ScheduleLimits> schedulelimits { get; set; } = new List<ScheduleLimits>();
@@ -648,7 +652,33 @@ namespace IDFFile
 
         //PV Panel on Roof
         public ElectricLoadCenterDistribution electricLoadCenterDistribution;
-
+        public void UpdateBuildingConstructionWWROperations(BuildingConstruction construction, WWR wWR, BuildingOperation bOperation)
+        {
+            buildingConstruction = construction;
+            GenerateConstructionWithIComponentsU();
+            WWR = wWR;
+            UpdateFenestrations();
+            buildingOperation = bOperation;
+            GeneratePeopleLightingElectricEquipment();
+            GenerateInfiltraitionAndVentillation();
+            GenerateHVAC(true, false, false);
+        }
+        public void UpdataBuildingOperations()
+        {
+            boilerEfficiency = buildingOperation.boilerEfficiency;
+            chillerCOP = buildingOperation.chillerCOP;
+            LightHeatGain = 0.5 * buildingOperation.internalHeatGain;
+            ElectricHeatGain = 0.5 * buildingOperation.internalHeatGain;
+            operatingHours = buildingOperation.operatingHours;
+        }
+        public void UpdateFenestrations()
+        {
+            foreach (BuildingSurface toupdate in bSurfaces.Where(s=>s.surfaceType == SurfaceType.Wall))
+            {
+                toupdate.AssociateWWRandShadingLength();
+                toupdate.fenestrations = toupdate.CreateFenestration(1);
+            }
+        }
         public void CreatePVPanelsOnRoof()
         {
             PhotovoltaicPerformanceSimple photovoltaicPerformanceSimple = new PhotovoltaicPerformanceSimple();
@@ -918,14 +948,13 @@ namespace IDFFile
 
             //window construction
             WindowMaterial windowLayer = new WindowMaterial("Glazing Material", uWindow, gWindow, 0.1);
-            windowMaterials.Add(windowLayer);
             windowMaterials = new List<WindowMaterial>() { windowLayer };
             Construction window = new Construction("Glazing", new List<WindowMaterial>() { windowLayer });
             constructions.Add(window);
 
             //window shades
-            windowMaterialShades.Add(new WindowMaterialShade());
-            shadingControls.Add(new ShadingControl());
+            windowMaterialShades = new List<WindowMaterialShade>() { (new WindowMaterialShade()) };
+            shadingControls = new List<ShadingControl>() { new ShadingControl() };
 
         }
         public void GeneratePeopleLightingElectricEquipment()
@@ -946,6 +975,7 @@ namespace IDFFile
         }
         public void GenerateHVAC(bool IsFCU, bool IsVAV, bool IsIdeal)
         {
+            tStats = new List<Thermostat>();
             Thermostat officeT = new Thermostat("Office Thermostat", 20, 25, schedulescomp.First(s => s.name.Contains("Heating Set Point Schedule")),
                 schedulescomp.First(s => s.name.Contains("Cooling Set Point Schedule")));
             tStats.Add(officeT);
@@ -1163,40 +1193,63 @@ namespace IDFFile
             this.south = south;
             this.west = west;
         }
+        public WWR GetAverage()
+        {
+            return new WWR()
+            {
+                north = north.Average(),
+                east = east.Average(),
+                west = west.Average(),
+                south = south.Average()
+            };
+        }
 
     }
     [Serializable]
     public class BuildingConstruction
     {
         //To store the values from samples
-        public double uWall;
-        public double uGFloor;
-        public double uRoof;
-        public double uIFloor;
-        public double uIWall;
-        public double uWindow;
-        public double gWindow;
+        public double uWall, uGFloor, uRoof, uIFloor, uIWall, uWindow, gWindow, hcSlab, infiltration;
 
-        public double hcWall, hcRoof, hcGFloor, hcIFloor, hcSlab, hcIWall;
+        public double hcWall, hcRoof, hcGFloor, hcIFloor, hcIWall;
 
         public BuildingConstruction() { }
         public BuildingConstruction(double uWall, double uGFloor, double uRoof, double uWindow, double gWindow, double uIFloor, double uIWall, double hcSlab)
         {
             this.uWall = uWall; this.uGFloor = uGFloor; this.uRoof = uRoof; this.uWindow = uWindow; this.gWindow = gWindow; this.uIFloor = uIFloor; this.uIWall = uIWall; this.hcSlab = hcSlab;
         }
+        public string ToCSVString()
+        {
+            return string.Join(",", uWall, uGFloor, uRoof, uIFloor, uIWall, uWindow, gWindow, hcSlab, infiltration);
+        }
+    }
+    public class ProbabilisticBuildingOperation
+    {
+        public double[] operatingHours, internalHeatGain, boilerEfficiency, chillerCOP;
+        public ProbabilisticBuildingOperation() { }
+
+        public BuildingOperation GetAverage()
+        {
+            return new BuildingOperation()
+            {
+                operatingHours = operatingHours.Average(),
+                internalHeatGain = internalHeatGain.Average(),
+                boilerEfficiency = boilerEfficiency.Average(),
+                chillerCOP = chillerCOP.Average()
+            };
+        }
+
+    }
+    public class BuildingOperation
+    {
+        public double operatingHours, internalHeatGain, boilerEfficiency, chillerCOP;
+        public BuildingOperation() { }
     }
     [Serializable]
     public class ProbabilisticBuildingConstruction
     {
         //To store the values from samples
-        public double[] uWall;
-        public double[] uGFloor;
-        public double[] uRoof;
-        public double[] uIFloor;
-        public double[] uIWall;
-        public double[] uWindow;
-        public double[] gWindow;
-        public double[] HCFloor;
+        public double[] uWall, uGFloor, uRoof, uIFloor, uIWall, uWindow, gWindow, hcSlab, infiltration;
 
         public ProbabilisticBuildingConstruction() { }
         public ProbabilisticBuildingConstruction(double[] uWall, double[] uGFloor, double[] uRoof, double[] uIFloor, double[] uIWall, double[] uWindow, double[] gWindow, double[] HCFloor)
@@ -1208,7 +1261,28 @@ namespace IDFFile
             this.uIWall = uIWall;
             this.uWindow = uWindow;
             this.gWindow = gWindow;
-            this.HCFloor = HCFloor;
+            this.hcSlab = HCFloor;
+        }
+        public BuildingConstruction GetAverage()
+        {
+            return new BuildingConstruction()
+            {
+                uWall = uWall.Average(),
+                uGFloor = uGFloor.Average(),
+                uRoof = uRoof.Average(),
+                uIFloor = uIFloor.Average(),
+                uIWall = uIWall.Average(),
+                uWindow = uWindow.Average(),
+                gWindow = gWindow.Average(),
+                hcSlab = hcSlab.Average()
+            };
+        }
+        public  List<string> ToCSVString()
+        {
+            return new List<string>(){
+                string.Join(",", uWall[0], uGFloor[0], uRoof[0], uIFloor[0], uIWall[0], uWindow[0], gWindow[0], hcSlab[0], infiltration[0]),
+                string.Join(",", uWall[1], uGFloor[1], uRoof[1], uIFloor[1], uIWall[1], uWindow[1], gWindow[1], hcSlab[1], infiltration[1])
+            };
         }
     }
     [Serializable]
@@ -1535,7 +1609,7 @@ namespace IDFFile
                     WindExposed = "NoWind";
                     ConstructionName = "Internal Wall";  //?
                     break;
-                case (SurfaceType.InternalFloor):
+                case (SurfaceType.Ceiling):
                     pointList.Reverse();
                     ConstructionName = "General_Floor_Ceiling";
                     OutsideCondition = "Zone";
@@ -1557,56 +1631,6 @@ namespace IDFFile
             zone1.surfaces.Add(this);
         }
 
-        public BuildingSurface(Zone zone1, XYZList pointList1, double areaN, SurfaceType surfaceType1, bool fromRevit)
-        {
-            zone = zone1;
-            area = areaN;
-            verticesList = pointList1;
-            surfaceType = surfaceType1;
-
-            List<XYZ> pointList = pointList1.xyzs;
-            switch (surfaceType)
-            {
-                case (SurfaceType.Floor):
-                    ConstructionName = "Slab_Floor";
-                    OutsideCondition = "Ground";
-                    OutsideObject = "";
-                    SunExposed = "NoSun";
-                    WindExposed = "NoWind";
-                    break;
-                case (SurfaceType.Wall):
-                    OutsideObject = "";
-                    OutsideCondition = "Outdoors";
-                    SunExposed = "SunExposed";
-                    WindExposed = "WindExposed";
-                    ConstructionName = "Concrete Block";
-                    break;
-                case (SurfaceType.InternalWall):
-                    OutsideObject = "Surface";
-                    OutsideCondition = "";
-                    SunExposed = "NoSun";
-                    WindExposed = "NoWind";
-                    ConstructionName = "InternalWall";
-                    break;
-                case (SurfaceType.InternalFloor):
-                    pointList.Reverse();
-                    ConstructionName = "General_Floor_Ceiling";
-                    OutsideCondition = "Zone";
-                    SunExposed = "NoSun";
-                    WindExposed = "NoWind";
-                    break;
-                case (SurfaceType.Roof):
-                    pointList.Reverse();
-                    ConstructionName = "Up Roof Concrete";
-                    OutsideObject = "";
-                    OutsideCondition = "Outdoors";
-                    SunExposed = "SunExposed";
-                    WindExposed = "WindExposed";
-                    break;
-            }
-            addName();
-            zone1.surfaces.Add(this);
-        }
         public List<string> surfaceInfo()
         {
             List<string> info = new List<string>();

@@ -45,6 +45,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy \\Mac\Home\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.dll \\Mac\Home\Documents\GitHub\ManavLibrary\</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
 </Project>
