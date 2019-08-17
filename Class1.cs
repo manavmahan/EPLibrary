@@ -623,7 +623,7 @@ namespace IDFFile
         public List<Material> materials = new List<Material>();
         public List<WindowMaterial> windowMaterials = new List<WindowMaterial>();
         public List<WindowMaterialShade> windowMaterialShades = new List<WindowMaterialShade>();
-        public List<ShadingControl> shadingControls = new List<ShadingControl>();
+        public List<WindowShadingControl> shadingControls = new List<WindowShadingControl>();
         public List<Construction> constructions = new List<Construction>();
 
         //Zone, ZoneList, BuidlingSurface, ShadingZones, ShadingOverhangs
@@ -676,8 +676,29 @@ namespace IDFFile
             foreach (BuildingSurface toupdate in bSurfaces.Where(s=>s.surfaceType == SurfaceType.Wall))
             {
                 toupdate.AssociateWWRandShadingLength();
-                toupdate.fenestrations = toupdate.CreateFenestration(1);
+                toupdate.fenestrations = toupdate.CreateFenestration(1);               
             }
+            CreateShadingControls();
+        }
+        public void CreateShadingControls()
+        {
+            shadingControls = new List<WindowShadingControl>();
+            foreach (BuildingSurface face in bSurfaces.Where(s => s.surfaceType == SurfaceType.Wall))
+            {
+                switch (face.direction)
+                {
+                    case Direction.North:
+                        face.fenestrations.ForEach(f=>f.shadingControl = null);
+                        break;
+                    case Direction.East:
+                    case Direction.South:
+                    case Direction.West:
+                        face.fenestrations.ForEach(f => f.shadingControl = new WindowShadingControl(f));
+                        shadingControls.AddRange(face.fenestrations.Select(f=> f.shadingControl));
+                        break;
+                }
+            }
+            
         }
         public void CreatePVPanelsOnRoof()
         {
@@ -953,9 +974,7 @@ namespace IDFFile
             constructions.Add(window);
 
             //window shades
-            windowMaterialShades = new List<WindowMaterialShade>() { (new WindowMaterialShade()) };
-            shadingControls = new List<ShadingControl>() { new ShadingControl() };
-
+            windowMaterialShades = new List<WindowMaterialShade>() { (new WindowMaterialShade()) };          
         }
         public void GeneratePeopleLightingElectricEquipment()
         {
@@ -1045,8 +1064,10 @@ namespace IDFFile
             ChillerEnergy += data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Cooling Tower Fan Electric Energy")))].Sum();
             TotalEnergy = ChillerEnergy + BoilerEnergy + LightingEnergy + EquipmentEnergy;
         }
-        public void AssociateProbabilisticEnergyPlusResults(IList<string> outputHeader, List<double[]> data)
+        public void AssociateProbabilisticEnergyPlusResults(Dictionary<string, double[]> resultsDF)
         {
+            IList<string> outputHeader;
+            List< double[] > data;
             foreach (BuildingSurface surf in bSurfaces)
             {
                 if (surf.surfaceType == SurfaceType.Wall || surf.surfaceType == SurfaceType.Roof)
@@ -1054,21 +1075,16 @@ namespace IDFFile
                     if (surf.surfaceType == SurfaceType.Wall)
                     {
                         Fenestration win = surf.fenestrations[0];
-                        string strWinRad = outputHeader.First(a => a.Contains(win.name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"));
-                        win.p_SolarRadiation = data[outputHeader.IndexOf(strWinRad)];
-                        //Console.WriteLine(string.Join(" - ", win.name, win.face.zone.name, win.area, win.SolarRadiation));
-                        string winHeatFlow = outputHeader.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"));
-                        win.p_HeatFlow = data[outputHeader.IndexOf(winHeatFlow)];
+                        win.p_SolarRadiation = resultsDF[resultsDF.Keys.First(a => a.Contains(win.name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))];
+                        win.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"))];
                     }
-                    string radStr = outputHeader.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"));
-                    surf.p_SolarRadiation = data[outputHeader.IndexOf(radStr)];
+                    surf.p_SolarRadiation = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))];
                 }
-                string heatStr = outputHeader.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Energy"));
-                surf.p_HeatFlow = data[outputHeader.IndexOf(heatStr)];
+                surf.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Energy"))];
             }
             foreach (Zone zone in zones)
             {
-                zone.CalcAreaVolumeHeatCapacity(); zone.AssociateProbabilisticEnergyPlusResults(outputHeader, data);
+                zone.CalcAreaVolumeHeatCapacity(); zone.AssociateProbabilisticEnergyPlusResults(resultsDF);
             }
             TotalArea = zones.Select(z => z.area).Sum(); TotalVolume = zones.Select(z => z.volume).Sum();
             p_TotalHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise();
@@ -1076,9 +1092,9 @@ namespace IDFFile
             p_LightingEnergy = zones.Select(z => z.p_LightingEnergy).ToList().AddArrayElementWise();
             p_EquipmentEnergy = zones.Select(z => z.p_EquipmentEnergy).ToList().AddArrayElementWise();
 
-            p_BoilerEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Boiler Electric Energy")))];
-            p_ChillerEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Chiller Electric Energy")))];
-            p_ChillerEnergy = new List<double[]>() { p_ChillerEnergy, data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Cooling Tower Fan Electric Energy")))] }.AddArrayElementWise();
+            p_BoilerEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains("Boiler Electric Energy"))];
+            p_ChillerEnergy = new List<double[]>() { resultsDF[resultsDF.Keys.First(a => a.Contains("Chiller Electric Energy"))],
+                resultsDF[resultsDF.Keys.First(a => a.Contains("Cooling Tower Fan Electric Energy"))] }.AddArrayElementWise();
 
             p_TotalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy, p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
         }
@@ -1123,7 +1139,7 @@ namespace IDFFile
             return this;
         }
         public List<string> WriteInfo()
-        {
+        {           
             return new List<string>()
             {
                 "Building,",
@@ -1290,37 +1306,59 @@ namespace IDFFile
     {
     }
     [Serializable]
-    public class ShadingControl
+    public class WindowShadingControl
     {
         public string name = "CONTROL ON ZONE TEMP";
+        public Zone zone;
+        public string sequenceNumber = "";
         public string shadingType = "InteriorShade";
-        public string cShadingName = "";
+        public string construction = "";
+
         public string shadingControlType = "OnIfHighZoneAirTemperature";
         public string scehduleName = "";
         public double setPoint = 23;
         public string scheduled = "NO";
         public string glareControl = "NO";
-        public string shadingMatrial = "ROLL SHADE";
+
+        public string material = "ROLL SHADE";
         public string angleControl = "";
         public string slatSchedule = "";
+      
+        public string setPoint2 = "";
+        public DayLighting daylightcontrolobjectname;
+        public string multipleSurfaceControlType = "";
+        public Fenestration fenestration;
 
-        public ShadingControl() { }
+
+        public WindowShadingControl(Fenestration fenestration)
+        {
+            this.fenestration = fenestration; zone = fenestration.face.zone;
+            name = string.Format("CONTROL ON ZONE TEMP {0}", fenestration.name);
+            daylightcontrolobjectname = zone.DayLightControl;
+        }
         public List<string> WriteInfo()
         {
             return new List<string>()
             {
-                "WindowProperty:ShadingControl,",
+                "WindowShadingControl,",
                 Utility.IDFLineFormatter(name, "Name"),
+                Utility.IDFLineFormatter(zone.name, "Zone Name"),
+                Utility.IDFLineFormatter(sequenceNumber, "Sequence Number"),
                 Utility.IDFLineFormatter(shadingType, "Shading Type"),
-                Utility.IDFLineFormatter(cShadingName, "Construction with Shading Name"),
+                Utility.IDFLineFormatter(construction, "Construction with Shading Name"),
                 Utility.IDFLineFormatter(shadingControlType, "Shading Control Type"),
                 Utility.IDFLineFormatter(scehduleName, "Schedule Name"),
                 Utility.IDFLineFormatter(setPoint, "Setpoint {W/m2, W or deg C}"),
                 Utility.IDFLineFormatter(scheduled, "Shading Control Is Scheduled"),
                 Utility.IDFLineFormatter(glareControl, "Glare Control Is Active"),
-                Utility.IDFLineFormatter(shadingMatrial, "Shading Device Material Name"),
+                Utility.IDFLineFormatter(material, "Shading Device Material Name"),
                 Utility.IDFLineFormatter(angleControl, "Type of Slat Angle Control for Blinds"),
-                Utility.IDFLastLineFormatter(slatSchedule, "Slat Angle Schedule Name")
+                Utility.IDFLineFormatter(slatSchedule, "Slat Angle Schedule Name"),
+                Utility.IDFLineFormatter(setPoint2, "Setpoint 2"),
+                Utility.IDFLineFormatter(daylightcontrolobjectname.Name, "Daylight Control Object Name"),
+                Utility.IDFLineFormatter(multipleSurfaceControlType, "Multiple Control Type"),
+                Utility.IDFLastLineFormatter(fenestration.name, "Fenestration")
+                
             };
         }
     }
@@ -1461,7 +1499,7 @@ namespace IDFFile
             EquipmentEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy")))].Sum();
             LightingEquipmentEnergy = LightingEnergy + EquipmentEnergy;
         }
-        public void AssociateProbabilisticEnergyPlusResults(IList<string> outputHeader, List<double[]> data)
+        public void AssociateProbabilisticEnergyPlusResults(Dictionary<string, double[]> resultsDF)
         {
             p_wallHeatFlow = walls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
             p_gFloorHeatFlow = gFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
@@ -1475,14 +1513,14 @@ namespace IDFFile
 
             p_SolarRadiation = (walls.SelectMany(w => w.fenestrations).Select(f => f.p_SolarRadiation)).ToList().AddArrayElementWise();
 
-            p_infiltrationFlow = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy")))].SubtractArrayElementWise(
-                    data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy")))]);
+            p_infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy"))].SubtractArrayElementWise(
+                     resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy"))]);
             p_TotalHeatFlows = new List<double[]>() { p_wallHeatFlow, p_gFloorHeatFlow, p_iFloorHeatFlow, p_iWallHeatFlow, p_windowHeatFlow, p_roofHeatFlow, p_infiltrationFlow }.AddArrayElementWise();
 
-            p_HeatingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Heating Energy")))];
-            p_CoolingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Cooling Energy")))];
-            p_LightingEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy")))];
-            p_EquipmentEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy")))];
+            p_HeatingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Heating Energy"))];
+            p_CoolingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Cooling Energy"))];
+            p_LightingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy"))];
+            p_EquipmentEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy"))];
             p_LightingEquipmentEnergy = new List<double[]>() { p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
         }
 
@@ -1841,7 +1879,7 @@ namespace IDFFile
         public string constructionName { get; set; }
         public SurfaceType surfaceType { get; set; }
         public string name { get; set; }
-        public string shadingControl { get; set; }
+        public WindowShadingControl shadingControl { get; set; }
         public OverhangProjection overhang { get; set; }
         public double[] p_SolarRadiation { get; set; }
 
@@ -1850,18 +1888,7 @@ namespace IDFFile
             face = wallFace;
             surfaceType = SurfaceType.Window;
             constructionName = "Glazing";
-            switch (face.direction)
-            {
-                case Direction.North:
-                    shadingControl = "";
-                    break;
-                case Direction.East:
-                case Direction.South:
-                case Direction.West:
-                    shadingControl = "CONTROL ON ZONE TEMP";
-                    break;
-            }
-            name = surfaceType + "_On_" + face.name;
+            name = surfaceType + "_On_" + face.name;           
             verticesList = new XYZList(new List<XYZ>());
         }
 
@@ -1869,13 +1896,15 @@ namespace IDFFile
         {
             List<string> info = new List<string>();
             info.Add("FenestrationSurface:Detailed,");
-            info.Add("\t" + surfaceType + "_On_" + face.name + ",\t!- Name");
+            info.Add(Utility.IDFLineFormatter(name, "Subsurface Name"));
+            
             info.Add("\t" + surfaceType + ",\t\t\t\t\t\t!- Surface Type");
             info.Add("\t" + constructionName + ",\t\t\t\t\t\t!- Construction Name");
+
             info.Add("\t" + face.name + ",\t!-Building Surface Name)");
             info.Add("\t,\t\t\t\t\t\t!-Outside Boundary Condition Object");
+
             info.Add("\t,\t\t\t\t\t\t!-View Factor to Ground");
-            info.Add("\t" + shadingControl + ",\t\t\t\t\t\t!- Shading Control Name");
             info.Add("\t,\t\t\t\t\t\t!- Frame and Divider Name");
             info.Add("\t,\t\t\t\t\t\t!-Multiplier");
 
@@ -3140,7 +3169,7 @@ namespace IDFFile
         public double VersionIdentifier { get; set; }
         public Version()
         {
-            VersionIdentifier = 8.7;
+            VersionIdentifier = 9.1;
         }
         public List<string> WriteInfo()
         {
@@ -3361,7 +3390,7 @@ namespace IDFFile
         public string WeekendHolidayRule { get; set; }
         public string useWeatherFileRainIndicators { get; set; }
         public string useWeatherFileSnowIndicators { get; set; }
-        public int numberOfTimesRunperiodRepeated { get; set; }
+        public string actualWeather { get; set; }
 
         public RunPeriod()
         {
@@ -3376,7 +3405,7 @@ namespace IDFFile
             WeekendHolidayRule = "No";
             useWeatherFileRainIndicators = "Yes";
             useWeatherFileSnowIndicators = "Yes";
-            numberOfTimesRunperiodRepeated = 1;
+            actualWeather = "No";
         }
         public List<string> WriteInfo()
         {
@@ -3386,15 +3415,17 @@ namespace IDFFile
                 Utility.IDFLineFormatter(name, "Name"),
                 Utility.IDFLineFormatter(beginMonth, "Begin Month"),
                 Utility.IDFLineFormatter(beginDayMonth, "Begin Day of Month"),
+                Utility.IDFLineFormatter("", "Begin Year"),
                 Utility.IDFLineFormatter(endMonth, "End Month"),
                 Utility.IDFLineFormatter(endDayOfMonth, "End Day of Month"),
+                 Utility.IDFLineFormatter("", "End year"),
                 Utility.IDFLineFormatter(dayOfWeekForStartDay, "Day of Week for Start Day"),
                 Utility.IDFLineFormatter(useWeatherFileHolidaysAndSpecialDays, "Use Weather File Holidays and Special Days"),
                 Utility.IDFLineFormatter(useWeatherFileDaylightSavingPeriod, "Use Weather File Daylight Saving Period"),
                 Utility.IDFLineFormatter(WeekendHolidayRule, "Apply Weekend Holiday Rule"),
                 Utility.IDFLineFormatter(useWeatherFileRainIndicators, "Use Weather File Rain Indicators"),
                 Utility.IDFLineFormatter(useWeatherFileSnowIndicators, "Use Weather File Snow Indicators"),
-                Utility.IDFLastLineFormatter(numberOfTimesRunperiodRepeated, "Number of Times Runperiod to be Repeated")
+                Utility.IDFLastLineFormatter(actualWeather, "Actual Weather")
             };
         }
     }
