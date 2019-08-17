@@ -14,28 +14,28 @@ namespace IDFFile
     {
         public static double[] FillZeroes(this double[] Array, int length)
         {
-            int n1 = Array.Count();
-            if (n1 < length)
-            {
-                double[] a1 = new double[n1 - length];
-                Array = Array.Concat(a1).ToArray();
-            }
-            return Array;
+            IEnumerable<double> newList = Array;
+            for (int i = Array.Count(); i < length; i++) { newList = newList.Append(0); }
+            return newList.ToArray();
         }
         public static double[] AddArrayElementWise(this List<double[]> AllArrays)
         {
             List<int> counts = AllArrays.Select(a => a.Count()).ToList();
-            int n = counts.Max();
-
-            AllArrays.Select(a => a.FillZeroes(n));
-
-            double[] array = new double[n];
-
-            for (int i = 0; i < n; i++)
+            if (counts.Count == 0) { return new double[] { 0 }; }
+            else
             {
-                array[i] = AllArrays.Select(a=> a[i]).Sum();
+                int n = counts.Max();
+
+                AllArrays = AllArrays.Select(a => a.FillZeroes(n)).ToList();
+
+                double[] array = new double[n];
+
+                for (int i = 0; i < n; i++)
+                {
+                    array[i] = AllArrays.Select(a => a[i]).Sum();
+                }
+                return array;
             }
-            return array;
             
         }
         public static double[] SubtractArrayElementWise(this double[] FirstArray, double[] SecondArray)
@@ -43,7 +43,7 @@ namespace IDFFile
             List<int> counts = new List<int>() { FirstArray.Count(), SecondArray.Count() };
             int n = counts.Max();
 
-            FirstArray.FillZeroes(n); SecondArray.FillZeroes(n);
+            FirstArray = FirstArray.FillZeroes(n); SecondArray = SecondArray.FillZeroes(n);
 
             double[] array = new double[n];
             for (int i = 0; i < n; i++)
@@ -1066,8 +1066,6 @@ namespace IDFFile
         }
         public void AssociateProbabilisticEnergyPlusResults(Dictionary<string, double[]> resultsDF)
         {
-            IList<string> outputHeader;
-            List< double[] > data;
             foreach (BuildingSurface surf in bSurfaces)
             {
                 if (surf.surfaceType == SurfaceType.Wall || surf.surfaceType == SurfaceType.Roof)
