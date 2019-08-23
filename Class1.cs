@@ -1171,7 +1171,7 @@ namespace IDFFile
         }
         public string Header()
         {
-            return string.Join("WWR_,", "North", "East", "West", "South");
+            return string.Join(",", string.Join("WWR_", "North", "East", "West", "South"));
         }
     }
     [Serializable]
@@ -1319,7 +1319,9 @@ namespace IDFFile
                 uIWall = uIWall.Average(),
                 uWindow = uWindow.Average(),
                 gWindow = gWindow.Average(),
-                hcSlab = hcSlab.Average()
+                hcSlab = hcSlab.Average(),
+                infiltration = infiltration.Average()
+                
             };
         }
         public  List<string> ToCSVString()
