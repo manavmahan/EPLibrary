@@ -580,13 +580,8 @@ namespace IDFFile
 
         //Probablistic Attributes
         public ProbabilisticBuildingConstruction pBuildingConstruction;
-        public ProbabilisticBuildingOperation pBuildingParameters;
+        public ProbabilisticBuildingOperation pBuildingOperation;
         public ProbabilisticWWR pWWR;
-        public double[] pOperatingHours = new double[2];
-        public double[] pInfiltration = new double[2];
-        public double[] pInternalHeatGain = new double[2];
-        public double[] pBoilerEfficiency = new double[2];
-        public double[] pChillerCOP = new double[2];
 
         //Probabilistic Operational Energy
         public double[] p_annualHeatingEnergy;
@@ -609,12 +604,6 @@ namespace IDFFile
         public double FloorHeight;
         public WWR WWR { get; set; } = new WWR(0.5, 0.5, 0.5, 0.5); //North, West, South, East
         public ShadingLength shadingLength { get; set; } = new ShadingLength(0, 0, 0, 0); //North, West, South, East
-        public double operatingHours = 8;
-        public double infiltration = .75;
-        public double LightHeatGain = 10;
-        public double ElectricHeatGain = 10;
-        public double boilerEfficiency = 0.8;
-        public double chillerCOP = 4;
         
 
         //Schedules Limits and Schedule
@@ -635,12 +624,7 @@ namespace IDFFile
         public List<ShadingZone> shadingZones = new List<ShadingZone>();
         public List<ShadingOverhang> shadingOverhangs = new List<ShadingOverhang>();
 
-        //Defined at zone level - should be extracted from zone
-        public List<People> peoples = new List<People>();
-        public List<Light> lights = new List<Light>();
-        public List<ElectricEquipment> eEquipments = new List<ElectricEquipment>();
-        public List<ZoneVentilation> zVentillation = new List<ZoneVentilation>();
-        public List<ZoneInfiltration> zInfiltration = new List<ZoneInfiltration>();
+        
 
         //HVAC Template - should be extracted from zone
         public List<Thermostat> tStats = new List<Thermostat>();
@@ -658,20 +642,20 @@ namespace IDFFile
         {
             buildingConstruction = construction;
             GenerateConstructionWithIComponentsU();
+            GenerateInfiltraitionAndVentillation();
             WWR = wWR;
             UpdateFenestrations();
             buildingOperation = bOperation;
-            GeneratePeopleLightingElectricEquipment();
+
+            UpdataBuildingOperations();
             GenerateInfiltraitionAndVentillation();
-            GenerateHVAC(true, false, false);
+
         }
         public void UpdataBuildingOperations()
         {
-            boilerEfficiency = buildingOperation.boilerEfficiency;
-            chillerCOP = buildingOperation.chillerCOP;
-            LightHeatGain = 0.5 * buildingOperation.internalHeatGain;
-            ElectricHeatGain = 0.5 * buildingOperation.internalHeatGain;
-            operatingHours = buildingOperation.operatingHours;
+            CreateSchedules(new double[] { 10, 20 }, new double[] { 28, 24 }, .1);
+            GeneratePeopleLightingElectricEquipment();          
+            GenerateHVAC(true, false, false);
         }
         public void UpdateFenestrations()
         {
@@ -719,9 +703,9 @@ namespace IDFFile
         }
         public void CreateSchedules(double[] heatingSetpoints, double[] coolingSetpoints, double equipmentoffFract)
         {
-            int[] time = Utility.hourToHHMM(operatingHours);
+            int[] time = Utility.hourToHHMM(buildingOperation.operatingHours);
             int hour1 = time[0]; int minutes1 = time[1]; int hour2 = time[2]; int minutes2 = time[3];
-            operatingHours = (hour2 * 60 + minutes2 - (hour1 * 60 + minutes1)) / 60;
+            buildingOperation.operatingHours = (hour2 * 60 + minutes2 - (hour1 * 60 + minutes1)) / 60;
 
             double EquipmentOff = equipmentoffFract;//0.25;
             double heatingSetpoint1 = heatingSetpoints[0];//16;
@@ -981,15 +965,15 @@ namespace IDFFile
         public void GeneratePeopleLightingElectricEquipment()
         {
             zones.ForEach(z => { People p = new People(10);
-                Light l = new Light(LightHeatGain);
-                ElectricEquipment e = new ElectricEquipment(ElectricHeatGain); peoples.Add(p); lights.Add(l); eEquipments.Add(e);
+                Light l = new Light(0.5*buildingOperation.internalHeatGain);
+                ElectricEquipment e = new ElectricEquipment(0.5 * buildingOperation.internalHeatGain);
                 z.people = p; z.equipment = e; z.lights = l;
             });
         }
         public void GenerateInfiltraitionAndVentillation()
         {
             zones.ForEach(z => {
-                ZoneInfiltration i = new ZoneInfiltration(infiltration);
+                ZoneInfiltration i = new ZoneInfiltration(buildingConstruction.infiltration);
                 ZoneVentilation v = new ZoneVentilation();
                 z.infiltration = i; z.vent = v;
             });
@@ -1027,8 +1011,8 @@ namespace IDFFile
         {
             hWaterLoop = new HotWaterLoop();
             cWaterLoop = new ChilledWaterLoop();
-            boiler = new Boiler(boilerEfficiency, "Electricity");
-            chiller = new Chiller(chillerCOP);
+            boiler = new Boiler(buildingOperation.boilerEfficiency, "Electricity");
+            chiller = new Chiller(buildingOperation.chillerCOP);
             tower = new Tower();
         }
         public Building() { }
