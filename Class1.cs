@@ -12,6 +12,8 @@ namespace IDFFile
     public enum Direction { North, East, South, West };
     public static class Utility
     {
+        public static double ConvertKWhfromJoule(this double d) { return d * 2.7778E-7; }
+        public static double[] ConvertKWhfromJoule(this double[] dArray) { return dArray.Select(d => d.ConvertKWhfromJoule()).ToArray(); }
         public static double[] FillZeroes(this double[] Array, int length)
         {
             IEnumerable<double> newList = Array;
@@ -593,11 +595,11 @@ namespace IDFFile
         public double[] p_annualEnergy;
 
         public double[] p_BoilerEnergy, p_ChillerEnergy, p_TotalEnergy;
-        public double[] p_TotalHeatingEnergy, p_TotalCoolingEnergy, p_LightingEnergy, p_EquipmentEnergy;
+        public double[] p_ZoneHeatingEnergy, p_ZoneCoolingEnergy, p_LightingEnergy, p_EquipmentEnergy;
 
         //EnergyPlus Output
         public double BoilerEnergy, ChillerEnergy, TotalEnergy;
-        public double TotalHeatingEnergy, TotalCoolingEnergy, LightingEnergy, EquipmentEnergy;
+        public double ZoneHeatingEnergy, ZoneCoolingEnergy, LightingEnergy, EquipmentEnergy;
         public double TotalArea, TotalVolume;
 
         //Deterministic Attributes
@@ -1056,7 +1058,7 @@ namespace IDFFile
                 zone.CalcAreaVolumeHeatCapacity(); zone.AssociateEnergyPlusResults(outputHeader, data);
             }
             TotalArea = zones.Select(z => z.area).Sum(); TotalVolume = zones.Select(z => z.volume).Sum();
-            TotalHeatingEnergy = zones.Select(z => z.HeatingEnergy).Sum(); TotalCoolingEnergy = zones.Select(z => z.CoolingEnergy).Sum();
+            ZoneHeatingEnergy = zones.Select(z => z.HeatingEnergy).Sum(); ZoneCoolingEnergy = zones.Select(z => z.CoolingEnergy).Sum();
             LightingEnergy = zones.Select(z => z.LightingEnergy).Sum(); EquipmentEnergy = zones.Select(z => z.EquipmentEnergy).Sum();
 
             BoilerEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Boiler Electric Energy")))].Sum();
@@ -1075,26 +1077,36 @@ namespace IDFFile
                         Fenestration win = surf.fenestrations[0];
                         win.p_SolarRadiation = resultsDF[resultsDF.Keys.First(a => a.Contains(win.name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))];
                         win.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"))];
+                        win.SolarRadiation = win.p_SolarRadiation.Average();
+                        win.HeatFlow = win.p_HeatFlow.Average();
                     }
                     surf.p_SolarRadiation = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))];
+                    surf.SolarRadiation = surf.p_SolarRadiation.Average();
                 }
                 surf.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Energy"))];
+                surf.HeatFlow = surf.p_HeatFlow.Average();
             }
             foreach (Zone zone in zones)
             {
                 zone.CalcAreaVolumeHeatCapacity(); zone.AssociateProbabilisticEnergyPlusResults(resultsDF);
             }
             TotalArea = zones.Select(z => z.area).Sum(); TotalVolume = zones.Select(z => z.volume).Sum();
-            p_TotalHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise();
-            p_TotalCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise();
+            p_ZoneHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise();
+            p_ZoneCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise();
             p_LightingEnergy = zones.Select(z => z.p_LightingEnergy).ToList().AddArrayElementWise();
             p_EquipmentEnergy = zones.Select(z => z.p_EquipmentEnergy).ToList().AddArrayElementWise();
 
-            p_BoilerEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains("Boiler Electric Energy"))];
-            p_ChillerEnergy = new List<double[]>() { resultsDF[resultsDF.Keys.First(a => a.Contains("Chiller Electric Energy"))],
-                resultsDF[resultsDF.Keys.First(a => a.Contains("Cooling Tower Fan Electric Energy"))] }.AddArrayElementWise();
+            ZoneHeatingEnergy = p_ZoneHeatingEnergy.Average(); ZoneCoolingEnergy = p_ZoneCoolingEnergy.Average();
+            LightingEnergy = p_LightingEnergy.Average();
+            EquipmentEnergy = p_EquipmentEnergy.Average();
 
+            p_BoilerEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains("Boiler Electric Energy"))].ConvertKWhfromJoule();
+            BoilerEnergy = p_BoilerEnergy.Average();
+            p_ChillerEnergy = new List<double[]>() { resultsDF[resultsDF.Keys.First(a => a.Contains("Chiller Electric Energy"))],
+                resultsDF[resultsDF.Keys.First(a => a.Contains("Cooling Tower Fan Electric Energy"))] }.AddArrayElementWise().ConvertKWhfromJoule();
+            ChillerEnergy = p_ChillerEnergy.Average();
             p_TotalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy, p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
+            TotalEnergy = p_TotalEnergy.Average();
         }
         public Building AddZone(Zone zone)
         {
@@ -1169,7 +1181,14 @@ namespace IDFFile
             this.south = south;
             this.west = west;
         }
-
+        public string ToCSVString()
+        {
+            return string.Join(",", north, east, west, south);
+        }
+        public string Header()
+        {
+            return string.Join("WWR_,", "North", "East", "West", "South");
+        }
     }
     [Serializable]
     public class ShadingLength
@@ -1188,6 +1207,7 @@ namespace IDFFile
             this.south = south;
             this.west = west;
         }
+
 
     }
     [Serializable]
@@ -1217,7 +1237,13 @@ namespace IDFFile
                 south = south.Average()
             };
         }
-
+        public List<string> ToCSVString()
+        {
+            return new List<string>(){
+                string.Join(",", north[0], east[0], west[0], south[0]),
+                string.Join(",", north[1], east[1], west[1], south[1])
+            };
+        }
     }
     [Serializable]
     public class BuildingConstruction
@@ -1236,7 +1262,12 @@ namespace IDFFile
         {
             return string.Join(",", uWall, uGFloor, uRoof, uIFloor, uIWall, uWindow, gWindow, hcSlab, infiltration);
         }
+        public string Header()
+        {
+            return string.Join(",", "u_Wall", "u_GFloor", "u_Roof", "u_IFloor", "u_IWall", "u_Window", "g_Window", "hc_Slab", "Infiltration");
+        }
     }
+    [Serializable]
     public class ProbabilisticBuildingOperation
     {
         public double[] operatingHours, internalHeatGain, boilerEfficiency, chillerCOP;
@@ -1252,12 +1283,28 @@ namespace IDFFile
                 chillerCOP = chillerCOP.Average()
             };
         }
+        public List<string> ToCSVString()
+        {
+            return new List<string>(){
+                string.Join(",", operatingHours[0], internalHeatGain[0], boilerEfficiency[0], chillerCOP[0]),
+                string.Join(",", operatingHours[1], internalHeatGain[1], boilerEfficiency[1], chillerCOP[1])
+            };
+        }
 
     }
+    [Serializable]
     public class BuildingOperation
     {
         public double operatingHours, internalHeatGain, boilerEfficiency, chillerCOP;
         public BuildingOperation() { }
+        public string ToCSVString()
+        {
+            return string.Join(",", operatingHours, internalHeatGain, boilerEfficiency, chillerCOP);
+        }
+        public string Header()
+        {
+            return string.Join(",", "Operating Hours", "Internal Heat Gain", "Boiler Efficiency", "Chiller COP");
+        }
     }
     [Serializable]
     public class ProbabilisticBuildingConstruction
@@ -1515,10 +1562,10 @@ namespace IDFFile
                      resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy"))]);
             p_TotalHeatFlows = new List<double[]>() { p_wallHeatFlow, p_gFloorHeatFlow, p_iFloorHeatFlow, p_iWallHeatFlow, p_windowHeatFlow, p_roofHeatFlow, p_infiltrationFlow }.AddArrayElementWise();
 
-            p_HeatingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Heating Energy"))];
-            p_CoolingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Cooling Energy"))];
-            p_LightingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy"))];
-            p_EquipmentEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy"))];
+            p_HeatingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Heating Energy"))].ConvertKWhfromJoule();
+            p_CoolingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Air System Sensible Cooling Energy"))].ConvertKWhfromJoule();
+            p_LightingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy"))].ConvertKWhfromJoule();
+            p_EquipmentEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy"))].ConvertKWhfromJoule();
             p_LightingEquipmentEnergy = new List<double[]>() { p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
         }
 
@@ -1550,7 +1597,9 @@ namespace IDFFile
     [Serializable]
     public class BuildingSurface
     {
+        private double GrossArea;
         public double[] p_HeatFlow;
+
         public XYZList verticesList;
         public string name { get; set; }
         public Zone zone { get; set; }
@@ -1612,11 +1661,11 @@ namespace IDFFile
                 direction = Direction.West;
             }
         }
-
         public BuildingSurface(Zone zone1, XYZList pointList1, double areaN, SurfaceType surfaceType1)
         {
             zone = zone1;
             area = areaN;
+            GrossArea = areaN;
             verticesList = pointList1;
             surfaceType = surfaceType1;
 
@@ -1701,11 +1750,11 @@ namespace IDFFile
                 fen.verticesList = new XYZList(verticesList.xyzs.Select(v => new XYZ(pMid.X + (v.X - pMid.X) * openingFactor,
                                                             pMid.Y + (v.Y - pMid.Y) * openingFactor,
                                                             pMid.Z + (v.Z - pMid.Z) * openingFactor)).ToList());
-                fen.area = area * wWR / count;
+                fen.area = GrossArea * wWR / count;
                 fenestrationList.Add(fen);
             }
             fenestrations = fenestrationList;
-            area = area * (1 - wWR);
+            area = GrossArea * (1 - wWR);
             return fenestrationList;
         }
 
@@ -3744,6 +3793,7 @@ namespace IDFFile
             };
         }
     }
+    [Serializable]
     public class GeneratorPhotovoltaic
     {
         public string Name;
@@ -3780,6 +3830,7 @@ namespace IDFFile
             };
         }
     }
+    [Serializable]
     public class ElectricLoadCenterGenerators
     {
         public string Name = "Supplementary Generator";
@@ -3813,6 +3864,7 @@ namespace IDFFile
             return GeneratorInfo;
         }
     }
+    [Serializable]
     public class ElectricLoadCenterDistribution
     {
         public string Name = "Electric Load Center";
