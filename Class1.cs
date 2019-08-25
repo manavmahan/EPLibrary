@@ -590,11 +590,11 @@ namespace IDFFile
         public double[] p_annualEnergy;
 
         public double[] p_BoilerEnergy, p_ChillerEnergy, p_TotalEnergy;
-        public double[] p_ZoneHeatingEnergy, p_ZoneCoolingEnergy, p_LightingEnergy, p_EquipmentEnergy;
+        public double[] p_ZoneHeatingEnergy, p_ZoneCoolingEnergy, p_LightingEnergy, p_EquipmentEnergy, p_LightingEquipmentEnergy;
 
         //EnergyPlus Output
         public double BoilerEnergy, ChillerEnergy, TotalEnergy;
-        public double ZoneHeatingEnergy, ZoneCoolingEnergy, LightingEnergy, EquipmentEnergy;
+        public double ZoneHeatingEnergy, ZoneCoolingEnergy, LightingEnergy, EquipmentEnergy, LightingEquipmentEnergy;
         public double TotalArea, TotalVolume;
 
         //Deterministic Attributes
@@ -604,7 +604,10 @@ namespace IDFFile
         public double FloorHeight;
         public WWR WWR { get; set; } = new WWR(0.5, 0.5, 0.5, 0.5); //North, West, South, East
         public ShadingLength shadingLength { get; set; } = new ShadingLength(0, 0, 0, 0); //North, West, South, East
-        
+
+        public double[] heatingSetPoints = new double[] { 10, 20 };
+        public double[] coolingSetPoints = new double[] { 28, 24 };
+        public double equipOffsetFraction = 0.1;
 
         //Schedules Limits and Schedule
         public List<ScheduleLimits> schedulelimits { get; set; } = new List<ScheduleLimits>();
@@ -653,7 +656,7 @@ namespace IDFFile
         }
         public void UpdataBuildingOperations()
         {
-            CreateSchedules(new double[] { 10, 20 }, new double[] { 28, 24 }, .1);
+            CreateSchedules();
             GeneratePeopleLightingElectricEquipment();          
             GenerateHVAC(true, false, false);
         }
@@ -701,18 +704,17 @@ namespace IDFFile
         {
             zones.ForEach(z => z.CreateNaturalVentillation());
         }
-        public void CreateSchedules(double[] heatingSetpoints, double[] coolingSetpoints, double equipmentoffFract)
+        public void CreateSchedules()
         {
             int[] time = Utility.hourToHHMM(buildingOperation.operatingHours);
             int hour1 = time[0]; int minutes1 = time[1]; int hour2 = time[2]; int minutes2 = time[3];
             buildingOperation.operatingHours = (hour2 * 60 + minutes2 - (hour1 * 60 + minutes1)) / 60;
 
-            double EquipmentOff = equipmentoffFract;//0.25;
-            double heatingSetpoint1 = heatingSetpoints[0];//16;
-            double heatingSetpoint2 = heatingSetpoints[1];//20;
+            double heatingSetpoint1 = heatingSetPoints[0];//16;
+            double heatingSetpoint2 = heatingSetPoints[1];//20;
 
-            double coolingSetpoint1 = coolingSetpoints[0];//28;
-            double coolingSetpoint2 = coolingSetpoints[1];//25;
+            double coolingSetpoint1 = coolingSetPoints[0];//28;
+            double coolingSetpoint2 = coolingSetPoints[1];//25;
 
             //60 minutes earlier
             int hour1b = hour1 - 1;
@@ -820,11 +822,11 @@ namespace IDFFile
             };
 
             Dictionary<string, double> lehgV1 = new Dictionary<string, double>(), lehgV2 = new Dictionary<string, double>();
-            lehgV1.Add(hour1 + ":" + minutes1, equipmentoffFract);
+            lehgV1.Add(hour1 + ":" + minutes1, equipOffsetFraction);
             lehgV1.Add(hour2 + ":" + minutes2, 1);
-            lehgV1.Add("24:00", equipmentoffFract);
+            lehgV1.Add("24:00", equipOffsetFraction);
             leHeatGain.Add(days1, lehgV1);
-            lehgV2.Add("24:00", equipmentoffFract);
+            lehgV2.Add("24:00", equipOffsetFraction);
             leHeatGain.Add(days2, lehgV2);
             ScheduleCompact lehgSchedule = new ScheduleCompact()
             {
@@ -964,10 +966,10 @@ namespace IDFFile
         }
         public void GeneratePeopleLightingElectricEquipment()
         {
-            zones.ForEach(z => { People p = new People(10);
-                Light l = new Light(0.5*buildingOperation.internalHeatGain);
-                ElectricEquipment e = new ElectricEquipment(0.5 * buildingOperation.internalHeatGain);
-                z.people = p; z.equipment = e; z.lights = l;
+            zones.ForEach(z => { 
+                z.people = new People(10);
+                z.equipment = new ElectricEquipment(buildingOperation.equipmentHeatGain);
+                z.lights = new Light(buildingOperation.lightHeatGain);
             });
         }
         public void GenerateInfiltraitionAndVentillation()
@@ -1079,11 +1081,12 @@ namespace IDFFile
             p_ZoneCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise();
             p_LightingEnergy = zones.Select(z => z.p_LightingEnergy).ToList().AddArrayElementWise();
             p_EquipmentEnergy = zones.Select(z => z.p_EquipmentEnergy).ToList().AddArrayElementWise();
+            p_LightingEquipmentEnergy = new List<double[]>() { p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
 
             ZoneHeatingEnergy = p_ZoneHeatingEnergy.Average(); ZoneCoolingEnergy = p_ZoneCoolingEnergy.Average();
             LightingEnergy = p_LightingEnergy.Average();
             EquipmentEnergy = p_EquipmentEnergy.Average();
-
+            LightingEquipmentEnergy = p_LightingEquipmentEnergy.Average();
             p_BoilerEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains("Boiler Electric Energy"))].ConvertKWhfromJoule();
             BoilerEnergy = p_BoilerEnergy.Average();
             p_ChillerEnergy = new List<double[]>() { resultsDF[resultsDF.Keys.First(a => a.Contains("Chiller Electric Energy"))],
@@ -1091,6 +1094,37 @@ namespace IDFFile
             ChillerEnergy = p_ChillerEnergy.Average();
             p_TotalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy, p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
             TotalEnergy = p_TotalEnergy.Average();
+        }
+        public void AssociateProbabilisticMLResults(Dictionary<string, double[]> resultsDF)
+        {
+            foreach (BuildingSurface surf in bSurfaces)
+            {
+                if (surf.surfaceType == SurfaceType.Wall)
+                {
+                    Fenestration win = surf.fenestrations[0];
+                    win.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(win.name))];
+                    win.HeatFlow = win.p_HeatFlow.Average();
+                }
+                if (!surf.OutsideObject.Contains("Zone"))
+                {
+                    surf.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name) && !s.Contains("Window"))];
+                    surf.HeatFlow = surf.p_HeatFlow.Average();
+                }
+            }
+            foreach (Zone zone in zones)
+            {
+                zone.CalcAreaVolumeHeatCapacity(); zone.AssociateProbabilisticMLResults(resultsDF);
+            }
+            TotalArea = zones.Select(z => z.area).Sum(); TotalVolume = zones.Select(z => z.volume).Sum();
+            p_ZoneHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise();
+            p_ZoneCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise();
+            
+            ZoneHeatingEnergy = p_ZoneHeatingEnergy.Average(); ZoneCoolingEnergy = p_ZoneCoolingEnergy.Average();
+            
+            p_LightingEquipmentEnergy = zones.Select(z=>z.p_LightingEquipmentEnergy).ToList().AddArrayElementWise();
+            p_TotalEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Total Energy"))].ConvertKWhfromJoule();
+            TotalEnergy = p_TotalEnergy.Average();
+            LightingEquipmentEnergy = p_LightingEquipmentEnergy.Average();
         }
         public Building AddZone(Zone zone)
         {
@@ -1171,7 +1205,7 @@ namespace IDFFile
         }
         public string Header()
         {
-            return string.Join(",", string.Join("WWR_", "North", "East", "West", "South"));
+            return string.Join(",", "WWR_North", "WWR_East", "WWR_West", "WWR_South");
         }
     }
     [Serializable]
@@ -1254,7 +1288,7 @@ namespace IDFFile
     [Serializable]
     public class ProbabilisticBuildingOperation
     {
-        public double[] operatingHours, internalHeatGain, boilerEfficiency, chillerCOP;
+        public double[] operatingHours, lightHeatGain, equipmentHeatGain, boilerEfficiency, chillerCOP;
         public ProbabilisticBuildingOperation() { }
 
         public BuildingOperation GetAverage()
@@ -1262,7 +1296,8 @@ namespace IDFFile
             return new BuildingOperation()
             {
                 operatingHours = operatingHours.Average(),
-                internalHeatGain = internalHeatGain.Average(),
+                lightHeatGain = lightHeatGain.Average(),
+                equipmentHeatGain = equipmentHeatGain.Average(),
                 boilerEfficiency = boilerEfficiency.Average(),
                 chillerCOP = chillerCOP.Average()
             };
@@ -1270,8 +1305,8 @@ namespace IDFFile
         public List<string> ToCSVString()
         {
             return new List<string>(){
-                string.Join(",", operatingHours[0], internalHeatGain[0], boilerEfficiency[0], chillerCOP[0]),
-                string.Join(",", operatingHours[1], internalHeatGain[1], boilerEfficiency[1], chillerCOP[1])
+                string.Join(",", operatingHours[0], lightHeatGain[0], equipmentHeatGain[0], boilerEfficiency[0], chillerCOP[0]),
+                string.Join(",", operatingHours[1], lightHeatGain[1], equipmentHeatGain[1], boilerEfficiency[1], chillerCOP[1])
             };
         }
 
@@ -1279,15 +1314,15 @@ namespace IDFFile
     [Serializable]
     public class BuildingOperation
     {
-        public double operatingHours, internalHeatGain, boilerEfficiency, chillerCOP;
+        public double operatingHours, lightHeatGain, equipmentHeatGain, boilerEfficiency, chillerCOP;
         public BuildingOperation() { }
         public string ToCSVString()
         {
-            return string.Join(",", operatingHours, internalHeatGain, boilerEfficiency, chillerCOP);
+            return string.Join(",", operatingHours, lightHeatGain, equipmentHeatGain, boilerEfficiency, chillerCOP);
         }
         public string Header()
         {
-            return string.Join(",", "Operating Hours", "Internal Heat Gain", "Boiler Efficiency", "Chiller COP");
+            return string.Join(",", "Operating Hours", "Light Heat Gain", "Equipment Heat Gain", "Boiler Efficiency", "Chiller COP");
         }
     }
     [Serializable]
@@ -1553,6 +1588,26 @@ namespace IDFFile
             p_LightingEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Lights Electric Energy"))].ConvertKWhfromJoule();
             p_EquipmentEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Electric Equipment Electric Energy"))].ConvertKWhfromJoule();
             p_LightingEquipmentEnergy = new List<double[]>() { p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
+        }
+        public void AssociateProbabilisticMLResults(Dictionary<string, double[]> resultsDF)
+        {
+            p_wallHeatFlow = walls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_gFloorHeatFlow = gFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            //p_iFloorHeatFlow = iFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            //p_iWallHeatFlow = iWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_windowHeatFlow = walls.Select(s => s.fenestrations[0]).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_roofHeatFlow = roofs.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+
+            //p_iFloorHeatFlow = p_iFloorHeatFlow.SubtractArrayElementWise(izFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
+            //p_iWallHeatFlow = p_iWallHeatFlow.SubtractArrayElementWise(izWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
+
+            
+            p_infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a == name+"_Infiltration")];
+            p_TotalHeatFlows = new List<double[]>() { p_wallHeatFlow, p_gFloorHeatFlow, p_windowHeatFlow, p_roofHeatFlow, p_infiltrationFlow }.AddArrayElementWise();
+
+            p_HeatingEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Heating Energy")].ConvertKWhfromJoule();
+            p_CoolingEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Cooling Energy")].ConvertKWhfromJoule();
+            p_LightingEquipmentEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Lighting & Equipment Energy")].ConvertKWhfromJoule();
         }
 
         public Zone() { surfaces = new List<BuildingSurface>(); }
@@ -1992,7 +2047,7 @@ namespace IDFFile
         public double MinLight = 0.3;
         public int NStep = 3;
         public double ProbabilityManual = 1;
-        public ScheduleCompact AvailabilitySchedule { get; set; }
+        public string AvailabilitySchedule;
         public double DELightGridResolution = 2;
 
         public DayLighting() { }
@@ -2008,7 +2063,7 @@ namespace IDFFile
             }));
             return dlRefPoints;
         }
-        public DayLighting(Zone zone, ScheduleCompact schedule, List<XYZ> points, double illuminance)
+        public DayLighting(Zone zone, string schedule, List<XYZ> points, double illuminance)
         {
             Name = "DayLight Control For " + zone.name;
             Zone = zone;
@@ -2024,7 +2079,7 @@ namespace IDFFile
                 Utility.IDFLineFormatter(Name, "Name"),
                 Utility.IDFLineFormatter(Zone.name, "Zone Name"),
                 Utility.IDFLineFormatter(DLMethod, "Daylighting Method"),
-                Utility.IDFLineFormatter(AvailabilitySchedule.name, "Availability Schedule Name"),
+                Utility.IDFLineFormatter(AvailabilitySchedule, "Availability Schedule Name"),
                 Utility.IDFLineFormatter(CType, "Lighting control type {1=continuous,2=stepped,3=continuous/off}"),
                 Utility.IDFLineFormatter(MinPower, "Minimum input power fraction for continuous dimming control"),
                 Utility.IDFLineFormatter(MinLight, "Minimum light output fraction for continuous dimming control"),
