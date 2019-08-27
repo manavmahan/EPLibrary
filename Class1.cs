@@ -12,6 +12,16 @@ namespace IDFFile
     public enum Direction { North, East, South, West };
     public static class Utility
     {
+        public static T DeepClone<T>(T obj)
+        {
+            using (var ms = new MemoryStream())
+            {
+                var formatter = new BinaryFormatter();
+                formatter.Serialize(ms, obj);
+                ms.Position = 0;
+                return (T)formatter.Deserialize(ms);
+            }
+        }
         public static double ConvertKWhfromJoule(this double d) { return d * 2.7778E-7; }
         public static double[] ConvertKWhfromJoule(this double[] dArray) { return dArray.Select(d => d.ConvertKWhfromJoule()).ToArray(); }
         public static double[] FillZeroes(this double[] Array, int length)
@@ -1736,14 +1746,12 @@ namespace IDFFile
                     ConstructionName = "Internal Wall";  //?
                     break;
                 case (SurfaceType.Ceiling):
-                    pointList.Reverse();
                     ConstructionName = "General_Floor_Ceiling";
                     OutsideCondition = "Zone";
                     SunExposed = "NoSun";
                     WindExposed = "NoWind";
                     break;
                 case (SurfaceType.Roof):
-                    pointList.Reverse();
                     ConstructionName = "Up Roof Concrete";
                     OutsideObject = "";
                     OutsideCondition = "Outdoors";
@@ -1834,8 +1842,9 @@ namespace IDFFile
         }
         public XYZList reverse()
         {
-            xyzs.Reverse();
-            return this;
+            XYZList newList = Utility.DeepClone(this);
+            newList.xyzs.Reverse();
+            return newList;
         }
         public List<string> verticeInfo()
         {
