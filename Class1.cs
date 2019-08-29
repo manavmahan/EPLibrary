@@ -1684,28 +1684,28 @@ namespace IDFFile
         {
             orientation = verticesList.GetWallDirection();
 
-            if (orientation <= 45 || orientation > 315)
+            if (orientation < 45 || orientation >= 315)
             {
                 wWR = zone.building.WWR.north;
                 sl = zone.building.shadingLength.north;
                 direction = Direction.North;
             }
 
-            if (orientation > 45 && orientation <= 135)
+            if (orientation >= 45 && orientation < 135)
             {
                 wWR = zone.building.WWR.east;
                 sl = zone.building.shadingLength.east;
                 direction = Direction.East;
             }
 
-            if (orientation > 135 && orientation <= 225)
+            if (orientation >= 135 && orientation < 225)
             {
                 wWR = zone.building.WWR.south;
                 sl = zone.building.shadingLength.south;
                 direction = Direction.South;
             }
 
-            if (orientation > 225 && orientation <= 315)
+            if (orientation >= 225 && orientation < 315)
             {
                 wWR = zone.building.WWR.west;
                 sl = zone.building.shadingLength.west;
@@ -1826,6 +1826,28 @@ namespace IDFFile
     {
         public List<XYZ> xyzs;
 
+        public List<XYZ> OffsetAllPoints(double distance)
+        {
+            List<XYZ> newXYZ = new List<XYZ>();
+            for (int i =0; i< xyzs.Count; i++)
+            {
+                XYZ v1, p, v2, newP;
+                p = xyzs[i];
+                try { v1 = xyzs[i - 1]; } catch { v1 = xyzs.Last(); }
+                try { v2 = xyzs[i + 1]; } catch { v2 = xyzs.First(); }
+                if(v1.Subtract(p).AngleOnPlaneTo(v2.Subtract(p), new XYZ(0, 0, 1))>=180)
+                {
+                    newP = p.MovePoint(-distance, v1, v2);
+                }
+                else
+                {
+                    newP = p.MovePoint(distance, v1, v2);
+                }
+                newXYZ.Add(newP);
+            }
+            return newXYZ;
+
+        }
         public XYZList OffsetHeight(double height)
         {
             List<XYZ> newVertices = new List<XYZ>();
@@ -1961,6 +1983,19 @@ namespace IDFFile
         public double AbsoluteValue()
         {
             return Math.Sqrt(X * X + Y * Y + Z * Z);
+        }
+        public XYZ MovePoint(double d, XYZ tp1, XYZ tp2)
+        {
+            double d1 = 2* d / DistanceTo(tp1);
+            double d2 = 2*d / DistanceTo(tp2);
+
+            XYZ dir1 = Subtract(tp1);
+            XYZ p1 = new XYZ(X + d1 * dir1.X, Y + d1 * dir1.Y, Z + d1 * dir1.Z);
+
+            XYZ dir2 = Subtract(tp2);
+            XYZ p2 = new XYZ(X + d2 * dir2.X, Y + d2 * dir2.Y, Z + d2 * dir2.Z);
+
+            return new XYZ((p1.X + p2.X)*.5, (p1.Y + p2.Y)*.5, (p1.Z + p2.Z)*.5);
         }
     }
     [Serializable]
