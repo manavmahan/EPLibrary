@@ -214,6 +214,7 @@ namespace IDFFile
             info.AddRange(writeZone());
             info.AddRange(writeZoneList());
             info.AddRange(writeBuildingSurfaceList());
+            building.iMasses.ForEach(m => info.AddRange(m.WriteInfo()));
             info.AddRange(writeFenestrationSurfaceList());
             info.AddRange(writeShading());
 
@@ -599,11 +600,11 @@ namespace IDFFile
         public double[] p_annualLEEnergy;
         public double[] p_annualEnergy;
 
-        public double[] p_BoilerEnergy, p_ChillerEnergy, p_TotalEnergy;
+        public double[] p_BoilerEnergy, p_ChillerEnergy, p_ThermalEnergy, p_TotalEnergy;
         public double[] p_ZoneHeatingEnergy, p_ZoneCoolingEnergy, p_LightingEnergy, p_EquipmentEnergy, p_LightingEquipmentEnergy;
 
         //EnergyPlus Output
-        public double BoilerEnergy, ChillerEnergy, TotalEnergy;
+        public double BoilerEnergy, ChillerEnergy, ThermalEnergy, TotalEnergy;
         public double ZoneHeatingEnergy, ZoneCoolingEnergy, LightingEnergy, EquipmentEnergy, LightingEquipmentEnergy;
         public double TotalArea, TotalVolume;
 
@@ -634,6 +635,7 @@ namespace IDFFile
         public List<Zone> zones = new List<Zone>();
         public List<ZoneList> zoneLists = new List<ZoneList>();
         public List<BuildingSurface> bSurfaces = new List<BuildingSurface>();
+        public List<InternalMass> iMasses = new List<InternalMass>();
         public List<ShadingZone> shadingZones = new List<ShadingZone>();
         public List<ShadingOverhang> shadingOverhangs = new List<ShadingOverhang>();
 
@@ -683,6 +685,16 @@ namespace IDFFile
         {
             zones.ForEach(z => z.CalcAreaVolumeHeatCapacity());
         }
+        public void CreateInternalMass(double percentArea)
+        {
+            zones.ForEach(z =>
+            {
+                z.CalcAreaVolume();
+                InternalMass mass = new InternalMass(z, percentArea * z.area * FloorHeight, "InternalWall");
+                iMasses.Add(mass);
+            });
+
+        }
         public void CreateShadingControls()
         {
             shadingControls = new List<WindowShadingControl>();
@@ -722,7 +734,7 @@ namespace IDFFile
         {
             int[] time = Utility.hourToHHMM(buildingOperation.operatingHours);
             int hour1 = time[0]; int minutes1 = time[1]; int hour2 = time[2]; int minutes2 = time[3];
-            buildingOperation.operatingHours = (hour2 * 60 + minutes2 - (hour1 * 60 + minutes1)) / 60;
+            buildingOperation.operatingHours = (hour2 * 60d + minutes2 - (hour1 * 60d + minutes1)) / 60;
 
             double heatingSetpoint1 = heatingSetPoints[0];//16;
             double heatingSetpoint2 = heatingSetPoints[1];//20;
@@ -918,7 +930,7 @@ namespace IDFFile
             double lambda_gFloor = (uGFloor * 0.075) / (1 - uGFloor * (0.1 / 1.95));
             double lambda_iFloor = (uIFloor * 0.075) / (1 - uIFloor * (0.1 / 2));
             double lambda_Roof = (uRoof * 0.08) / (1 - uRoof * (0.175 / 0.165 + 0.025 / 0.075 + 0.15 / 0.55));
-            double lambda_IWall = (uIWall * 2 * 0.012);
+            double lambda_IWall = (uIWall * 2 * 0.05);
 
             if (lambda_gFloor <= 0 || lambda_Wall <= 0 || lambda_Roof <= 0 || lambda_iFloor <= 0 || lambda_IWall <= 0)
             {
@@ -943,7 +955,7 @@ namespace IDFFile
             Material layer_iFloorInsul = new Material("iFloor_Insulation", "Smooth", 0.075, lambda_iFloor, 20, 1000, 0.9, 0.7, 0.7);
 
             //internal wall layers
-            Material layer_Plasterboard = new Material("Plasterboard", "Rough", 0.012, lambda_IWall, 800, 800, 0.9, 0.6, 0.6);
+            Material layer_Plasterboard = new Material("Plasterboard", "Rough", 0.05, lambda_IWall, 800, 800, 0.9, 0.6, 0.6);
 
             //airgap
             //Layer layer_airgap = new Layer("Material Air Gap 1", "", 0.1, 0.1, 0.1, 0.1, 9, 7, 7); //airgap layer
@@ -1061,10 +1073,12 @@ namespace IDFFile
             ZoneHeatingEnergy = zones.Select(z => z.HeatingEnergy).Sum(); ZoneCoolingEnergy = zones.Select(z => z.CoolingEnergy).Sum();
             LightingEnergy = zones.Select(z => z.LightingEnergy).Sum(); EquipmentEnergy = zones.Select(z => z.EquipmentEnergy).Sum();
 
+            LightingEquipmentEnergy = LightingEnergy + EquipmentEnergy;
             BoilerEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Boiler Electric Energy")))].Sum().ConvertKWhfromJoule();
             ChillerEnergy = data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Chiller Electric Energy")))].Sum().ConvertKWhfromJoule();
             ChillerEnergy += data[outputHeader.IndexOf(outputHeader.First(a => a.Contains("Cooling Tower Fan Electric Energy")))].Sum().ConvertKWhfromJoule();
-            TotalEnergy = ChillerEnergy + BoilerEnergy + LightingEnergy + EquipmentEnergy;
+            ThermalEnergy = ChillerEnergy + BoilerEnergy;
+            TotalEnergy = ThermalEnergy + LightingEquipmentEnergy;
         }
         public void AssociateProbabilisticEnergyPlusResults(Dictionary<string, double[]> resultsDF)
         {
@@ -1106,7 +1120,10 @@ namespace IDFFile
             p_ChillerEnergy = new List<double[]>() { resultsDF[resultsDF.Keys.First(a => a.Contains("Chiller Electric Energy"))],
                 resultsDF[resultsDF.Keys.First(a => a.Contains("Cooling Tower Fan Electric Energy"))] }.AddArrayElementWise().ConvertKWhfromJoule();
             ChillerEnergy = p_ChillerEnergy.Average();
-            p_TotalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy, p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
+
+            p_ThermalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy }.AddArrayElementWise();
+            ThermalEnergy = p_ThermalEnergy.Average();
+            p_TotalEnergy = new List<double[]>() { p_ThermalEnergy, p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise();
             TotalEnergy = p_TotalEnergy.Average();
         }
         public void AssociateProbabilisticMLResults(Dictionary<string, double[]> resultsDF)
@@ -1132,10 +1149,26 @@ namespace IDFFile
             TotalArea = zones.Select(z => z.area).Sum(); TotalVolume = zones.Select(z => z.volume).Sum();
             p_ZoneHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise();
             p_ZoneCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise();
-            
+
             ZoneHeatingEnergy = p_ZoneHeatingEnergy.Average(); ZoneCoolingEnergy = p_ZoneCoolingEnergy.Average();
-            
-            p_LightingEquipmentEnergy = zones.Select(z=>z.p_LightingEquipmentEnergy).ToList().AddArrayElementWise();
+
+            p_LightingEquipmentEnergy = zones.Select(z => z.p_LightingEquipmentEnergy).ToList().AddArrayElementWise();
+
+            try
+            { 
+                p_ThermalEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Thermal Energy"))];
+                ThermalEnergy = p_ThermalEnergy.Average();
+            }
+            catch
+            {
+                p_BoilerEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Boiler Energy"))];
+                p_ChillerEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Chiller Energy"))];
+                BoilerEnergy = p_BoilerEnergy.Average();
+                ChillerEnergy = p_ChillerEnergy.Average();
+                p_ThermalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy }.AddArrayElementWise();
+                ThermalEnergy = p_ThermalEnergy.Average();
+            }
+
             p_TotalEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Total Energy"))];
             TotalEnergy = p_TotalEnergy.Average();
             LightingEquipmentEnergy = p_LightingEquipmentEnergy.Average();
@@ -1149,27 +1182,6 @@ namespace IDFFile
         }
         public Building AddZone(List<Zone> zones) { zones.ForEach(z => AddZone(z)); return this; }
         public Building AddZoneList(ZoneList zoneList) { zoneLists.Add(zoneList); return this; }
-        public Building DeepCopy(string name)
-        {
-            if (!typeof(IDFFile).IsSerializable)
-            {
-                throw new ArgumentException("The type must be serializable.", "source");
-            }
-            // Don't serialize a null object, simply return the default for that object
-            if (Object.ReferenceEquals(this, null))
-            {
-                return this;
-            }
-            IFormatter formatter = new BinaryFormatter();
-            using (Stream stream = new MemoryStream())
-            {
-                formatter.Serialize(stream, this);
-                stream.Seek(0, SeekOrigin.Begin);
-                Building other = (Building)formatter.Deserialize(stream);
-                other.name = name;
-                return other;
-            }
-        }
         public Building Transform(double angle)
         {
             zones.ForEach(z => z.surfaces.ForEach(bSurf => {
@@ -1195,6 +1207,37 @@ namespace IDFFile
                 Utility.IDFLastLineFormatter(minNWarmUpDays, "Minimum Number of Warmup Days")
             };
         }
+    }
+    [Serializable]
+    public class InternalMass
+    {
+        //        InternalMass ,
+        //Zn002:IntM001 , !- Surface Name
+        //INTERIOR , !- Construction Name
+        //DORM ROOMS AND COMMON AREAS , !- Zone
+        //408.7734; !- Total area exposed to Zone {m2
+        public string name, construction;
+        public Zone zone;
+        public double area;
+
+        public InternalMass(Zone z, double area, string construction)
+        {
+            this.construction = construction; this.area = area; zone = z;
+            name = zone.name + ":IntM" + zone.iMasses.Count + 1;
+            zone.iMasses.Add(this);
+        }
+        public List<string> WriteInfo()
+        {
+            return new List<string>()
+            {
+                "InternalMass,",
+                Utility.IDFLineFormatter(name, "Name"),
+                Utility.IDFLineFormatter(construction, "Construction Name"),
+                Utility.IDFLineFormatter(zone.name, "Zone Name"),
+                Utility.IDFLastLineFormatter(area, "Area")
+            };
+        }
+
     }
     [Serializable]
     public class WWR
@@ -1492,6 +1535,7 @@ namespace IDFFile
 
         public double[] p_HeatingEnergy, p_CoolingEnergy, p_LightingEnergy, p_EquipmentEnergy, p_LightingEquipmentEnergy;
         public List<BuildingSurface> surfaces { get; set; }
+        public List<InternalMass> iMasses = new List<InternalMass>();
         public double area;
         public double volume;
         public double height;
@@ -1511,19 +1555,22 @@ namespace IDFFile
         public double totalWallArea, totalWindowArea, totalGFloorArea, totalIFloorArea, totalIWallArea, totalRoofArea,
             heatCapacity, SurfAreaU, SolarRadiation, TotalHeatFlows, ExSurfAreaU, GSurfAreaU, ISurfAreaU,
             wallAreaU, windowAreaU, gFloorAreaU, roofAreaU, iFloorAreaU, iWallAreaU,
-            wallHeatFlow, windowHeatFlow, gFloorHeatFlow, iFloorHeatFlow, iWallHeatFlow, roofHeatFlow, infiltrationFlow;
+            wallHeatFlow, windowHeatFlow, gFloorHeatFlow, iFloorHeatFlow, iWallHeatFlow, roofHeatFlow, infiltrationFlow, windowAreaG;
 
         public double[] p_TotalHeatFlows, p_wallHeatFlow, p_windowHeatFlow, p_gFloorHeatFlow, p_iFloorHeatFlow, p_iWallHeatFlow, p_roofHeatFlow, p_infiltrationFlow, p_SolarRadiation;
 
         public List<BuildingSurface> walls, gFloors, iWalls, iFloors, roofs, izFloors, izWalls;
         public List<Fenestration> windows;
 
-        public void CalcAreaVolumeHeatCapacity()
+        public void CalcAreaVolume()
         {
             IEnumerable<BuildingSurface> floors = surfaces.Where(a => a.surfaceType == SurfaceType.Floor);
             area = floors.Select(a => a.area).ToArray().Sum();
             volume = area * height;
-
+        }
+        public void CalcAreaVolumeHeatCapacity()
+        {
+            CalcAreaVolume();
             walls = surfaces.Where(w => w.surfaceType == SurfaceType.Wall).ToList();
             windows = (walls.Where(w => w.fenestrations.Count != 0)).SelectMany(w => w.fenestrations).ToList();
             gFloors = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList();
@@ -1540,8 +1587,11 @@ namespace IDFFile
             totalRoofArea = roofs.Select(r => r.area).Sum();
             totalWindowArea = windows.Select(wi => wi.area).Sum();
 
-            heatCapacity = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor + totalIFloorArea * building.buildingConstruction.hcIFloor +
-                                  totalIWallArea * building.buildingConstruction.hcIWall + totalRoofArea * building.buildingConstruction.hcRoof;
+            heatCapacity = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor + 
+                totalIFloorArea * building.buildingConstruction.hcIFloor +
+                totalIWallArea * building.buildingConstruction.hcIWall + totalRoofArea * building.buildingConstruction.hcRoof +
+                iMasses.Select(m=>m.area* building.buildingConstruction.hcIWall).Sum();
+
             wallAreaU = totalWallArea * building.buildingConstruction.uWall;
             gFloorAreaU = totalGFloorArea * building.buildingConstruction.uGFloor;
             iFloorAreaU = totalIFloorArea * building.buildingConstruction.uIFloor;
@@ -1553,8 +1603,8 @@ namespace IDFFile
             GSurfAreaU = gFloorAreaU;
             ISurfAreaU = iFloorAreaU + iWallAreaU;
             SurfAreaU = ExSurfAreaU + GSurfAreaU + ISurfAreaU;
+            windowAreaG = totalWindowArea * building.buildingConstruction.gWindow;
         }
-
         public void AssociateEnergyPlusResults(IList<string> outputHeader, List<double[]> data)
         {
             wallHeatFlow = walls.Select(s => s.HeatFlow).Sum();
@@ -1621,7 +1671,21 @@ namespace IDFFile
 
             p_HeatingEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Heating Energy")];
             p_CoolingEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Cooling Energy")];
-            p_LightingEquipmentEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Lighting & Equipment Energy")];
+
+            try
+            {
+                p_LightingEquipmentEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Lighting & Equipment Energy")];
+                LightingEquipmentEnergy = p_LightingEquipmentEnergy.Average();
+            }
+            catch
+            {
+                p_LightingEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Lighting Energy")];
+                p_EquipmentEnergy = resultsDF[resultsDF.Keys.First(a => a == name + "_Equipment Energy")];
+                p_LightingEquipmentEnergy = new List<double[]>() { p_LightingEnergy, p_EquipmentEnergy }.AddArrayElementWise() ;
+                LightingEnergy = p_LightingEnergy.Average();
+                EquipmentEnergy = p_EquipmentEnergy.Average();
+                LightingEquipmentEnergy = LightingEnergy + EquipmentEnergy;
+            }
         }
 
         public Zone() { surfaces = new List<BuildingSurface>(); }
@@ -1632,17 +1696,6 @@ namespace IDFFile
             level = l;
             surfaces = new List<BuildingSurface>();
             height = building.FloorHeight;
-        }
-
-        public Zone Clone()
-        {
-            Zone other = (Zone)this.MemberwiseClone();
-            other.surfaces = new List<BuildingSurface>();
-            foreach (BuildingSurface bSurf in surfaces)
-            {
-                other.surfaces.Add(bSurf.Clone(name));
-            }
-            return other;
         }
         public void CreateNaturalVentillation()
         {
