@@ -2003,13 +2003,24 @@ namespace IDFFile
             return new XYZList(newVertices);
         }
     }
-    [Serializable]
-    public class XYZ
+    [Serializable] 
+    public class XYZ  : IEquatable<XYZ>
     {
         public double X = 0, Y = 0, Z = 0;
         public XYZ() { }
         public XYZ(double x, double y, double z) { X = x; Y = y; Z = z; }
         public XYZ Subtract(XYZ newXYZ) { return new XYZ(newXYZ.X - X, newXYZ.Y - Y, newXYZ.Z - Z); }
+        
+        public bool Equals(XYZ point1)
+        {
+            return (X == point1.X && Y == point1.Y && Z == point1.Z);
+        }
+        public override int GetHashCode()
+        {
+            return X.GetHashCode() ^ Y.GetHashCode() ^ Z.GetHashCode();
+        }
+
+        
         public override string ToString()
         {
             return string.Join(",", X, Y, Z);
