@@ -1572,7 +1572,7 @@ namespace IDFFile
         {
             CalcAreaVolume();
             walls = surfaces.Where(w => w.surfaceType == SurfaceType.Wall).ToList();
-            windows = (walls.Where(w => w.fenestrations.Count != 0)).SelectMany(w => w.fenestrations).ToList();
+            windows = (walls.Where(w => w != null?  false : w.fenestrations.Count != 0)).SelectMany(w => w.fenestrations).ToList();
             gFloors = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList();
             roofs = surfaces.Where(w => w.surfaceType == SurfaceType.Roof).ToList();
             iFloors = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").ToList();
