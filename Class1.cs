@@ -1161,12 +1161,7 @@ namespace IDFFile
             }
             catch
             {
-                p_BoilerEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Boiler Energy"))];
-                p_ChillerEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Chiller Energy"))];
-                BoilerEnergy = p_BoilerEnergy.Average();
-                ChillerEnergy = p_ChillerEnergy.Average();
-                p_ThermalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy }.AddArrayElementWise();
-                ThermalEnergy = p_ThermalEnergy.Average();
+                
             }
 
             p_TotalEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Total Energy"))];
