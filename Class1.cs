@@ -685,7 +685,7 @@ namespace IDFFile
                 }
  //               toupdate.fenestrations = toupdate.CreateFenestration(1);               
             }
-            CreateShadingControls();
+            //CreateShadingControls();
         }
         public void UpdateZoneInfo()
         {
