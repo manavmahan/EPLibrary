@@ -103,10 +103,7 @@ namespace IDFFile
             double y1 = xyz.X * Math.Sin(angle) + xyz.Y * Math.Cos(angle);
             return new XYZ(x1, y1, xyz.Z);
         }
-        public static XYZ OffsetHeight(this XYZ xyz, double height)
-        {
-            return (new XYZ(xyz.X, xyz.Y, xyz.Z + height));
-        }
+        
 
         public static XYZ Copy(this XYZ xyz)
         {
@@ -2021,7 +2018,10 @@ namespace IDFFile
             return X.GetHashCode() ^ Y.GetHashCode() ^ Z.GetHashCode();
         }
 
-        
+        public XYZ OffsetHeight(double height)
+        {
+            return new XYZ(X, Y, Z + height);
+        }
         public override string ToString()
         {
             return string.Join(",", X, Y, Z);
