@@ -1091,20 +1091,19 @@ namespace IDFFile
             foreach (BuildingSurface surf in bSurfaces)
             {
                 if (surf.surfaceType == SurfaceType.Wall || surf.surfaceType == SurfaceType.Roof)
-                {
-                    if (surf.surfaceType == SurfaceType.Wall && surf.OutsideCondition=="Outdoors")
+                { 
+                    if (surf.OutsideCondition=="Outdoors" && surf.fenestrations.Count!=0)
                     {
                         Fenestration win = surf.fenestrations[0];
                         win.p_SolarRadiation = resultsDF[resultsDF.Keys.First(a => a.Contains(win.name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))];
-                        win.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"))];
+                        win.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"))].ConvertKWhfromJoule();
                         win.SolarRadiation = win.p_SolarRadiation.Average();
                         win.HeatFlow = win.p_HeatFlow.Average();
                         surf.p_SolarRadiation = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))];
                         surf.SolarRadiation = surf.p_SolarRadiation.Average();
                     }
-
                 }
-                surf.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Energy"))];
+                surf.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Energy"))].ConvertKWhfromJoule();
                 surf.HeatFlow = surf.p_HeatFlow.Average();
             }
             foreach (Zone zone in zones)
