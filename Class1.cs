@@ -26,13 +26,16 @@ namespace IDFFile
         public static double[] ConvertKWhfromJoule(this double[] dArray) { return dArray.Select(d => d.ConvertKWhfromJoule()).ToArray(); }
         public static double[] FillZeroes(this double[] Array, int length)
         {
+            int count = Array.Count();
             IEnumerable<double> newList = Array;
-            for (int i = Array.Count(); i < length; i++) { newList = newList.Append(0); }
+            
+            for (int i = count; i < length; i++) { newList = newList.Append(0); }
             return newList.ToArray();
         }
         public static double[] AddArrayElementWise(this List<double[]> AllArrays)
         {
-            List<int> counts = AllArrays.Select(a => a.Count()).ToList();
+            AllArrays = AllArrays.Where(a => a != null).ToList();
+            List<int> counts = AllArrays.Select(a =>  a.Count()).ToList();
             if (counts.Count == 0) { return new double[] { 0 }; }
             else
             {
@@ -1089,16 +1092,17 @@ namespace IDFFile
             {
                 if (surf.surfaceType == SurfaceType.Wall || surf.surfaceType == SurfaceType.Roof)
                 {
-                    if (surf.surfaceType == SurfaceType.Wall)
+                    if (surf.surfaceType == SurfaceType.Wall && surf.OutsideCondition=="Outdoors")
                     {
                         Fenestration win = surf.fenestrations[0];
                         win.p_SolarRadiation = resultsDF[resultsDF.Keys.First(a => a.Contains(win.name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))];
                         win.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"))];
                         win.SolarRadiation = win.p_SolarRadiation.Average();
                         win.HeatFlow = win.p_HeatFlow.Average();
+                        surf.p_SolarRadiation = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))];
+                        surf.SolarRadiation = surf.p_SolarRadiation.Average();
                     }
-                    surf.p_SolarRadiation = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))];
-                    surf.SolarRadiation = surf.p_SolarRadiation.Average();
+
                 }
                 surf.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Energy"))];
                 surf.HeatFlow = surf.p_HeatFlow.Average();
@@ -1633,7 +1637,7 @@ namespace IDFFile
             p_gFloorHeatFlow = gFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
             p_iFloorHeatFlow = iFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
             p_iWallHeatFlow = iWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            p_windowHeatFlow = walls.Select(s => s.fenestrations[0]).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            try { p_windowHeatFlow = walls.Select(s => s.fenestrations[0]).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise(); } catch { }
             p_roofHeatFlow = roofs.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
 
             p_iFloorHeatFlow = p_iFloorHeatFlow.SubtractArrayElementWise(izFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
