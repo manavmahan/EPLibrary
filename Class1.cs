@@ -1092,7 +1092,7 @@ namespace IDFFile
             {
                 if (surf.surfaceType == SurfaceType.Wall || surf.surfaceType == SurfaceType.Roof)
                 { 
-                    if (surf.OutsideCondition=="Outdoors" && surf.fenestrations.Count!=0)
+                    if (surf.OutsideCondition=="Outdoors" && surf.fenestrations!=null && surf.fenestrations.Count!=0)
                     {
                         Fenestration win = surf.fenestrations[0];
                         win.p_SolarRadiation = resultsDF[resultsDF.Keys.First(a => a.Contains(win.name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))];
