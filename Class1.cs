@@ -1124,7 +1124,7 @@ namespace IDFFile
         {
             foreach (BuildingSurface surf in bSurfaces)
             {
-                if (surf.surfaceType == SurfaceType.Wall)
+                if (surf.surfaceType == SurfaceType.Wall && surf.OutsideCondition == "Outdoors" && surf.fenestrations != null && surf.fenestrations.Count != 0)
                 {
                     Fenestration win = surf.fenestrations[0];
                     win.p_HeatFlow = resultsDF[resultsDF.Keys.First(s => s.Contains(win.name))];
