@@ -1559,7 +1559,7 @@ namespace IDFFile
         public void CalcAreaVolumeHeatCapacity()
         {
             CalcAreaVolume();
-            walls = surfaces.Where(w => w.surfaceType == SurfaceType.Wall).ToList();
+            walls = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").ToList();
             windows = (walls.Where(w => w != null?  false : w.fenestrations.Count != 0)).SelectMany(w => w.fenestrations).ToList();
             gFloors = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList();
             roofs = surfaces.Where(w => w.surfaceType == SurfaceType.Roof).ToList();
