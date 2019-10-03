@@ -1049,18 +1049,16 @@ namespace IDFFile
         {
             foreach (BuildingSurface surf in bSurfaces)
             {
-                if (surf.surfaceType == SurfaceType.Wall || surf.surfaceType == SurfaceType.Roof)
+                if (surf.OutsideCondition == "Outdoors")
                 {
-                    if (surf.surfaceType == SurfaceType.Wall)
+                    if (surf.fenestrations != null && surf.fenestrations.Count != 0)
                     {
-                        Fenestration win = surf.fenestrations[0];                       
+                        Fenestration win = surf.fenestrations[0];
                         win.SolarRadiation = data[data.Keys.First(a => a.Contains(win.name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))];
-                        //Console.WriteLine(string.Join(" - ", win.name, win.face.zone.name, win.area, win.SolarRadiation));                      
-                        win.HeatFlow = data[data.Keys.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"))].ConvertKWhfromJoule(); 
+                        win.HeatFlow = data[data.Keys.First(s => s.Contains(win.name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Energy"))].ConvertKWhfromJoule();
                     }
                     surf.SolarRadiation = data[data.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))];
-                    
-                }
+                }                
                 surf.HeatFlow = data[data.Keys.First(s => s.Contains(surf.name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Energy"))].ConvertKWhfromJoule();
             }
             foreach (Zone zone in zones)
