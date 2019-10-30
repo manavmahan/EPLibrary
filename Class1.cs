@@ -593,6 +593,7 @@ namespace IDFFile
         public ProbabilisticBuildingConstruction pBuildingConstruction;
         public ProbabilisticBuildingOperation pBuildingOperation;
         public ProbabilisticWWR pWWR;
+        public ProbabilisticEmbeddedEnergyParameters p_EEParameters;
 
         //Probabilistic Operational Energy
         public double[] p_BoilerEnergy, p_ChillerEnergy, p_ThermalEnergy, p_TotalEnergy;
@@ -603,9 +604,14 @@ namespace IDFFile
         public double ZoneHeatingEnergy, ZoneCoolingEnergy, LightingEnergy;
         public double TotalArea, TotalVolume;
 
+        //Probabilistic Embedded Energy Output
+        public double[] p_EmbeddedEnergy, p_LifeCycleEnergy;
+        public double life, primaryEnergyFactor;
+
         //Deterministic Attributes
         public BuildingConstruction buildingConstruction;
         public BuildingOperation buildingOperation;
+        public EmbeddedEnergyParameters EEParameters;
 
         public double FloorHeight;
         public WWR WWR { get; set; } = new WWR(0.5, 0.5, 0.5, 0.5); //North, West, South, East
@@ -633,8 +639,6 @@ namespace IDFFile
         public List<InternalMass> iMasses = new List<InternalMass>();
         public List<ShadingZone> shadingZones = new List<ShadingZone>();
         public List<ShadingOverhang> shadingOverhangs = new List<ShadingOverhang>();
-
-        
 
         //HVAC Template - should be extracted from zone
         public List<Thermostat> tStats = new List<Thermostat>();
@@ -686,12 +690,12 @@ namespace IDFFile
         {
             zones.ForEach(z => z.CalcAreaVolumeHeatCapacity());
         }
-        public void CreateInternalMass(double percentArea)
+        public void CreateInternalMass(double percentArea, bool IsWall)
         {
             zones.ForEach(z =>
             {
                 z.CalcAreaVolume();
-                InternalMass mass = new InternalMass(z, percentArea * z.area * FloorHeight, "InternalWall");
+                InternalMass mass = new InternalMass(z, percentArea * z.area * FloorHeight, "InternalWall", IsWall);
                 iMasses.Add(mass);
             });
 
@@ -1159,6 +1163,13 @@ namespace IDFFile
             TotalEnergy = p_TotalEnergy.Average();
             LightingEnergy = p_LightingEnergy.Average();
         }
+        public void AssociateEmbeddedEnergyResults(double[] resultsDF)
+        {
+            p_EmbeddedEnergy = resultsDF;
+            double[] LCOperationalEnergy = p_TotalEnergy.Select(x => x * life* primaryEnergyFactor).ToArray();
+            p_LifeCycleEnergy = new List<double[]>() { p_EmbeddedEnergy, LCOperationalEnergy }.AddArrayElementWise();
+        }
+
         public Building AddZone(Zone zone)
         {
             zones.Add(zone);
@@ -1195,6 +1206,61 @@ namespace IDFFile
         }
     }
     [Serializable]
+    public class EmbeddedEnergyParameters
+    {
+        public double th_ExtWall, th_IntWall, th_GFloor, th_IFloor, th_Roof, Reinforcement;
+
+        public EmbeddedEnergyParameters() { }
+
+        public EmbeddedEnergyParameters(double th_ExtWall, double th_IntWall, double th_GFloor, double th_IFloor, double th_Roof, double Reinforcement)
+        {
+            this.th_ExtWall = th_ExtWall;
+            this.th_IntWall = th_IntWall;
+            this.th_GFloor = th_GFloor;
+            this.th_IFloor = th_IFloor;
+            this.th_Roof = th_Roof;
+            this.Reinforcement = Reinforcement;
+        }      
+        public List<string> ToCSVString()
+        {
+            return new List<string>(){
+                string.Join(",",  th_ExtWall,  th_IntWall,  th_GFloor,  th_IFloor,  th_Roof, Reinforcement)
+            };
+        }
+        public string Header()
+        {
+            return "Const_Thickness_ExtWall, Const_Thickness_Iwall, Const_Thickness_Gfloor, Const_Thickness_Ifloor, Const_Thickness_Roof, Reinforcement";
+        }
+    }
+    [Serializable]
+    public class ProbabilisticEmbeddedEnergyParameters
+    {
+        public double[] th_ExtWall, th_IntWall, th_GFloor, th_IFloor, th_Roof, Reinforcement;
+
+        public ProbabilisticEmbeddedEnergyParameters() { }
+
+        public ProbabilisticEmbeddedEnergyParameters(double[] th_ExtWall, double[] th_IntWall, double[] th_GFloor, double[] th_IFloor, double[] th_Roof, double[] Reinforcement)
+        {
+            this.th_ExtWall = th_ExtWall;
+            this.th_IntWall = th_IntWall;
+            this.th_GFloor = th_GFloor;
+            this.th_IFloor = th_IFloor;
+            this.th_Roof = th_Roof;
+            this.Reinforcement = Reinforcement;
+        }
+        public EmbeddedEnergyParameters GetAverage()
+        {
+            return new EmbeddedEnergyParameters(th_ExtWall.Average(), th_IntWall.Average(), th_GFloor.Average(), th_IFloor.Average(), th_Roof.Average(), Reinforcement.Average());          
+        }
+        public List<string> ToCSVString()
+        {
+            return new List<string>(){
+                string.Join(",", th_ExtWall[0], th_IntWall[0], th_GFloor[0], th_IFloor[0], th_Roof[0], Reinforcement[0]),
+                string.Join(",", th_ExtWall[1], th_IntWall[1], th_GFloor[1], th_IFloor[1], th_Roof[0], Reinforcement[1])
+            };
+        }
+    }
+    [Serializable]
     public class InternalMass
     {
         //        InternalMass ,
@@ -1205,12 +1271,15 @@ namespace IDFFile
         public string name, construction;
         public Zone zone;
         public double area;
+        public bool IsWall = false;
 
-        public InternalMass(Zone z, double area, string construction)
+        public InternalMass(Zone z, double area, string construction, bool IsWall)
         {
             this.construction = construction; this.area = area; zone = z;
             name = zone.name + ":IntM" + zone.iMasses.Count + 1;
+            this.IsWall = IsWall;
             zone.iMasses.Add(this);
+            
         }
         public List<string> WriteInfo()
         {
@@ -1223,7 +1292,6 @@ namespace IDFFile
                 Utility.IDFLastLineFormatter(area, "Area")
             };
         }
-
     }
     [Serializable]
     public class WWR
@@ -1569,7 +1637,7 @@ namespace IDFFile
             totalWallArea = walls.Select(w => w.area).Sum();
             totalGFloorArea = gFloors.Select(gF => gF.area).Sum();
             totalIFloorArea = iFloors.Select(iF => iF.area).Sum() + izFloors.Select(iF => iF.area).Sum();
-            totalIWallArea = iWalls.Select(iF => iF.area).Sum() + izWalls.Select(iF => iF.area).Sum();
+            totalIWallArea = iWalls.Select(iF => iF.area).Sum() + izWalls.Select(iF => iF.area).Sum() + iMasses.Where(i=>i.IsWall).Select(i=>i.area).Sum();
             totalRoofArea = roofs.Select(r => r.area).Sum();
             totalWindowArea = windows.Select(wi => wi.area).Sum();
 

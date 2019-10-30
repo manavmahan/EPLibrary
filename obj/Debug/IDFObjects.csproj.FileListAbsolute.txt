@@ -17,7 +17,6 @@ C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.dll
 C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.pdb
 \\Mac\Home\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.dll
 \\Mac\Home\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.pdb
-\\Mac\Home\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csproj.CoreCompileInputs.cache
 \\Mac\Home\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.dll
 \\Mac\Home\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.pdb
 C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyReference.cache
