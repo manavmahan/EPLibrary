@@ -673,18 +673,12 @@ namespace IDFFile
         }
         public void UpdateFenestrations()
         {
-            foreach (BuildingSurface toupdate in bSurfaces.Where(s=>s.surfaceType == SurfaceType.Wall))
+            foreach (BuildingSurface toupdate in bSurfaces.Where(s=>s.surfaceType == SurfaceType.Wall && s.ConstructionName != "InternalWall"))
             {
                 toupdate.AssociateWWRandShadingLength();
-                 if (toupdate.ConstructionName != "InternalWall")
-                {
-
-
-                    toupdate.fenestrations = toupdate.CreateFenestration(1);
-                }
- //               toupdate.fenestrations = toupdate.CreateFenestration(1);               
+                toupdate.fenestrations = toupdate.CreateFenestration(1);
+ //             toupdate.fenestrations = toupdate.CreateFenestration(1);               
             }
-            //CreateShadingControls();
         }
         public void UpdateZoneInfo()
         {
