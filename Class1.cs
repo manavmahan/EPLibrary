@@ -665,28 +665,22 @@ namespace IDFFile
             GenerateInfiltraitionAndVentillation();
             UpdateZoneInfo();
         }
-        public void UpdateBuildingOperations()
+        void UpdateBuildingOperations()
         {
             CreateSchedules();
             GeneratePeopleLightingElectricEquipment();          
             GenerateHVAC(true, false, false);
         }
-        public void UpdateFenestrations()
+        void UpdateFenestrations()
         {
-            foreach (BuildingSurface toupdate in bSurfaces.Where(s=>s.surfaceType == SurfaceType.Wall))
+            foreach (BuildingSurface toupdate in bSurfaces.Where(s=>s.surfaceType == SurfaceType.Wall && s.ConstructionName != "InternalWall"))
             {
                 toupdate.AssociateWWRandShadingLength();
-                 if (toupdate.ConstructionName != "InternalWall")
-                {
-
-
-                    toupdate.fenestrations = toupdate.CreateFenestration(1);
-                }
- //               toupdate.fenestrations = toupdate.CreateFenestration(1);               
+                toupdate.CreateFenestration(1);       
             }
-            //CreateShadingControls();
+            CreateShadingControls();
         }
-        public void UpdateZoneInfo()
+        void UpdateZoneInfo()
         {
             zones.ForEach(z => z.CalcAreaVolumeHeatCapacity());
         }
@@ -694,13 +688,12 @@ namespace IDFFile
         {
             zones.ForEach(z =>
             {
-                z.CalcAreaVolume();
                 InternalMass mass = new InternalMass(z, percentArea * z.area * FloorHeight, "InternalWall", IsWall);
                 iMasses.Add(mass);
             });
 
         }
-        public void CreateShadingControls()
+        void CreateShadingControls()
         {
             shadingControls = new List<WindowShadingControl>();
             foreach (BuildingSurface face in bSurfaces.Where(s => s.surfaceType == SurfaceType.Wall))
@@ -1613,33 +1606,29 @@ namespace IDFFile
 
         public double[] p_TotalHeatFlows, p_wallHeatFlow, p_windowHeatFlow, p_gFloorHeatFlow, p_iFloorHeatFlow, p_iWallHeatFlow, p_roofHeatFlow, p_infiltrationFlow, p_SolarRadiation;
 
-        public List<BuildingSurface> walls, gFloors, iWalls, iFloors, roofs, izFloors, izWalls;
-        public List<Fenestration> windows;
-
-        public void CalcAreaVolume()
+        void CalcAreaVolume()
         {
             IEnumerable<BuildingSurface> floors = surfaces.Where(a => a.surfaceType == SurfaceType.Floor);
             area = floors.Select(a => a.area).ToArray().Sum();
             volume = area * height;
         }
-        public void CalcAreaVolumeHeatCapacity()
+        internal void CalcAreaVolumeHeatCapacity()
         {
-            CalcAreaVolume();
-            walls = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").ToList();
-            windows = (walls.Where(w => w != null?  false : w.fenestrations.Count != 0)).SelectMany(w => w.fenestrations).ToList();
-            gFloors = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList();
-            roofs = surfaces.Where(w => w.surfaceType == SurfaceType.Roof).ToList();
-            iFloors = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").ToList();
-            iWalls = surfaces.Where(w => w.surfaceType == SurfaceType.InternalWall).ToList();
-            izFloors = building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.Floor && iF.OutsideObject == name).ToList();
-            izWalls = building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.InternalWall && iF.OutsideObject == name).ToList();
+            CalcAreaVolume();       
 
-            totalWallArea = walls.Select(w => w.area).Sum();
-            totalGFloorArea = gFloors.Select(gF => gF.area).Sum();
-            totalIFloorArea = iFloors.Select(iF => iF.area).Sum() + izFloors.Select(iF => iF.area).Sum();
-            totalIWallArea = iWalls.Select(iF => iF.area).Sum() + izWalls.Select(iF => iF.area).Sum() + iMasses.Where(i=>i.IsWall).Select(i=>i.area).Sum();
-            totalRoofArea = roofs.Select(r => r.area).Sum();
-            totalWindowArea = windows.Select(wi => wi.area).Sum();
+            totalWallArea = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(w => w.area).Sum();
+            totalGFloorArea = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(gF => gF.area).Sum();
+
+            totalIFloorArea = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").Select(iF => iF.area).Sum();
+            totalIFloorArea += building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.Floor && iF.OutsideObject == name).Select(iF => iF.area).Sum();
+
+            totalIWallArea = surfaces.Where(w => w.surfaceType == SurfaceType.InternalWall).Select(iF => iF.area).Sum() +
+                building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.InternalWall && iF.OutsideObject == name).Select(iF => iF.area).Sum() + 
+                iMasses.Where(i=>i.IsWall).Select(i=>i.area).Sum();
+
+            totalRoofArea = surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(r => r.area).Sum();
+            totalWindowArea = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
+                .Where(w => w.fenestrations.Count != 0).SelectMany(w => w.fenestrations).Select(wi => wi.area).Sum();
 
             heatCapacity = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor + 
                 totalIFloorArea * building.buildingConstruction.hcIFloor +
@@ -1661,17 +1650,19 @@ namespace IDFFile
         }
         public void AssociateEnergyPlusResults(Dictionary<string, double> data)
         {
-            wallHeatFlow = walls.Select(s => s.HeatFlow).Sum();
-            gFloorHeatFlow = gFloors.Select(s => s.HeatFlow).Sum();
-            iFloorHeatFlow = iFloors.Select(s => s.HeatFlow).Sum();
-            iWallHeatFlow = iWalls.Select(s => s.HeatFlow).Sum();
-            windowHeatFlow = walls.Select(s => s.fenestrations[0]).Select(s => s.HeatFlow).Sum();
-            roofHeatFlow = roofs.Select(s => s.HeatFlow).Sum();
+            wallHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.HeatFlow).Sum();
+            gFloorHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.HeatFlow).Sum();
+            iFloorHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").Select(s => s.HeatFlow).Sum();
+            iWallHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.InternalWall).Select(s => s.HeatFlow).Sum();
+            windowHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
+                .Where(w => w.fenestrations.Count != 0).SelectMany(w => w.fenestrations).Select(s => s.HeatFlow).Sum();
+            roofHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.HeatFlow).Sum();
 
-            iFloorHeatFlow -= izFloors.Select(s => s.HeatFlow).Sum();
-            iWallHeatFlow -= izWalls.Select(s => s.HeatFlow).Sum();
+            iFloorHeatFlow -= building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.Floor && iF.OutsideObject == name).Select(s => s.HeatFlow).Sum();
+            iWallHeatFlow -= building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.InternalWall && iF.OutsideObject == name).Select(s => s.HeatFlow).Sum();
 
-            SolarRadiation = (walls.SelectMany(w => w.fenestrations).Select(f => f.area * f.SolarRadiation)).Sum();
+            SolarRadiation = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
+                .Where(w => w.fenestrations.Count != 0).SelectMany(w => w.fenestrations).Select(f => f.area * f.SolarRadiation).Sum();
 
             infiltrationFlow = (data[data.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy"))] -
                     data[data.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy"))]).ConvertKWhfromJoule();
@@ -1684,17 +1675,19 @@ namespace IDFFile
         }
         public void AssociateProbabilisticEnergyPlusResults(Dictionary<string, double[]> resultsDF)
         {
-            p_wallHeatFlow = walls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            p_gFloorHeatFlow = gFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            p_iFloorHeatFlow = iFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            p_iWallHeatFlow = iWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            try { p_windowHeatFlow = walls.Select(s => s.fenestrations[0]).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise(); } catch { }
-            p_roofHeatFlow = roofs.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_wallHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_gFloorHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_iFloorHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_iWallHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.InternalWall).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            try { p_windowHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
+                .Where(w => w.fenestrations.Count != 0).SelectMany(w => w.fenestrations).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise(); } catch { }
+            p_roofHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
 
-            p_iFloorHeatFlow = p_iFloorHeatFlow.SubtractArrayElementWise(izFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
-            p_iWallHeatFlow  = p_iWallHeatFlow.SubtractArrayElementWise(izWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
+            p_iFloorHeatFlow = p_iFloorHeatFlow.SubtractArrayElementWise(building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.Floor && iF.OutsideObject == name).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
+            p_iWallHeatFlow  = p_iWallHeatFlow.SubtractArrayElementWise(building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.InternalWall && iF.OutsideObject == name).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
 
-            p_SolarRadiation = (walls.SelectMany(w => w.fenestrations).Select(f => f.p_SolarRadiation)).ToList().AddArrayElementWise();
+            p_SolarRadiation = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
+                .Where(w => w.fenestrations.Count != 0).SelectMany(w => w.fenestrations).Select(f => f.p_SolarRadiation).ToList().AddArrayElementWise();
 
             p_infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy"))].SubtractArrayElementWise(
                      resultsDF[resultsDF.Keys.First(a => a.Contains(name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy"))]);
@@ -1707,16 +1700,12 @@ namespace IDFFile
         }
         public void AssociateProbabilisticMLResults(Dictionary<string, double[]> resultsDF)
         {
-            p_wallHeatFlow = walls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            p_gFloorHeatFlow = gFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            //p_iFloorHeatFlow = iFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            //p_iWallHeatFlow = iWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            p_windowHeatFlow = walls.Select(s => s.fenestrations[0]).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            p_roofHeatFlow = roofs.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-
-            //p_iFloorHeatFlow = p_iFloorHeatFlow.SubtractArrayElementWise(izFloors.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
-            //p_iWallHeatFlow = p_iWallHeatFlow.SubtractArrayElementWise(izWalls.Select(s => s.p_HeatFlow).ToList().AddArrayElementWise());
-
+            p_wallHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_gFloorHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+           
+            p_windowHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
+                .Where(w => w.fenestrations.Count != 0).SelectMany(w => w.fenestrations).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            p_roofHeatFlow = surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
             
             p_infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a == name+"_Infiltration")];
             p_TotalHeatFlows = new List<double[]>() { p_wallHeatFlow, p_gFloorHeatFlow, p_windowHeatFlow, p_roofHeatFlow, p_infiltrationFlow }.AddArrayElementWise();
@@ -1778,7 +1767,7 @@ namespace IDFFile
                 name = zone.name + ":" + zone.level + ":" + direction + ":" + ConstructionName + "_" + (zone.surfaces.Count + 1);
             }
         }
-        public void AssociateWWRandShadingLength()
+        internal void AssociateWWRandShadingLength()
         {
             orientation = verticesList.GetWallDirection();
 
@@ -1858,8 +1847,8 @@ namespace IDFFile
                     break;
             }
             addName();
-            if (wWR != 0) { CreateFenestration(1); }
-            if (sl != 0) { shading = new List<ShadingOverhang>() { new ShadingOverhang(this) }; }
+            //if (wWR != 0) { CreateFenestration(1); }
+            //if (sl != 0) { shading = new List<ShadingOverhang>() { new ShadingOverhang(this) }; }
             zone1.surfaces.Add(this);
         }
 
@@ -1880,7 +1869,7 @@ namespace IDFFile
             return info;
         }
 
-        public List<Fenestration> CreateFenestration(int count)
+        internal void CreateFenestration(int count)
         {
             List<Fenestration> fenestrationList = new List<Fenestration>();
             for (int i = 0; i < count; i++)
@@ -1902,22 +1891,7 @@ namespace IDFFile
             }
             fenestrations = fenestrationList;
             area = GrossArea * (1 - wWR);
-            return fenestrationList;
-        }
-
-        public BuildingSurface Clone(string name)
-        {
-            BuildingSurface other = (BuildingSurface)this.MemberwiseClone();
-            other.name = name + "_" + other.name;
-            other.verticesList = new XYZList(verticesList.xyzs.Select(v => v.Copy()).ToList());
-
-            if (surfaceType == SurfaceType.Wall)
-            {
-                other.fenestrations = new List<Fenestration>();
-                if (fenestrations != null) { other.fenestrations.AddRange(fenestrations.Select(f => f.Clone(name))); }
-            }
-            return other;
-        }
+        }    
     }
     [Serializable]
     public class XYZList
@@ -2127,7 +2101,7 @@ namespace IDFFile
         public OverhangProjection overhang { get; set; }
         public double[] p_SolarRadiation { get; set; }
 
-        public Fenestration(BuildingSurface wallFace)
+        internal Fenestration(BuildingSurface wallFace)
         {
             face = wallFace;
             surfaceType = SurfaceType.Window;
@@ -2154,15 +2128,6 @@ namespace IDFFile
 
             info.AddRange(verticesList.verticeInfo());
             return info;
-        }
-
-        public Fenestration Clone(string name)
-        {
-            Fenestration other = (Fenestration)this.MemberwiseClone();
-            other.name = name + "_" + other.name;
-            other.verticesList = new XYZList(verticesList.xyzs.Select(v => v.Copy()).ToList());
-
-            return other;
         }
     }
     public enum ControlType { none, Continuous, Stepped, ContinuousOff }
