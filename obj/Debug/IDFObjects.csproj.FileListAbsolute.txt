@@ -21,3 +21,8 @@ C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.pdb
 \\Mac\Home\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.pdb
 C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyReference.cache
 \\Mac\Home\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyReference.cache
+C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.dll
+C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.pdb
+C:\Users\manav\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyReference.cache
+C:\Users\manav\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.dll
+C:\Users\manav\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.pdb

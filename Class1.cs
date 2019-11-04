@@ -605,8 +605,11 @@ namespace IDFFile
         public double TotalArea, TotalVolume;
 
         //Probabilistic Embedded Energy Output
-        public double[] p_EmbeddedEnergy, p_LifeCycleEnergy;
-        public double life, primaryEnergyFactor;
+        public double[] p_EmbeddedEnergy, p_PERT_EmbeddedEnergy, p_PENRT_EmbeddedEnergy, 
+            p_LCE_PERT, p_LCE_PENRT, p_LifeCycleEnergy;
+        public double EmbeddedEnergy, PERT_EmbeddedEnergy, PENRT_EmbeddedEnergy,
+            LCE_PERT, LCE_PENRT, LifeCycleEnergy;
+        public double life, PERTFactor, PENRTFactor;
 
         //Deterministic Attributes
         public BuildingConstruction buildingConstruction;
@@ -676,15 +679,9 @@ namespace IDFFile
             foreach (BuildingSurface toupdate in bSurfaces.Where(s=>s.surfaceType == SurfaceType.Wall && s.ConstructionName != "InternalWall"))
             {
                 toupdate.AssociateWWRandShadingLength();
-<<<<<<< HEAD
                 toupdate.CreateFenestration(1);       
             }
-            CreateShadingControls();
-=======
-                toupdate.fenestrations = toupdate.CreateFenestration(1);
- //             toupdate.fenestrations = toupdate.CreateFenestration(1);               
-            }
->>>>>>> d179d9513cf668e7e7d324b83a5ecd71c931b2d7
+            CreateShadingControls();                
         }
         void UpdateZoneInfo()
         {
@@ -694,6 +691,7 @@ namespace IDFFile
         {
             zones.ForEach(z =>
             {
+                z.CalcAreaVolume();
                 InternalMass mass = new InternalMass(z, percentArea * z.area * FloorHeight, "InternalWall", IsWall);
                 iMasses.Add(mass);
             });
@@ -1162,11 +1160,32 @@ namespace IDFFile
             TotalEnergy = p_TotalEnergy.Average();
             LightingEnergy = p_LightingEnergy.Average();
         }
-        public void AssociateEmbeddedEnergyResults(double[] resultsDF)
+        public void AssociateProbabilisticEmbeddedEnergyResults(Dictionary<string, double[]> resultsDF)
         {
-            p_EmbeddedEnergy = resultsDF;
-            double[] LCOperationalEnergy = p_TotalEnergy.Select(x => x * life* primaryEnergyFactor).ToArray();
-            p_LifeCycleEnergy = new List<double[]>() { p_EmbeddedEnergy, LCOperationalEnergy }.AddArrayElementWise();
+            p_PERT_EmbeddedEnergy = resultsDF["PERT"];
+            p_PENRT_EmbeddedEnergy = resultsDF["PENRT"];
+            p_EmbeddedEnergy = new List<double[]>() { p_PENRT_EmbeddedEnergy, p_PENRT_EmbeddedEnergy }.AddArrayElementWise();
+
+            p_LCE_PENRT = new List<double[]>() { p_PENRT_EmbeddedEnergy, p_TotalEnergy.Select(x => x * life * PENRTFactor).ToArray() }.AddArrayElementWise();
+            p_LCE_PERT = new List<double[]>() { p_PERT_EmbeddedEnergy, p_TotalEnergy.Select(x => x * life * PERTFactor).ToArray() }.AddArrayElementWise();
+            p_LifeCycleEnergy = new List<double[]>() { p_LCE_PENRT, p_LCE_PERT }.AddArrayElementWise();
+
+            PERT_EmbeddedEnergy = p_PERT_EmbeddedEnergy.Average();
+            PENRT_EmbeddedEnergy = p_PENRT_EmbeddedEnergy.Average();
+            EmbeddedEnergy = p_EmbeddedEnergy.Average();
+            LCE_PENRT = p_LCE_PENRT.Average();
+            LCE_PERT = p_LCE_PERT.Average();
+            LifeCycleEnergy = p_LifeCycleEnergy.Average();
+        }
+        public void AssociateEmbeddedEnergyResults(Dictionary<string, double> resultsDF)
+        {
+            PERT_EmbeddedEnergy = resultsDF["PERT"];
+            PENRT_EmbeddedEnergy = resultsDF["PENRT"];
+            EmbeddedEnergy = PENRT_EmbeddedEnergy + PENRT_EmbeddedEnergy;
+
+            LCE_PENRT = TotalEnergy*life*PENRTFactor;
+            LCE_PERT = TotalEnergy * life * PERTFactor;
+            LifeCycleEnergy = LCE_PENRT+LCE_PERT;
         }
 
         public Building AddZone(Zone zone)
@@ -1612,7 +1631,7 @@ namespace IDFFile
 
         public double[] p_TotalHeatFlows, p_wallHeatFlow, p_windowHeatFlow, p_gFloorHeatFlow, p_iFloorHeatFlow, p_iWallHeatFlow, p_roofHeatFlow, p_infiltrationFlow, p_SolarRadiation;
 
-        void CalcAreaVolume()
+        internal void CalcAreaVolume()
         {
             IEnumerable<BuildingSurface> floors = surfaces.Where(a => a.surfaceType == SurfaceType.Floor);
             area = floors.Select(a => a.area).ToArray().Sum();
@@ -3384,7 +3403,7 @@ namespace IDFFile
         public double VersionIdentifier { get; set; }
         public Version()
         {
-            VersionIdentifier = 9.1;
+            VersionIdentifier = 9.2;
         }
         public List<string> WriteInfo()
         {
