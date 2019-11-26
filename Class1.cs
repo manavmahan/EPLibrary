@@ -55,9 +55,8 @@ namespace IDFFile
                         "Heating Energy", "Cooling Energy", "Lighting Energy");
                     break;
                 case "Building":
-                    info = string.Join(",", "File", "Total Floor Area", "Floor Height", "Total Volume", "Boiler Efficiency", "ChillerCOP",
-                        "Lighting Energy", "Heating Energy", "Cooling Energy",
-                        "Bolier Electric Energy", "Chiller Electric Energy", "Thermal Energy", "Operational Energy");
+                    info = string.Join(",", "File", "Total Floor Area", "Total Volume","Total Wall Area","Total Window Area","Total Roof Area","g-Window area","Internal Floor Area-U","Internal Wall Area-U", 
+                        "U-Wall","g-Window","U-Roof","Infiltration","U-Window", "ChillerCOP","Operating hours","LHG","EHG","Boiler Efficiency");
                     break;
             }
             return info;
@@ -75,7 +74,7 @@ namespace IDFFile
                 z.wallAreaU, z.gFloorAreaU, z.roofAreaU, z.windowAreaU, z.iFloorAreaU, z.iWallAreaU, z.windowAreaG};
         }
         public static void GetMLCSVLines(Building bui, IList<string> wallString, IList<string> windowString, IList<string> gFloorString, IList<string> roofString, IList<string> infiltrationString, 
-            IList<string> zoneString, IList<string> buildingString)
+            IList<string> zoneString, IList<string> buildingString, IList<string> buildingOutput)
         {
             string idfFile = bui.name;
             foreach (Zone z in bui.zones)
@@ -121,6 +120,16 @@ namespace IDFFile
                 bui.LightingEnergy,
                 bui.ZoneHeatingEnergy, bui.ZoneCoolingEnergy,
                 bui.BoilerEnergy, bui.ChillerEnergy, bui.ThermalEnergy, bui.OperationalEnergy));
+
+            buildingOutput.Add(string.Join(",", idfFile,bui.TotalArea, bui.TotalVolume,
+                            bui.zones.Select(z => z.totalWallArea).Sum(),
+                            bui.zones.Select(z => z.totalWindowArea).Sum(),
+                            bui.zones.Select(z => z.totalRoofArea).Sum(),
+                            bui.zones.Select(z => z.windowAreaG).Sum(),
+-                           bui.zones.Select(z => z.iFloorAreaU).Sum(),
+                            bui.zones.Select(z => z.iWallAreaU).Sum(),bui.buildingConstruction.uWall,bui.buildingConstruction.gWindow, bui.buildingConstruction.uRoof, bui.buildingConstruction.infiltration,
+                            bui.buildingConstruction.uWindow, bui.buildingOperation.chillerCOP, bui.buildingOperation.operatingHours, bui.buildingOperation.lightHeatGain, bui.buildingOperation.equipmentHeatGain, bui.buildingOperation.boilerEfficiency)); ;
+
         }
         public static Dictionary<string, double[]> ConvertToDataframe(IEnumerable<string> csvFile)
         {
