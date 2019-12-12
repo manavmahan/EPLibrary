@@ -74,7 +74,7 @@ namespace IDFFile
                 z.wallAreaU, z.gFloorAreaU, z.roofAreaU, z.windowAreaU, z.iFloorAreaU, z.iWallAreaU, z.windowAreaG};
         }
         public static void GetMLCSVLines(Building bui, IList<string> wallString, IList<string> windowString, IList<string> gFloorString, IList<string> roofString, IList<string> infiltrationString, 
-            IList<string> zoneString, IList<string> buildingString, IList<string> buildingOutput)
+            IList<string> zoneString, IList<string> buildingString)
         {
             string idfFile = bui.name;
             foreach (Zone z in bui.zones)
@@ -121,14 +121,14 @@ namespace IDFFile
                 bui.ZoneHeatingEnergy, bui.ZoneCoolingEnergy,
                 bui.BoilerEnergy, bui.ChillerEnergy, bui.ThermalEnergy, bui.OperationalEnergy));
 
-            buildingOutput.Add(string.Join(",", idfFile,bui.TotalArea, bui.TotalVolume,
-                            bui.zones.Select(z => z.totalWallArea).Sum(),
-                            bui.zones.Select(z => z.totalWindowArea).Sum(),
-                            bui.zones.Select(z => z.totalRoofArea).Sum(),
-                            bui.zones.Select(z => z.windowAreaG).Sum(),
--                           bui.zones.Select(z => z.iFloorAreaU).Sum(),
-                            bui.zones.Select(z => z.iWallAreaU).Sum(),bui.buildingConstruction.uWall,bui.buildingConstruction.gWindow, bui.buildingConstruction.uRoof, bui.buildingConstruction.infiltration,
-                            bui.buildingConstruction.uWindow, bui.buildingOperation.chillerCOP, bui.buildingOperation.operatingHours, bui.buildingOperation.lightHeatGain, bui.buildingOperation.equipmentHeatGain, bui.buildingOperation.boilerEfficiency)); ;
+//            buildingOutput.Add(string.Join(",", idfFile,bui.TotalArea, bui.TotalVolume,
+//                            bui.zones.Select(z => z.totalWallArea).Sum(),
+//                            bui.zones.Select(z => z.totalWindowArea).Sum(),
+//                            bui.zones.Select(z => z.totalRoofArea).Sum(),
+//                            bui.zones.Select(z => z.windowAreaG).Sum(),
+//-                           bui.zones.Select(z => z.iFloorAreaU).Sum(),
+//                            bui.zones.Select(z => z.iWallAreaU).Sum(),bui.buildingConstruction.uWall,bui.buildingConstruction.gWindow, bui.buildingConstruction.uRoof, bui.buildingConstruction.infiltration,
+//                            bui.buildingConstruction.uWindow, bui.buildingOperation.chillerCOP, bui.buildingOperation.operatingHours, bui.buildingOperation.lightHeatGain, bui.buildingOperation.equipmentHeatGain, bui.buildingOperation.boilerEfficiency)); ;
 
         }
         public static Dictionary<string, double[]> ConvertToDataframe(IEnumerable<string> csvFile)
@@ -1176,36 +1176,41 @@ namespace IDFFile
             double uWall = buildingConstruction.uWall, uGFloor = buildingConstruction.uGFloor, uIFloor = buildingConstruction.uIFloor,
                 uRoof = buildingConstruction.uRoof, uIWall = buildingConstruction.uIWall, uWindow = buildingConstruction.uWindow,
                 gWindow = buildingConstruction.gWindow, hcSlab = buildingConstruction.hcSlab;
-            double lambda_Wall = (uWall * 0.075) / (1 - uWall * (0.2 / 0.5 + 0.012 / 0.16));
-            double lambda_gFloor = (uGFloor * 0.075) / (1 - uGFloor * (0.1 / 1.95));
-            double lambda_iFloor = (uIFloor * 0.075) / (1 - uIFloor * (0.1 / 2));
-            double lambda_Roof = (uRoof * 0.08) / (1 - uRoof * (0.175 / 0.165 + 0.025 / 0.075 + 0.15 / 0.55));
-            double lambda_IWall = (uIWall * 2 * 0.05);
 
-            if (lambda_gFloor <= 0 || lambda_Wall <= 0 || lambda_Roof <= 0 || lambda_iFloor <= 0 || lambda_IWall <= 0)
+            double lambda_insulation = 0.04;
+
+            double th_insul_wall = lambda_insulation*(1/uWall- (0.2 / 0.5 + 0.015 / 0.5));
+            double th_insul_gFloor = lambda_insulation * (1/ uGFloor - (0.1 / 1.95));
+            double th_insul_iFloor = lambda_insulation *  (1/uIFloor - (0.1 / 2));
+            double th_insul_Roof = lambda_insulation * (1/uRoof - (0.175 / 0.75 + 0.025 / 0.75 + 0.15 / 0.7));
+
+            double th_insul_IWall = lambda_insulation * (1/uIWall - (0.05 / 0.16 + 0.05 / 0.16));
+
+            if (th_insul_wall <= 0 || th_insul_gFloor <= 0 || th_insul_iFloor <= 0 || th_insul_Roof <= 0 || th_insul_IWall <= 0)
             {
-                Console.WriteLine("Check U Values {0}, {1}, {2}, {3}, {4}", lambda_gFloor, lambda_Wall, lambda_Roof, lambda_iFloor, lambda_IWall);
+                Console.WriteLine("Check U Values {0}, {1}, {2}, {3}, {4}", th_insul_wall, th_insul_gFloor, th_insul_iFloor, th_insul_Roof, th_insul_IWall);
                 Console.ReadKey();
             }
 
             //roof layers
-            Material layer_F13 = new Material("F13", "Smooth", 0.175, 0.165, 1120, 1465, 0.9, 0.4, 0.7);
-            Material layer_G03 = new Material("G03", "Smooth", 0.025, 0.075, 400, 1300, 0.9, 0.7, 0.7);
-            Material layer_I03 = new Material("I03", "Smooth", 0.08, lambda_Roof, 45, 1200, 0.9, 0.7, 0.7);
-            Material layer_M11 = new Material("M11", "Smooth", 0.15, 0.55, 1200, 850, 0.9, 0.7, 0.7);
+            Material layer_F13 = new Material("F13", "Smooth", 0.175, 0.75, 1120, 1465, 0.9, 0.4, 0.7);
+            Material layer_G03 = new Material("G03", "Smooth", 0.025, 0.75, 400, 1300, 0.9, 0.7, 0.7);
+            Material layer_I03 = new Material("I03", "Smooth", th_insul_Roof, lambda_insulation, 45, 1200, 0.9, 0.7, 0.7);
+            Material layer_M11 = new Material("M11", "Smooth", 0.15, 0.7, 1200, hcSlab, 0.9, 0.7, 0.7);
 
             //wall layers
             Material layer_M03 = new Material("M03", "Smooth", 0.2, 0.5, 500, 900, 0.9, 0.4, 0.7);
-            Material layer_I04 = new Material("I04", "Smooth", 0.075, lambda_Wall, 20, 1000, 0.9, 0.7, 0.7);
-            Material layer_G01 = new Material("G01", "Smooth", 0.012, 0.16, 800, 1100, 0.9, 0.7, 0.7);
+            Material layer_I04 = new Material("I04", "Smooth", th_insul_wall, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
+            Material layer_G01 = new Material("G01", "Smooth", 0.015, 0.5, 800, 1100, 0.9, 0.7, 0.7);
 
             //gFloor & iFloor layers
             Material layer_floorSlab = new Material("Concrete_Floor_Slab", "Smooth", 0.10, 1.95, 2250, hcSlab, 0.9, 0.7, 0.7);
-            Material layer_gFloorInsul = new Material("gFloor_Insulation", "Smooth", 0.075, lambda_gFloor, 20, 1000, 0.9, 0.7, 0.7);
-            Material layer_iFloorInsul = new Material("iFloor_Insulation", "Smooth", 0.075, lambda_iFloor, 20, 1000, 0.9, 0.7, 0.7);
+            Material layer_gFloorInsul = new Material("gFloor_Insulation", "Smooth", th_insul_gFloor, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
+            Material layer_iFloorInsul = new Material("iFloor_Insulation", "Smooth", th_insul_iFloor, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
 
             //internal wall layers
-            Material layer_Plasterboard = new Material("Plasterboard", "Rough", 0.05, lambda_IWall, 800, 800, 0.9, 0.6, 0.6);
+            Material layer_Plasterboard = new Material("Plasterboard", "Rough", 0.05, 0.16, 800, 800, 0.9, 0.6, 0.6);
+            Material layer_iWallInsul = new Material("iFloor_Insulation", "Rough", th_insul_IWall, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
 
             //airgap
             //Layer layer_airgap = new Layer("Material Air Gap 1", "", 0.1, 0.1, 0.1, 0.1, 9, 7, 7); //airgap layer
@@ -1220,7 +1225,7 @@ namespace IDFFile
 
             Construction construction_Wall = new Construction("Wall ConcreteBlock", layerListWall);
             buildingConstruction.hcWall = layerListWall.Select(l => l.thickness * l.sHC * l.density).Sum();
-            List<Material> layerListInternallWall = new List<Material>() { layer_Plasterboard, layer_Plasterboard };
+            List<Material> layerListInternallWall = new List<Material>() { layer_Plasterboard,layer_iWallInsul, layer_Plasterboard };
             Construction construction_internalWall = new Construction("InternalWall", layerListInternallWall);
             buildingConstruction.hcIWall = layerListInternallWall.Select(l => l.thickness * l.sHC * l.density).Sum();
             List<Material> layerListGfloor = new List<Material>() { layer_floorSlab, layer_gFloorInsul };
