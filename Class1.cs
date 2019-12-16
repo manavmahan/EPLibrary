@@ -55,8 +55,10 @@ namespace IDFFile
                         "Heating Energy", "Cooling Energy", "Lighting Energy");
                     break;
                 case "Building":
-                    info = string.Join(",", "File", "Total Floor Area", "Total Volume","Total Wall Area","Total Window Area","Total Roof Area","g-Window area","Internal Floor Area-U","Internal Wall Area-U", 
-                        "U-Wall","g-Window","U-Roof","Infiltration","U-Window", "ChillerCOP","Operating hours","LHG","EHG","Boiler Efficiency");
+                    info = string.Join(",", "File", "Total Floor Area", "Floor Height", "Total Volume", "Boiler Efficiecny", "ChillerCOP",
+                                            "Lighting Energy", "Heating Energy", "Cooling Energy",
+                                            "Bolier Electric Energy", "Chiller Electric Energy", "Thermal energy", "Operational Energy");
+                   
                     break;
             }
             return info;
@@ -113,8 +115,8 @@ namespace IDFFile
                     z.HeatingEnergy, z.CoolingEnergy, z.LightingEnergy));
             }
             // "File", "Total Floor Area", "Floor Height", "Total Volume", "Boiler Efficiecny", "ChillerCOP",
-            //"Lighting Energy", "Electric Equipment Energy", "Heating Energy", "Cooling Energy",
-            //        "Bolier Electric Energy", "Chiller Electric Energy", "Total Energy"
+            //"Lighting Energy", "Heating Energy", "Cooling Energy",
+            //        "Bolier Electric Energy", "Chiller Electric Energy", "Thermal energy", "Operational Energy"
             buildingString.Add(string.Join(",", idfFile, bui.zones.Select(z => z.area).Sum(), bui.FloorHeight, bui.zones.Select(z => z.volume).Sum(),
                 bui.buildingOperation.boilerEfficiency, bui.buildingOperation.chillerCOP,
                 bui.LightingEnergy,
@@ -129,6 +131,38 @@ namespace IDFFile
 //-                           bui.zones.Select(z => z.iFloorAreaU).Sum(),
 //                            bui.zones.Select(z => z.iWallAreaU).Sum(),bui.buildingConstruction.uWall,bui.buildingConstruction.gWindow, bui.buildingConstruction.uRoof, bui.buildingConstruction.infiltration,
 //                            bui.buildingConstruction.uWindow, bui.buildingOperation.chillerCOP, bui.buildingOperation.operatingHours, bui.buildingOperation.lightHeatGain, bui.buildingOperation.equipmentHeatGain, bui.buildingOperation.boilerEfficiency)); ;
+
+        }
+
+        public static string GetHeaderFeattureEngineering(string component)
+        {
+            if (component == "Building")
+            {
+                return string.Join(",", "File", "Total Floor Area", "Total Volume", "Total Wall Area", "Total Window Area", "Total Roof Area", "Total Ground Floor Area", "Total Internal Floor Area",
+                    "uWall", "uWindow", "gWindow", "uRoof", "uGFloor", "uIFloor", "Infiltration", "Total heat capacity", "Operating Hours", "Light Heat Gain", "Equipment Heat Gain", 
+                    "Boiler Efficiency", "ChillerCOP", "Thermal Energy", "Operational Energy");
+            }
+            else
+            {
+                return "";
+            }
+        }
+        public static void GetMLCSVLinesFeatureEngineering(Building bui, IList<string> buildingString)
+        {
+            string idfFile = bui.name;
+
+
+            buildingString.Add(string.Join(",", idfFile, bui.TotalArea, bui.TotalVolume,
+                            bui.zones.Select(z => z.totalWallArea).Sum(),
+                            bui.zones.Select(z => z.totalWindowArea).Sum(),
+                            bui.zones.Select(z => z.totalRoofArea).Sum(),
+                            bui.zones.Select(z=>z.totalGFloorArea).Sum(),
+                            bui.zones.Select(z => z.totalIFloorArea).Sum(),
+                            bui.buildingConstruction.uWall, bui.buildingConstruction.uWindow, bui.buildingConstruction.gWindow, bui.buildingConstruction.uRoof, bui.buildingConstruction.uGFloor,
+                            bui.buildingConstruction.uIFloor, bui.buildingConstruction.infiltration, 
+                            bui.zones.Select(z=>z.heatCapacity).Sum(),bui.buildingOperation.operatingHours,bui.buildingOperation.lightHeatGain, bui.buildingOperation.equipmentHeatGain, 
+                       
+                            bui.buildingOperation.boilerEfficiency, bui.buildingOperation.chillerCOP, bui.ThermalEnergy, bui.OperationalEnergy)); ;
 
         }
         public static Dictionary<string, double[]> ConvertToDataframe(IEnumerable<string> csvFile)
@@ -1900,7 +1934,6 @@ namespace IDFFile
             totalGFloorArea = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(gF => gF.area).Sum();
 
             totalIFloorArea = surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").Select(iF => iF.area).Sum();
-            totalIFloorArea += building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.Floor && iF.OutsideObject == name).Select(iF => iF.area).Sum();
 
             totalIWallArea = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition != "Outdoors").Select(iF => iF.area).Sum() +
                 building.bSurfaces.Where(iF => iF.surfaceType == SurfaceType.Wall && iF.OutsideCondition != "Outdoors" && iF.OutsideObject == name).Select(iF => iF.area).Sum() + 
