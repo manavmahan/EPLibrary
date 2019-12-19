@@ -207,8 +207,18 @@ namespace IDFFile
             List<string> parameters = new List<string>();
             List<List<double>> samples = ReadSampleFile(dataFile, out parameters);
 
-            int iLen = parameters.FindIndex(s => s.Contains("Length"));
-            int iWid = parameters.FindIndex(s => s.Contains("Width"));
+            int iLen = -1, iWid = -1, iArea = -1;
+            try
+            {
+                iLen = parameters.FindIndex(s => s.Contains("Length"));
+                iWid = parameters.FindIndex(s => s.Contains("Width"));
+            }
+            catch { }
+            try
+            {
+                iArea = parameters.FindIndex(s => s.Contains("Area"));
+            }
+            catch { }
             int iHeight = parameters.FindIndex(s => s.Contains("Height"));
             int iOrientation = parameters.FindIndex(s => s.Contains("Orientation"));
             int iUWall = parameters.FindIndex(s => s.Contains("u_Wall"));
@@ -257,7 +267,10 @@ namespace IDFFile
                 if (iUIWall != -1) { uIWall = sample[iUIWall]; uIFloor = sample[iUIFloor]; } else { uIWall = 0.25; uIFloor = 0.25; }
 
 
-                value.Length = sample[iLen]; value.Width = sample[iWid]; value.Height = sample[iHeight];
+                if (iLen != -1) { value.Length = sample[iLen]; value.Width = sample[iWid]; }
+                else { value.FloorArea = sample[iArea]; }
+                
+                value.Height = sample[iHeight];
                 value.Orientation = sample[iOrientation] * Math.PI / 180;
                 value.construction = new BuildingConstruction()
                 {
@@ -853,7 +866,7 @@ namespace IDFFile
 
     public class BuildingDesignParameters
     {
-        public double Length, Width, Height, rLenA, rWidA, BasementDepth, Orientation;
+        public double Length, Width, Height, rLenA, rWidA, BasementDepth, Orientation, FloorArea;
         public WWR wwr;
         public BuildingConstruction construction;
         public BuildingOperation operation;
