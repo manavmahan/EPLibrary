@@ -1029,10 +1029,26 @@ namespace IDFFile
         }
         public void CreateSchedules()
         {
-            int[] time = Utility.hourToHHMM(buildingOperation.operatingHours);
-            int hour1 = time[0]; int minutes1 = time[1]; int hour2 = time[2]; int minutes2 = time[3];
-            buildingOperation.operatingHours = (hour2 * 60d + minutes2 - (hour1 * 60d + minutes1)) / 60;
+            int hour1, hour2, minutes1, minutes2;
+            if (buildingOperation.startTime == 0)
+            {
+                int[] time = Utility.hourToHHMM(buildingOperation.operatingHours);
+                hour1 = time[0]; minutes1 = time[1]; hour2 = time[2]; minutes2 = time[3];
 
+                buildingOperation.operatingHours = (hour2 * 60d + minutes2 - (hour1 * 60d + minutes1)) / 60;
+            }
+            else
+            {
+                hour1 = (int)Math.Truncate(buildingOperation.startTime);
+                hour2 = (int)Math.Truncate(buildingOperation.endTime);
+                minutes1 = (int)Math.Round(Math.Round((buildingOperation.startTime - hour1) * 6)) * 10;
+                minutes2 = (int)Math.Round(Math.Round((buildingOperation.endTime - hour2) * 6)) * 10;
+            }
+            if (buildingOperation.heatingSetPoints != null)
+            {
+                heatingSetPoints = buildingOperation.heatingSetPoints;
+                coolingSetPoints = buildingOperation.coolingSetPoints;
+            }
             double heatingSetpoint1 = heatingSetPoints[0];//16;
             double heatingSetpoint2 = heatingSetPoints[1];//20;
 
@@ -1294,8 +1310,8 @@ namespace IDFFile
         }
         public void GeneratePeopleLightingElectricEquipment()
         {
-            zones.ForEach(z => { 
-                z.people = new People(10);
+            zones.ForEach(z => {
+                if (buildingOperation.areaPerPeople == 0) { z.people = new People(10); } else { z.people = new People(buildingOperation.areaPerPeople); }
                 z.equipment = new ElectricEquipment(buildingOperation.equipmentHeatGain);
                 z.lights = new Light(buildingOperation.lightHeatGain);
             });
@@ -1305,6 +1321,10 @@ namespace IDFFile
             zones.ForEach(z => {
                 ZoneInfiltration i = new ZoneInfiltration(buildingConstruction.infiltration);
                 ZoneVentilation v = new ZoneVentilation();
+                if (buildingOperation.ventillation != 0)
+                {
+                    v = new ZoneVentilation(buildingOperation.ventillation);
+                }
                 z.infiltration = i; z.vent = v;
             });
         }
@@ -1524,6 +1544,29 @@ namespace IDFFile
         }
     }
     [Serializable]
+    public class ZoneInternalConditions
+    {
+        string Name { get; }
+        People People { get; }
+        ElectricEquipment Equipment { get; }
+        Light Light { get; }
+        ZoneVentilation Ventilation { get; }
+        List<ScheduleCompact> Schedules { get; }
+
+        Thermostat Thermostat { get; }
+
+        public ZoneInternalConditions(string Name, People people, ElectricEquipment equipment, Light light, ZoneVentilation ventilation, Thermostat thermostat, List<ScheduleCompact> schedules )
+        {
+            this.Name = Name;
+            People = people;
+            Equipment = equipment;
+            Light = light;
+            Ventilation = ventilation;
+            Schedules = schedules;
+            Thermostat = thermostat;
+        }
+    }
+    [Serializable]
     public class EmbeddedEnergyParameters
     {
         public double th_ExtWall, th_IntWall, th_GFloor, th_IFloor, th_Roof, Reinforcement;
@@ -1718,33 +1761,54 @@ namespace IDFFile
     [Serializable]
     public class ProbabilisticBuildingOperation
     {
-        public double[] operatingHours, lightHeatGain, equipmentHeatGain, boilerEfficiency, chillerCOP;
+        public double[] operatingHours, startTime, endTime, areaPerPeople, ventilation, lightHeatGain, equipmentHeatGain, boilerEfficiency, chillerCOP;
         public ProbabilisticBuildingOperation() { }
 
         public BuildingOperation GetAverage()
         {
-            return new BuildingOperation()
+            BuildingOperation boP = new BuildingOperation();
+            try
             {
-                operatingHours = operatingHours.Average(),
-                lightHeatGain = lightHeatGain.Average(),
-                equipmentHeatGain = equipmentHeatGain.Average(),
-                boilerEfficiency = boilerEfficiency.Average(),
-                chillerCOP = chillerCOP.Average()
-            };
+                boP.startTime = startTime.Average();
+                boP.endTime = endTime.Average();
+                boP.areaPerPeople = areaPerPeople.Average();
+                boP.ventillation = ventilation.Average();
+                boP.operatingHours = boP.endTime - boP.startTime;
+            }
+            catch { }
+
+            try { boP.operatingHours = operatingHours.Average(); } catch { }
+            boP.lightHeatGain = lightHeatGain.Average();
+            boP.equipmentHeatGain = equipmentHeatGain.Average();
+            boP.boilerEfficiency = boilerEfficiency.Average();
+            boP.chillerCOP = chillerCOP.Average();
+            return boP;
         }
         public List<string> ToCSVString()
         {
-            return new List<string>(){
+            try
+            {
+                return new List<string>(){
                 string.Join(",", operatingHours[0], lightHeatGain[0], equipmentHeatGain[0], boilerEfficiency[0], chillerCOP[0]),
-                string.Join(",", operatingHours[1], lightHeatGain[1], equipmentHeatGain[1], boilerEfficiency[1], chillerCOP[1])
-            };
+                string.Join(",", operatingHours[1], lightHeatGain[1], equipmentHeatGain[1], boilerEfficiency[1], chillerCOP[1]) };
+            }
+            
+            catch
+            {
+                return new List<string>(){
+                string.Join(",", startTime[0], endTime[0], lightHeatGain[0], equipmentHeatGain[0], boilerEfficiency[0], chillerCOP[0]),
+                string.Join(",", startTime[1], endTime[1], lightHeatGain[1], equipmentHeatGain[1], boilerEfficiency[1], chillerCOP[1]) };
+            }
         }
 
     }
     [Serializable]
     public class BuildingOperation
     {
-        public double operatingHours, lightHeatGain, equipmentHeatGain, boilerEfficiency, chillerCOP;
+        public double operatingHours = 0, lightHeatGain = 0 , equipmentHeatGain = 0, boilerEfficiency = 0, chillerCOP = 0;
+        public double areaPerPeople = 0, ventillation = 0;
+        public double startTime = 0 , endTime = 0;
+        public double[] heatingSetPoints, coolingSetPoints;
         public BuildingOperation() { }
         public string ToCSVString()
         {
@@ -2698,13 +2762,13 @@ namespace IDFFile
     [Serializable]
     public class People
     {
+        public string name;
         public People() { }
         public string scheduleName { get; set; }
         public string calculationMethod { get; set; }
         //public double numberOfPeople { get; set; }
         //public double peoplePerArea { get; set; }
         public double areaPerPerson { get; set; }
-
         public double fractionRadiant { get; set; }
         public double sensibleHeatFraction { get; set; }
         public string activityLvlSchedName { get; set; }
@@ -2713,11 +2777,9 @@ namespace IDFFile
         public string meanRadiantTempCalcType { get; set; }
         public string surfaceName { get; set; }
         public string workEffSchedule { get; set; }
-
         public string clothingInsulationCalcMeth { get; set; }
         public string clothingInsulationCalcMethSched { get; set; }
         public string clothingInsulationSchedName { get; set; }
-
         public string airVelSchedName { get; set; }
         public string thermalComfModel1t { get; set; }
 
@@ -2740,6 +2802,31 @@ namespace IDFFile
             clothingInsulationSchedName = "";
             airVelSchedName = "Air Velo Sch";
             thermalComfModel1t = "Fanger";
+        }
+        public List<string> WriteInfo()
+        {
+            return new List<string>() {
+            "People,",
+            Utility.IDFLineFormatter(name, "Name"),
+            info.Add("\t" + z.name + ",\t\t\t\t\t\t!- Zone or ZoneList Name");
+            info.Add("\t" + p.scheduleName + ",\t\t\t\t\t\t!- Number of People Schedule Name"); //sched
+            info.Add("\t" + p.calculationMethod + ",\t\t\t\t\t\t!- Number of People Calculation Method");
+            info.Add("\t" + ",\t\t\t\t\t\t!- Number of People");
+            info.Add("\t" + ",\t\t\t\t\t\t!- People per Zone Floor Area {person/m2}");
+            info.Add("\t" + p.areaPerPerson + ",\t\t\t\t\t\t!- Zone Floor Area per Person {m2/person}");
+            info.Add("\t" + p.fractionRadiant + ",\t\t\t\t\t\t!- Fraction Radiant");
+            info.Add("\t" + ",\t\t\t\t\t\t!- Sensible Heat Fraction ");
+            info.Add("\t" + "People Activity Schedule" + ",\t\t\t\t\t\t!- Activity Level Schedule Name"); //sched
+            info.Add("\t" + p.c02genRate + ",\t\t\t\t\t\t!- Carbon Dioxide Generation Rate {m3/s-W}");
+            info.Add("\t" + ",\t\t\t\t\t\t!- Enable ASHRAE 55 Comfort Warnings");
+            info.Add("\t" + p.meanRadiantTempCalcType + ",\t\t\t\t\t\t!- Mean Radiant Temperature Calculation Type");
+            info.Add("\t" + ",\t\t\t\t\t\t!- Surface Name/Angle Factor List Name");
+            info.Add("\t" + "Work Eff Sch" + ",\t\t\t\t\t\t!- Work Efficiency Schedule Name"); //sched
+            info.Add("\t" + p.clothingInsulationCalcMeth + ",\t\t\t\t\t\t!- Clothing Insulation Calculation Method");
+            info.Add("\t" + ",\t\t\t\t\t\t!- Clothing Insulation Calculation Method Schedule Name");
+            info.Add("\t" + ",\t\t\t\t\t\t!- Clothing Insulation Schedule Name");
+            info.Add("\t" + "Air Velo Sch" + ",\t\t\t\t\t\t!- Air Velocity Schedule Name"); //sched
+            info.Add("\t" + p.thermalComfModel1t + ";\t\t\t\t\t\t!- Thermal Comfort Model 1 Type"); 
         }
     }
     [Serializable]
@@ -3295,7 +3382,7 @@ namespace IDFFile
     public class ZoneVentilation
     {
         public string Name;
-        public Zone zone;
+        public string zoneName;
         public string scheduleName = "Ventilation Schedule";
         public string CalculationMethod = "AirChanges/Hour";
         public double DesignFlowRate = 0;
@@ -3318,7 +3405,6 @@ namespace IDFFile
         {
             scheduleName = "Ventilation Schedule";
             airChangesHour = acH;
-
         }
         public ZoneVentilation()
         {
@@ -3330,7 +3416,7 @@ namespace IDFFile
             if (natural)
             {
                 Name = zone.name + "-Natural Ventilation";
-                this.zone = zone;
+                zoneName = zone.name;
                 VentilationType = "Natural";
                 minIndoorTemp = 22;
                 maxIndoorTemp = 26;
@@ -3343,7 +3429,7 @@ namespace IDFFile
             {
                 "ZoneVentilation:DesignFlowRate,",
                 Utility.IDFLineFormatter(Name, "Name"),
-                Utility.IDFLineFormatter(zone.name, "Zone or ZoneList Name"),
+                Utility.IDFLineFormatter(zoneName, "Zone or ZoneList Name"),
                 Utility.IDFLineFormatter(scheduleName, "Schedule Name"),
                 Utility.IDFLineFormatter(CalculationMethod, "Design Flow Rate Calculation Method"),
                 Utility.IDFLineFormatter(DesignFlowRate, "Design Flow Rate {m3/s}"),
@@ -3689,14 +3775,33 @@ namespace IDFFile
         public double value { get; set; }
         public Dictionary<string, Dictionary<string, double>> daysTimeValue;
 
+        public ScheduleCompact(string name, List<string> fileData)
+        {
+            this.name = name;
+            List<string> days = fileData.Where(x => x.Contains("Day")).ToList();
+
+            for(int i = 0; i<days.Count; i++)
+            {
+                int start = fileData.IndexOf(days[i]) + 1;
+                int end = fileData.IndexOf(days[i+1]);
+                Dictionary<string, double> dayValues = new Dictionary<string, double>();
+                for (int x = start; x < end; x++)
+                {
+                    List<string> lineValue = fileData[x].Split(',').ToList();
+                    dayValues.Add(lineValue[0], double.Parse(lineValue[1]));
+                }
+                daysTimeValue.Add(days[i], dayValues);
+            }
+        }
         public List<string> WriteInfo()
         {
+            string sLimitName = scheduleLimits == null ? "" : scheduleLimits.name;
+
             List<string> info = new List<string>();
             info.Add("Schedule:compact,");
-            info.Add(name + ",\t\t\t\t!-Name");
-            if (scheduleLimits != null) { info.Add(scheduleLimits.name + ", \t\t\t\t!-Schedule Type Limits Name"); }
-            else { info.Add(", \t\t\t\t!-Schedule Type Limits Name"); }
-            info.Add("Through: 12/31,  \t\t\t\t!-Field1");
+            info.Add(Utility.IDFLineFormatter (name, "Name"));           
+            info.Add(Utility.IDFLineFormatter(sLimitName, "Schedule Type Limits Name"));
+            info.Add(Utility.IDFLineFormatter("Through: 12/31", "Field1"));
 
             foreach (KeyValuePair<string, Dictionary<string, double>> kV in daysTimeValue)
             {
@@ -3706,10 +3811,7 @@ namespace IDFFile
                     info.Add("Until: " + tValue.Key + "," + tValue.Value + ",");
                 }
             }
-            string lastRow = info.Last();
-            lastRow = lastRow.Remove(lastRow.Length - 1, 1) + ";";
-            info.RemoveAt(info.Count - 1);
-            info.Add(lastRow);
+            info[info.Count-1] = info.Last().Remove(info.Last().Count()-1) + ';';
             return info;
         }
     }
