@@ -9,6 +9,7 @@ namespace IDFFile
 
 {
     public enum SurfaceType { Floor, Ceiling, Wall, Roof };
+    public enum HVACSystem { FCU, BaseboardHeating, VAV, IdealLoad };
     public enum Direction { North, East, South, West };
     public static class Utility
     {
@@ -133,7 +134,22 @@ namespace IDFFile
 //                            bui.buildingConstruction.uWindow, bui.buildingOperation.chillerCOP, bui.buildingOperation.operatingHours, bui.buildingOperation.lightHeatGain, bui.buildingOperation.equipmentHeatGain, bui.buildingOperation.boilerEfficiency)); ;
 
         }
-
+        public static double FtToM(double value)
+        {
+            return (Math.Round(value * 0.3048, 4));
+        }
+        public static double MToFt(double value)
+        {
+            return (Math.Round(value * 3.2808399, 4));
+        }
+        public static double SqFtToSqM(double value)
+        {
+            return (Math.Round(value * 0.092903, 4));
+        }
+        public static double SqMToSqFt(double value)
+        {
+            return (Math.Round(value / 0.092903, 4));
+        }
         public static string GetHeaderFeattureEngineering(string component)
         {
             if (component == "Building")
@@ -630,30 +646,9 @@ namespace IDFFile
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: PEOPLE ===========\r\n");
-            foreach (Zone z in building.zones)
+            foreach (ZoneList zList in building.zoneLists)
             {
-                People p = z.people;
-                info.Add("People,");
-                info.Add("\tPeople " + z.name + ",\t\t\t\t\t\t!- Name");
-                info.Add("\t" + z.name + ",\t\t\t\t\t\t!- Zone or ZoneList Name");
-                info.Add("\t" + p.scheduleName + ",\t\t\t\t\t\t!- Number of People Schedule Name"); //sched
-                info.Add("\t" + p.calculationMethod + ",\t\t\t\t\t\t!- Number of People Calculation Method");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Number of People");
-                info.Add("\t" + ",\t\t\t\t\t\t!- People per Zone Floor Area {person/m2}");
-                info.Add("\t" + p.areaPerPerson + ",\t\t\t\t\t\t!- Zone Floor Area per Person {m2/person}");
-                info.Add("\t" + p.fractionRadiant + ",\t\t\t\t\t\t!- Fraction Radiant");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Sensible Heat Fraction ");
-                info.Add("\t" + "People Activity Schedule" + ",\t\t\t\t\t\t!- Activity Level Schedule Name"); //sched
-                info.Add("\t" + p.c02genRate + ",\t\t\t\t\t\t!- Carbon Dioxide Generation Rate {m3/s-W}");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Enable ASHRAE 55 Comfort Warnings");
-                info.Add("\t" + p.meanRadiantTempCalcType + ",\t\t\t\t\t\t!- Mean Radiant Temperature Calculation Type");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Surface Name/Angle Factor List Name");
-                info.Add("\t" + "Work Eff Sch" + ",\t\t\t\t\t\t!- Work Efficiency Schedule Name"); //sched
-                info.Add("\t" + p.clothingInsulationCalcMeth + ",\t\t\t\t\t\t!- Clothing Insulation Calculation Method");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Clothing Insulation Calculation Method Schedule Name");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Clothing Insulation Schedule Name");
-                info.Add("\t" + "Air Velo Sch" + ",\t\t\t\t\t\t!- Air Velocity Schedule Name"); //sched
-                info.Add("\t" + p.thermalComfModel1t + ";\t\t\t\t\t\t!- Thermal Comfort Model 1 Type");
+                info.AddRange(zList.People.WriteInfo());
             }
             return info;
         }
@@ -661,30 +656,9 @@ namespace IDFFile
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ZONEVENTILATION:DESIGNFLOWRATE ===========\r\n");
-            foreach (Zone z in building.zones)
+            foreach (ZoneList zList in building.zoneLists)
             {
-                ZoneVentilation v = z.vent;
-                info.Add("ZoneVentilation:DesignFlowRate,");
-                info.Add("\tZoneVentilation-aim0014 " + z.name + ",\t\t\t\t\t\t!- Name");
-                info.Add("\t" + z.name + ",\t\t\t\t\t\t!- Zone or ZoneList Name");
-                info.Add("\t" + v.scheduleName + ",\t\t\t\t\t\t!- Schedule Name");
-                info.Add("\tFlow/Person" + ",\t\t\t\t\t\t!- Design Flow Rate Calculation Method");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Design Flow Rate {m3/s}");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Flow Rate per Zone Floor Area {m3/s-m2}");
-                info.Add("\t" + "0.00944,\t\t\t\t\t\t!- Flow Rate per Person {m3/s-person}");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Air Changes per Hour {1/hr}");
-                info.Add("\tBalanced" + ",\t\t\t\t\t\t!- Ventilation Type");
-                info.Add("\t0.0" + ",\t\t\t\t\t\t!- Fan Pressure Rise {Pa}");
-                info.Add("\t1.0" + ",\t\t\t\t\t\t!- Fan Total Efficiency");
-                info.Add("\t1" + ",\t\t\t\t\t\t!- Constant Term Coefficient");
-                info.Add("\t0" + ",\t\t\t\t\t\t!- Temperature Term Coefficient");
-                info.Add("\t0" + ",\t\t\t\t\t\t!- Velocity Term Coefficient");
-                info.Add("\t0" + ",\t\t\t\t\t\t!- Velocity Squared Term Coefficient");
-                info.Add("\t18.0" + ",\t\t\t\t\t\t!- Minimum Indoor Temperature {C}");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Minimum Indoor Temperature Schedule Name");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Maximum Indoor Temperature {C}");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Maximum Indoor Temperature Schedule Name");
-                info.Add("\t1.0" + ";\t\t\t\t\t\t!- Delta Temperature {deltaC}");
+                info.AddRange(zList.ZoneVentilation.WriteInfo());
             }
             return info;
         }
@@ -692,21 +666,9 @@ namespace IDFFile
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: LIGHTS ===========\r\n");
-            foreach (Zone z in building.zones)
+            foreach (ZoneList zList in building.zoneLists)
             {
-                Light l = z.lights;
-                info.Add("Lights,");
-                info.Add("\tLights " + z.name + ",\t\t\t\t\t\t!- Name");
-                info.Add("\t" + z.name + ",\t\t\t\t\t\t!- Zone or ZoneList Name");
-                info.Add("\t" + l.scheduleName + ",\t\t\t\t\t\t!- Schedule Name");
-                info.Add("\t" + l.designLevelCalcMeth + ",\t\t\t\t\t\t!- Design Level Calculation Method");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Lighting Level {W}");
-                info.Add("\t" + l.wattsPerArea + "" + ",\t\t\t\t\t\t!- Watts per Zone Floor Area {W/m2}");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Watts per Person {W/person}");
-                info.Add("\t" + l.returnAirFraction + ",\t\t\t\t\t\t!- Return Air Fraction");
-                info.Add("\t" + l.fractionRadiant + ",\t\t\t\t\t\t!- Fraction Radiant");
-                info.Add("\t" + l.fractionVisible + ",\t\t\t\t\t\t!- Fraction Visible");
-                info.Add("\t" + ";\t\t\t\t\t\t!- Fraction Replaceable");
+                info.AddRange(zList.Light.WriteInfo());
             }
             return info;
         }
@@ -714,20 +676,9 @@ namespace IDFFile
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ELECTRICEQUIPMENT ===========\r\n");
-            foreach (Zone z in building.zones)
+            foreach (ZoneList zList in building.zoneLists)
             {
-                ElectricEquipment e = z.equipment;
-                info.Add("ElectricEquipment,");
-                info.Add("\tElectric Equipment " + z.name + ",\t\t\t\t\t\t!- Name");
-                info.Add("\t" + z.name + ",\t\t\t\t\t\t!- Zone or ZoneList Name");
-                info.Add("\t" + e.scheduleName + ",\t\t\t\t\t\t!- Schedule Name");
-                info.Add("\t" + e.designLevelCalcMeth + ",\t\t\t\t\t\t!- Design Level Calculation Method");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Design Level {W}");
-                info.Add("\t" + e.wattsPerArea + "" + ",\t\t\t\t\t\t!- Watts per Zone Floor Area {W/m2}");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Watts per Person {W/person}");
-                info.Add("\t" + ",\t\t\t\t\t\t!- Fraction Latent");
-                info.Add("\t" + e.fractionRadiant + ",\t\t\t\t\t\t!- Fraction Radiant");
-                info.Add("\t" + ";\t\t\t\t\t\t!- Fraction Lost");
+                info.AddRange(zList.ElectricEquipment.WriteInfo());
             }
             return info;
         }
@@ -751,11 +702,12 @@ namespace IDFFile
         public List<String> writeHVACTemplate()
         {
             List<string> info = writeHVACThermostat();
-
             try
             {
-                try { building.zones.ForEach(z =>
-                 { ZoneFanCoilUnit zFCU = z.hvac as ZoneFanCoilUnit; info.AddRange(zFCU.writeInfo()); }); }
+                try
+                {
+                    building.zones.ForEach(z => info.AddRange((z.hvac as ZoneFanCoilUnit).writeInfo()));
+                }
                 catch { building.zones.ForEach(z => info.AddRange((z.hvac as ZoneVAV).writeInfo())); info.AddRange(building.vav.writeInfo()); }
                 info.AddRange(building.cWaterLoop.writeInfo());
                 info.AddRange(building.chiller.writeInfo());
@@ -763,10 +715,19 @@ namespace IDFFile
                 info.AddRange(building.hWaterLoop.writeInfo());
                 info.AddRange(building.boiler.writeInfo());
             }
-            catch
+            catch { }
+            try
             {
                 building.zones.ForEach(z => info.AddRange((z.hvac as ZoneIdealLoad).writeInfo()));
             }
+            catch { }
+            try 
+            { 
+                building.zones.ForEach(z => info.AddRange((z.hvac as ZoneBaseBoardHeat).writeInfo())); 
+                info.AddRange(building.hWaterLoop.writeInfo());
+                info.AddRange(building.boiler.writeInfo());
+            } catch { }
+
             return info;
         }
         public List<String> writeZoneInfiltration()
@@ -774,22 +735,9 @@ namespace IDFFile
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ZONEINFILTRATION:DESIGNFLOWRATE ===========\r\n");
 
-            foreach (Zone z in building.zones)
+            foreach (ZoneList z in building.zoneLists)
             {
-                ZoneInfiltration i = z.infiltration;
-                info.Add("ZoneInfiltration:DesignFlowRate,");
-                info.Add("\tSpace Infiltration Design Flow Rate " + z.name + ",\t\t\t\t\t\t!- Name");
-                info.Add("\t" + z.name + ",\t\t\t\t\t\t!- Zone or ZoneList Name");
-                info.Add("\tSpace Infiltration Schedule, \t\t\t\t!- Schedule Name");
-                info.Add("\tAirChanges/Hour,\t\t\t\t!-Design Flow Rate Calculation Method");
-                info.Add("\t,\t\t\t\t!-Design Flow Rate { m3 / s}");
-                info.Add("\t,\t\t\t\t!-Flow per Zone Floor Area { m3 / s - m2}");
-                info.Add("\t,\t\t\t\t!-Flow per Exterior Surface Area { m3 / s - m2}");
-                info.Add("\t" + i.airChangesHour + ",\t\t\t\t!-Air Changes per Hour { 1 / hr}");
-                info.Add("\t" + i.constantTermCoeff + ",\t\t\t\t!-Constant Term Coefficient");
-                info.Add("\t" + i.temperatureTermCoef + ",\t\t\t\t!-Temperature Term Coefficient");
-                info.Add("\t" + i.velocityTermCoef + ",\t\t\t\t!-Velocity Term Coefficient");
-                info.Add("\t" + i.velocitySquaredTermCoef + "; \t\t\t\t!-Velocity Squared Term Coefficient");
+                info.AddRange(z.ZoneInfiltration.WriteInfo());
             }
             return info;
         }
@@ -950,24 +898,25 @@ namespace IDFFile
 
         //PV Panel on Roof
         public ElectricLoadCenterDistribution electricLoadCenterDistribution;
+
+        //HVAC System
+        public HVACSystem HVACSystem;
         public void UpdateBuildingConstructionWWROperations(BuildingConstruction construction, WWR wWR, BuildingOperation bOperation)
         {
             buildingConstruction = Utility.DeepClone(construction);
             WWR = Utility.DeepClone(wWR);
             buildingOperation = Utility.DeepClone(bOperation);
 
-            GenerateConstructionWithIComponentsU();
-            GenerateInfiltraitionAndVentillation();            
+            GenerateConstructionWithIComponentsU();            
             UpdateFenestrations();        
             UpdateBuildingOperations();
-            GenerateInfiltraitionAndVentillation();
             UpdateZoneInfo();
         }
         void UpdateBuildingOperations()
         {
             CreateSchedules();
-            GeneratePeopleLightingElectricEquipment();          
-            GenerateHVAC(true, false, false);
+            GeneratePeopleLightEquipmentInfiltrationVentilation();          
+            GenerateHVAC();
         }
         void UpdateFenestrations()
         {
@@ -1060,7 +1009,7 @@ namespace IDFFile
             int minutes1b = minutes1;
 
             schedulelimits = new List<ScheduleLimits>();
-            schedulescomp = new List<ScheduleCompact>();
+            //schedulescomp = new List<ScheduleCompact>();
 
             ScheduleLimits activityLevel = new ScheduleLimits();
             activityLevel.name = "activityLevel";
@@ -1308,53 +1257,66 @@ namespace IDFFile
             //window shades
             windowMaterialShades = new List<WindowMaterialShade>() { (new WindowMaterialShade()) };          
         }
-        public void GeneratePeopleLightingElectricEquipment()
+        public void GeneratePeopleLightEquipmentInfiltrationVentilation()
         {
-            zones.ForEach(z => {
-                if (buildingOperation.areaPerPeople == 0) { z.people = new People(10); } else { z.people = new People(buildingOperation.areaPerPeople); }
-                z.equipment = new ElectricEquipment(buildingOperation.equipmentHeatGain);
-                z.lights = new Light(buildingOperation.lightHeatGain);
-            });
-        }
-        public void GenerateInfiltraitionAndVentillation()
-        {
-            zones.ForEach(z => {
-                ZoneInfiltration i = new ZoneInfiltration(buildingConstruction.infiltration);
-                ZoneVentilation v = new ZoneVentilation();
-                if (buildingOperation.ventillation != 0)
+            foreach (ZoneList z in zoneLists)
+            {
+                if (z.ZoneInternalConditions == null) 
                 {
-                    v = new ZoneVentilation(buildingOperation.ventillation);
+                    if (buildingOperation.areaPerPeople == 0) { z.People = new People(10) { Name = "People " + z.name, ZoneName = z.name }; }
+                    else { z.People = new People(buildingOperation.areaPerPeople) { Name = "People " + z.name, ZoneName = z.name }; }
+
+                    z.ElectricEquipment = new ElectricEquipment(buildingOperation.equipmentHeatGain) { Name = "Equipment " + z.name, ZoneName = z.name };
+                    z.Light = new Light(buildingOperation.lightHeatGain) { Name = "Light " + z.name, ZoneName = z.name };
+
+                    ZoneInfiltration i = new ZoneInfiltration(buildingConstruction.infiltration)
+                    {
+                        Name = "Infiltration " + z.name,
+                        ZoneName = z.name
+                    };
+                    ZoneVentilation v = new ZoneVentilation();
+                    if (buildingOperation.ventillation != 0)
+                    {
+                        v = new ZoneVentilation(buildingOperation.ventillation);
+                    }
+                    v.Name = "Ventilation " + z.name; v.ZoneName = z.name;
+                    z.ZoneInfiltration = i; z.ZoneVentilation = v;
                 }
-                z.infiltration = i; z.vent = v;
-            });
+                else
+                {
+                    z.People = z.ZoneInternalConditions.People;
+                    z.Light = z.ZoneInternalConditions.Light;
+                    z.ElectricEquipment = z.ZoneInternalConditions.Equipment;
+                    z.ZoneVentilation = z.ZoneInternalConditions.Ventilation;
+                    z.ZoneInfiltration = z.ZoneInternalConditions.Infiltration;
+                }
+            }
         }
-        public void GenerateHVAC(bool IsFCU, bool IsVAV, bool IsIdeal)
+        public void GenerateHVAC()
         {
-            tStats = new List<Thermostat>();
-            Thermostat officeT = new Thermostat("Office Thermostat", 20, 25, schedulescomp.First(s => s.name.Contains("Heating Set Point Schedule")),
-                schedulescomp.First(s => s.name.Contains("Cooling Set Point Schedule")));
-            tStats.Add(officeT);
+            zoneLists.ForEach(zl => zl.listZones.ForEach(z => z.thermostat = zl.ZoneInternalConditions.Thermostat));
+            switch (HVACSystem)
+            {
+                case HVACSystem.FCU:
+                    zones.ForEach(z => { ZoneFanCoilUnit zFCU = new ZoneFanCoilUnit(z, z.thermostat); HVACS.Add(zFCU); z.hvac = zFCU; });
+                    GenerateWaterLoopsAndSystem();
+                    break;
 
-            Thermostat otherAreasT = new Thermostat("Other Areas Thermostat", 18, 30, schedulescomp.First(s => s.name.Contains("Heating Set Point Schedule 18")),
-                schedulescomp.First(s => s.name.Contains("No Cooling")));
-            tStats.Add(otherAreasT);
+                case HVACSystem.BaseboardHeating:
+                    zones.ForEach(z => { ZoneBaseBoardHeat zBBH = new ZoneBaseBoardHeat(z, z.thermostat); HVACS.Add(zBBH); z.hvac = zBBH; });
+                    GenerateWaterLoopsAndSystem();
+                    break;
 
-            zoneLists.FirstOrDefault(zl => zl.name.Contains("Office")).listZones.ForEach(z => z.thermostat = officeT);
-            zoneLists.Where(zl => !zl.name.Contains("Office")).ToList().ForEach(zl => zl.listZones.ForEach(z => z.thermostat = otherAreasT));
-            if (IsFCU)
-            {
-                zones.ForEach(z => { ZoneFanCoilUnit zFCU = new ZoneFanCoilUnit(z, z.thermostat); HVACS.Add(zFCU); z.hvac = zFCU; });
-                GenerateWaterLoopsAndSystem();
-            }
-            if (IsVAV)
-            {
-                VAV vav = new VAV();
-                zones.ForEach(z => { ZoneVAV zVAV = new ZoneVAV(vav, z, z.thermostat); HVACS.Add(zVAV); z.hvac = zVAV; });
-                GenerateWaterLoopsAndSystem();
-            }
-            if (IsIdeal)
-            {
-                zones.ForEach(z => { ZoneIdealLoad zIdeal = new ZoneIdealLoad(z, z.thermostat); HVACS.Add(zIdeal); z.hvac = zIdeal; });
+                case HVACSystem.VAV:
+                    vav = new VAV();
+                    zones.ForEach(z => { ZoneVAV zVAV = new ZoneVAV(vav, z, z.thermostat); HVACS.Add(zVAV); z.hvac = zVAV; });                 
+                    GenerateWaterLoopsAndSystem();
+                    break;
+
+                case HVACSystem.IdealLoad:
+                default:
+                    zones.ForEach(z => { ZoneIdealLoad zIdeal = new ZoneIdealLoad(z, z.thermostat); HVACS.Add(zIdeal); z.hvac = zIdeal; });
+                    break;
             }
         }
         private void GenerateWaterLoopsAndSystem()
@@ -1516,7 +1478,12 @@ namespace IDFFile
             return this;
         }
         public Building AddZone(List<Zone> zones) { zones.ForEach(z => AddZone(z)); return this; }
-        public Building AddZoneList(ZoneList zoneList) { zoneLists.Add(zoneList); return this; }
+        public Building AddZoneList(ZoneList zoneList) 
+        { 
+            zoneLists.Add(zoneList);
+            try { schedulescomp.AddRange(zoneList.ZoneInternalConditions.Schedules); tStats.Add(zoneList.ZoneInternalConditions.Thermostat); } catch{ }
+            return this; 
+        }
         public Building Transform(double angle)
         {
             zones.ForEach(z => z.surfaces.ForEach(bSurf => {
@@ -1547,21 +1514,22 @@ namespace IDFFile
     public class ZoneInternalConditions
     {
         string Name { get; }
-        People People { get; }
-        ElectricEquipment Equipment { get; }
-        Light Light { get; }
-        ZoneVentilation Ventilation { get; }
-        List<ScheduleCompact> Schedules { get; }
-
-        Thermostat Thermostat { get; }
-
-        public ZoneInternalConditions(string Name, People people, ElectricEquipment equipment, Light light, ZoneVentilation ventilation, Thermostat thermostat, List<ScheduleCompact> schedules )
+        public People People { get; }
+        public ElectricEquipment Equipment { get; }
+        public Light Light { get; }
+        public ZoneVentilation Ventilation { get; }
+        public ZoneInfiltration Infiltration { get; }
+        public Thermostat Thermostat { get; }
+        public List<ScheduleCompact> Schedules { get; }
+        public ZoneInternalConditions(string Name, People people, ElectricEquipment equipment, Light light, ZoneVentilation ventilation,
+            ZoneInfiltration infiltration, Thermostat thermostat, List<ScheduleCompact> schedules )
         {
             this.Name = Name;
             People = people;
             Equipment = equipment;
             Light = light;
             Ventilation = ventilation;
+            Infiltration = infiltration;
             Schedules = schedules;
             Thermostat = thermostat;
         }
@@ -1916,7 +1884,7 @@ namespace IDFFile
                 Utility.IDFLineFormatter(angleControl, "Type of Slat Angle Control for Blinds"),
                 Utility.IDFLineFormatter(slatSchedule, "Slat Angle Schedule Name"),
                 Utility.IDFLineFormatter(setPoint2, "Setpoint 2"),
-                Utility.IDFLineFormatter(daylightcontrolobjectname.Name, "Daylight Control Object Name"),
+                Utility.IDFLineFormatter(daylightcontrolobjectname==null? "": daylightcontrolobjectname.Name , "Daylight Control Object Name"),
                 Utility.IDFLineFormatter(multipleSurfaceControlType, "Multiple Control Type"),
                 Utility.IDFLastLineFormatter(fenestration.name, "Fenestration")
                 
@@ -2750,7 +2718,13 @@ namespace IDFFile
     [Serializable]
     public class ZoneList
     {
+        public ZoneInternalConditions ZoneInternalConditions;
         public List<Zone> listZones;
+        public People People;
+        public ZoneVentilation ZoneVentilation;
+        public ZoneInfiltration ZoneInfiltration;
+        public Light Light;
+        public ElectricEquipment ElectricEquipment;
         public string name { get; set; }
         public ZoneList() { }
         public ZoneList(string n)
@@ -2762,10 +2736,9 @@ namespace IDFFile
     [Serializable]
     public class People
     {
-        public string name;
         public People() { }
         
-        string Name, ZoneName;
+        public string Name, ZoneName;
         public string scheduleName { get; set; }
         public string calculationMethod { get; set; }
         //public double numberOfPeople { get; set; }
@@ -2833,13 +2806,12 @@ namespace IDFFile
     [Serializable]
     public class Light
     {
+        public string Name, ZoneName;
         public string scheduleName { get; set; }
         public Light() { }
-
         public string designLevelCalcMeth { get; set; }
         //public double lightingLevel { get; set; }
         public double wattsPerArea { get; set; }
-
         public double returnAirFraction { get; set; }
         public double fractionRadiant { get; set; }
         public double fractionVisible { get; set; }
@@ -2847,26 +2819,37 @@ namespace IDFFile
 
         public Light(double wPA)
         {
-            //zone = z;
             wattsPerArea = wPA;
             designLevelCalcMeth = "Watts/area";
             scheduleName = "Electric Equipment and Lighting Schedule";
-
-            //name = "Lights " + zone.name;
-
-
             returnAirFraction = 0;
             fractionRadiant = 0.1;
             fractionVisible = 0.18;
-
-            //zone.lights = this;
+        }
+        public List<string> WriteInfo()
+        {
+            return new List<string>()
+            {
+                "Lights,",
+                Utility.IDFLineFormatter(Name, "Name"),
+                Utility.IDFLineFormatter(ZoneName , "Zone or ZoneList Name"),
+                Utility.IDFLineFormatter(scheduleName , "Schedule Name"),
+                Utility.IDFLineFormatter(designLevelCalcMeth , "Design Level Calculation Method"),
+                Utility.IDFLineFormatter("", "Lighting Level {W}"),
+                Utility.IDFLineFormatter(wattsPerArea, "Watts per Zone Floor Area {W/m2}"),
+                Utility.IDFLineFormatter("","Watts per Person {W/person}"),
+                Utility.IDFLineFormatter(returnAirFraction , "Return Air Fraction"),
+                Utility.IDFLineFormatter(fractionRadiant , "Fraction Radiant"),
+                Utility.IDFLineFormatter(fractionVisible , "Fraction Visible"),
+                Utility.IDFLastLineFormatter("", "Fraction Replaceable")
+            };
         }
     }
     [Serializable]
     public class ElectricEquipment
     {
         public ElectricEquipment() { }
-        public string scheduleName { get; set; }
+        public string Name, ZoneName, scheduleName;
 
         public string designLevelCalcMeth { get; set; }
         //public double lightingLevel { get; set; }
@@ -2882,6 +2865,23 @@ namespace IDFFile
             designLevelCalcMeth = "Watts/area";
             scheduleName = "Electric Equipment and Lighting Schedule";
             fractionRadiant = 0.1;
+        }
+        public List<string> WriteInfo()
+        {
+            return new List<string>()
+            {
+                "ElectricEquipment,",
+                Utility.IDFLineFormatter(Name, "Name"),
+                Utility.IDFLineFormatter(ZoneName, "Zone or ZoneList Name"),
+                Utility.IDFLineFormatter(scheduleName, "Schedule Name"),
+                Utility.IDFLineFormatter(designLevelCalcMeth, "Design Level Calculation Method"),
+                Utility.IDFLineFormatter("", "Design Level {W}"),
+                Utility.IDFLineFormatter(wattsPerArea + "", "Watts per Zone Floor Area {W/m2}"),
+                Utility.IDFLineFormatter("", "Watts per Person {W/person}"),
+                Utility.IDFLineFormatter("", "Fraction Latent"),
+                Utility.IDFLineFormatter(fractionRadiant, "Fraction Radiant"),
+                Utility.IDFLastLineFormatter("", "Fraction Lost")
+            };
         }
 
     }
@@ -3007,11 +3007,10 @@ namespace IDFFile
         }
     }
     [Serializable]
-    public class ZoneBaseBoardHeat
+    public class ZoneBaseBoardHeat:ZoneHVAC 
     {
         public ZoneBaseBoardHeat() { }
         Zone zone;
-        Thermostat thermostat;
 
         public ZoneBaseBoardHeat(Zone z, Thermostat t)
         {
@@ -3383,7 +3382,7 @@ namespace IDFFile
     public class ZoneVentilation
     {
         public string Name;
-        public string zoneName;
+        public string ZoneName;
         public string scheduleName = "Ventilation Schedule";
         public string CalculationMethod = "AirChanges/Hour";
         public double DesignFlowRate = 0;
@@ -3417,7 +3416,7 @@ namespace IDFFile
             if (natural)
             {
                 Name = zone.name + "-Natural Ventilation";
-                zoneName = zone.name;
+                ZoneName = zone.name;
                 VentilationType = "Natural";
                 minIndoorTemp = 22;
                 maxIndoorTemp = 26;
@@ -3430,7 +3429,7 @@ namespace IDFFile
             {
                 "ZoneVentilation:DesignFlowRate,",
                 Utility.IDFLineFormatter(Name, "Name"),
-                Utility.IDFLineFormatter(zoneName, "Zone or ZoneList Name"),
+                Utility.IDFLineFormatter(ZoneName, "Zone or ZoneList Name"),
                 Utility.IDFLineFormatter(scheduleName, "Schedule Name"),
                 Utility.IDFLineFormatter(CalculationMethod, "Design Flow Rate Calculation Method"),
                 Utility.IDFLineFormatter(DesignFlowRate, "Design Flow Rate {m3/s}"),
@@ -3455,6 +3454,7 @@ namespace IDFFile
     [Serializable]
     public class ZoneInfiltration
     {
+        public string Name, ZoneName;
         public double airChangesHour { get; set; }
         public double constantTermCoeff { get; set; }
         public double temperatureTermCoef { get; set; }
@@ -3464,12 +3464,29 @@ namespace IDFFile
         public ZoneInfiltration(double acH)
         {
             airChangesHour = acH;
-
             constantTermCoeff = 0.606;
             temperatureTermCoef = 0.036359996;
             velocityTermCoef = 0.1177165;
             velocitySquaredTermCoef = 0;
-
+        }
+        public List<string> WriteInfo()
+        {
+            return new List<string>()
+            {
+                "ZoneInfiltration:DesignFlowRate,",
+                Utility.IDFLineFormatter(Name, "Name"),
+                Utility.IDFLineFormatter(ZoneName, "Zone or ZoneList Name"),
+                Utility.IDFLineFormatter("Space Infiltration Schedule", "Schedule Name"),
+                Utility.IDFLineFormatter("AirChanges/Hour", "Design Flow Rate Calculation Method"),
+                Utility.IDFLineFormatter("", "Design Flow Rate { m3 / s}"),
+                Utility.IDFLineFormatter("", "Flow per Zone Floor Area { m3 / s - m2}"),
+                Utility.IDFLineFormatter("", "Flow per Exterior Surface Area { m3 / s - m2}"),
+                Utility.IDFLineFormatter(airChangesHour, "Air Changes per Hour { 1 / hr}"),
+                Utility.IDFLineFormatter(constantTermCoeff, "Constant Term Coefficient"),
+                Utility.IDFLineFormatter(temperatureTermCoef, "Temperature Term Coefficient"),
+                Utility.IDFLineFormatter(velocityTermCoef, "!-Velocity Term Coefficient"),
+                Utility.IDFLastLineFormatter(velocitySquaredTermCoef, "Velocity Squared Term Coefficient")
+            };
         }
     }
     [Serializable]
@@ -3779,12 +3796,20 @@ namespace IDFFile
         public ScheduleCompact(string name, List<string> fileData)
         {
             this.name = name;
-            List<string> days = fileData.Where(x => x.Contains("Day")).ToList();
-
-            for(int i = 0; i<days.Count; i++)
+            List<string> days = fileData.Where(x => x.ToLower().Contains("day") || x.ToLower().Contains("weekends")).ToList();
+            daysTimeValue = new Dictionary<string, Dictionary<string, double>>();
+            for (int i = 0; i<days.Count; i++)
             {
                 int start = fileData.IndexOf(days[i]) + 1;
-                int end = fileData.IndexOf(days[i+1]);
+                int end = 0;
+                if (i < days.Count - 1)
+                {
+                    end = fileData.IndexOf(days[i + 1]);
+                }
+                else
+                {
+                    end = fileData.Count;
+                }
                 Dictionary<string, double> dayValues = new Dictionary<string, double>();
                 for (int x = start; x < end; x++)
                 {
