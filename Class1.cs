@@ -18,7 +18,7 @@ namespace IDFFile
             string info = "";
             string[] spaceChar = new string[] { "Zone Area", "Zone Height", "Zone Volume",
                 "Light Heat Gain", "Equipment Heat Gain", "Infiltration",
-                "Total Internal Heat Gain", "Total Infiltration", "Operating Hours", "Heat Capacity", "Solar Radiation",
+                "Total Internal Heat Gain", "Total Infiltration", "Operating Hours", "Total Heat Capacity", "Solar Radiation",
                 "Surface Area U", "Ex-Surface Area U", "G-Surface Area U", "I-Surface Area U",
                 "Wall Area X U", "GFloor Area X U", "Roof Area X U", "Window Area X U", "IFloor Area X U", "IWall Area X U", "Window Area X g"};
             string[] adSpaceChar = spaceChar.Select(p => "Adjacent_" + p).ToArray();
@@ -26,28 +26,28 @@ namespace IDFFile
             switch (comp)
             {
                 case "Wall":
-                    info = string.Join(",", "File", "Name", "Area", "Orientation", "WWR", "U Value", "Radiation",
+                    info = string.Join(",", "File", "Zone Name", "Name", "Area", "Orientation", "WWR", "U Value", "Heat Capacity", "Radiation",
                                     string.Join(",", spaceChar), string.Join(",", heatFlow));
                     break;
                 case "Window":
-                    info = string.Join(",", "File", "Name", "Area", "Orientation", "U Value", "g Value", "Radiation",
+                    info = string.Join(",", "File", "Zone Name", "Name", "Area", "Orientation", "U Value", "g Value", "Radiation",
                                         string.Join(",", spaceChar), string.Join(",", heatFlow));
                     break;
                 case "GFloor":
-                    info = string.Join(",", "File", "Name", "Area", "U Value",
+                    info = string.Join(",", "File", "Zone Name", "Name", "Area", "U Value", "Heat Capacity",
                         string.Join(",", spaceChar), string.Join(",", heatFlow));
                     break;
                 case "Roof":
-                    info = string.Join(",", "File", "Name", "Area", "U Value", "Radiation",
+                    info = string.Join(",", "File", "Zone Name", "Name", "Area", "U Value", "Heat Capacity", "Radiation",
                         string.Join(",", spaceChar), string.Join(",", heatFlow));
                     break;
                 case "IFloor":
                 case "IWall":
-                    info = string.Join(",", "File", "Name", "Adjacent Zone", "Area", "U Value",
+                    info = string.Join(",", "File", "Zone Name", "Name", "Adjacent Zone", "Area", "U Value",
                         string.Join(",", spaceChar), string.Join(",", adSpaceChar), string.Join(",", heatFlow));
                     break;
                 case "Infiltration":
-                    info = string.Join(",", "File", "Name", string.Join(",", spaceChar), string.Join(",", heatFlow));
+                    info = string.Join(",", "File", "Zone Name", "Name", string.Join(",", spaceChar), string.Join(",", heatFlow));
                     break;
                 case "Zone":
                     info = string.Join(",", "File", "Name", string.Join(",", spaceChar),
@@ -56,45 +56,65 @@ namespace IDFFile
                         "Heating Energy", "Cooling Energy", "Lighting Energy");
                     break;
                 case "Building":
-                    info = string.Join(",", "File", "Total Floor Area", "Floor Height", "Total Volume", "Boiler Efficiecny", "ChillerCOP",
-                                            "Lighting Energy", "Heating Energy", "Cooling Energy",
-                                            "Bolier Electric Energy", "Chiller Electric Energy", "Thermal energy", "Operational Energy");
-                   
+                    info = string.Join(",", "File", "Total Floor Area", "Floor Height", "Total Volume", 
+                        "Boiler Efficiecny", "ChillerCOP", "Lighting Energy", "Heating Energy", "Cooling Energy",
+                        "Bolier Electric Energy", "Chiller Electric Energy", "Heating & Cooling Energy", "Operational Energy");                
                     break;
             }
             return info;
         }
         public static double[] GetSpaceChr(Zone z)
         {
+            double light = 0, equipment = 0, infiltration = 0;
             //"Zone Area", "Zone Height", "Zone Volume",
             //    "Light & Equipment Heat Gain", "Infiltration", "Operating Hours", "Heat Capacity", "Solar Radiation",
             //    "Surface Area U", "Ex-Surface Area U", "G-Surface Area U", "I-Surface Area U",
             //    "Wall Area X U", "GFloor Area X U", "Roof Area X U", "Window Area X U", "IFloor Area X U", "IWall Area X U", "Window Area X g"
+
+            
+            try
+            {
+                ZoneList zList = z.building.zoneLists.First(
+                zL => zL.listZones.Select(zone=>zone.name).Contains(z.name));               
+                light = zList.Light.wattsPerArea; equipment = zList.ElectricEquipment.wattsPerArea;
+                infiltration = zList.ZoneInfiltration.airChangesHour;
+            }
+            catch
+            {
+                light = z.lights.wattsPerArea; equipment = z.equipment.wattsPerArea;
+                infiltration = z.infiltration.airChangesHour;
+            }
+
             return new double[] {
-                z.area, z.height, z.volume, z.lights.wattsPerArea, z.equipment.wattsPerArea, z.infiltration.airChangesHour,
-                z.area*z.lights.wattsPerArea + z.area*z.equipment.wattsPerArea, z.volume*z.infiltration.airChangesHour, z.building.buildingOperation.operatingHours, z.heatCapacity, z.SolarRadiation,
+                z.area, z.height, z.volume, light, equipment, infiltration,
+                z.area*light + z.area*equipment, z.volume*infiltration, 
+                z.building.buildingOperation.operatingHours, z.TotalHeatCapacity, z.SolarRadiation,
                 z.SurfAreaU, z.ExSurfAreaU, z.GSurfAreaU, z.ISurfAreaU,
                 z.wallAreaU, z.gFloorAreaU, z.roofAreaU, z.windowAreaU, z.iFloorAreaU, z.iWallAreaU, z.windowAreaG};
         }
-        public static void GetMLCSVLines(Building bui, IList<string> wallString, IList<string> windowString, IList<string> gFloorString, IList<string> roofString, IList<string> infiltrationString, 
+        public static void GetMLCSVLines(Building bui, IList<string> wallString, IList<string> windowString, 
+            IList<string> gFloorString, IList<string> roofString, IList<string> infiltrationString, 
             IList<string> zoneString, IList<string> buildingString)
         {
+            BuildingConstruction cons = bui.buildingConstruction;
             string idfFile = bui.name;
             foreach (Zone z in bui.zones)
             {
-                //"Zone Area", "Zone Height", "Zone Volume",
-                //"Light Heat Gains", "Equipment Heat Gain", "Infiltration", "Operating Hours", "Heat Capacity", "Solar Radiation"
                 double[] spaChr = GetSpaceChr(z);
 
-                z.surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").ToList().ForEach(s => wallString.Add(string.Join(",", idfFile, s.name, s.area, s.orientation, s.wWR, bui.buildingConstruction.uWall, s.SolarRadiation,
+                z.surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").ToList().ForEach(
+                    s => wallString.Add(string.Join(",", idfFile, z.name, s.name, s.area, s.orientation, s.wWR, cons.uWall, cons.hcWall, s.SolarRadiation,
                     string.Join(",", spaChr), s.HeatFlow)));
                 z.surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
                     .Where(w => w.fenestrations.Count != 0).SelectMany(w => w.fenestrations).ToList().
-                    ForEach(s => windowString.Add(string.Join(",", idfFile, s.name, s.area, s.face.orientation, bui.buildingConstruction.uWindow, bui.buildingConstruction.gWindow, s.SolarRadiation,
+                    ForEach(s => windowString.Add(string.Join(",", idfFile, z.name, s.name, s.area, s.face.orientation, 
+                    cons.uWindow, cons.gWindow, s.SolarRadiation,
                     string.Join(",", spaChr), s.HeatFlow)));
-                z.surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList().ForEach(s => gFloorString.Add(string.Join(",", idfFile, s.name, s.area, bui.buildingConstruction.uGFloor,
+                z.surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList().ForEach(
+                    s => gFloorString.Add(string.Join(",", idfFile, z.name, s.name, s.area, cons.uGFloor, cons.hcGFloor,
                     string.Join(",", spaChr), s.HeatFlow)));
-                z.surfaces.Where(w => w.surfaceType == SurfaceType.Roof).ToList().ForEach(s => roofString.Add(string.Join(",", idfFile, s.name, s.area, bui.buildingConstruction.uRoof, s.SolarRadiation,
+                z.surfaces.Where(w => w.surfaceType == SurfaceType.Roof).ToList().ForEach(
+                    s => roofString.Add(string.Join(",", idfFile, z.name, s.name, s.area, cons.uRoof, cons.hcRoof, s.SolarRadiation,
                     string.Join(",", spaChr), s.HeatFlow)));
 
                 //z.iWalls.ForEach(s => iWallString.Add(string.Join(",", idfFile, s.name, s.area, sample.construction.uIWall,
@@ -106,7 +126,7 @@ namespace IDFFile
                 //z.izFloors.ForEach(s => iFloorString.Add(string.Join(",", idfFile, z.name, s.area, uIWall,
                 //    string.Join(",", spaChr), -s.HeatFlow)));
                 //"File", "Name", string.Join(",", spaceChar), string.Join(",", heatFlow)
-                infiltrationString.Add(string.Join(",", idfFile, z.name, string.Join(",", spaChr), z.infiltrationFlow));
+                infiltrationString.Add(string.Join(",", idfFile, z.name, z.name, string.Join(",", spaChr), z.infiltrationFlow));
                 //"File", "Name", string.Join(",", spaceChar),
                 //"Wall Heat Flow", "Window Heat Flow", "GFloor Heat Flow", "Roof Heat Flow", "IFloor Heat Flow", "IWall Heat Flow", 
                 //    "Heating Energy", "Cooling Energy", "Lighting Energy", "Electric Equipment Energy");
@@ -166,8 +186,6 @@ namespace IDFFile
         public static void GetMLCSVLinesFeatureEngineering(Building bui, IList<string> buildingString)
         {
             string idfFile = bui.name;
-
-
             buildingString.Add(string.Join(",", idfFile, bui.TotalArea, bui.TotalVolume,
                             bui.zones.Select(z => z.totalWallArea).Sum(),
                             bui.zones.Select(z => z.totalWindowArea).Sum(),
@@ -176,7 +194,7 @@ namespace IDFFile
                             bui.zones.Select(z => z.totalIFloorArea).Sum(),
                             bui.buildingConstruction.uWall, bui.buildingConstruction.uWindow, bui.buildingConstruction.gWindow, bui.buildingConstruction.uRoof, bui.buildingConstruction.uGFloor,
                             bui.buildingConstruction.uIFloor, bui.buildingConstruction.infiltration, 
-                            bui.zones.Select(z=>z.heatCapacity).Sum(),bui.buildingOperation.operatingHours,bui.buildingOperation.lightHeatGain, bui.buildingOperation.equipmentHeatGain, 
+                            bui.zones.Select(z=>z.TotalHeatCapacity).Sum(),bui.buildingOperation.operatingHours,bui.buildingOperation.lightHeatGain, bui.buildingOperation.equipmentHeatGain, 
                        
                             bui.buildingOperation.boilerEfficiency, bui.buildingOperation.chillerCOP, bui.ThermalEnergy, bui.OperationalEnergy)); ;
 
@@ -202,8 +220,7 @@ namespace IDFFile
                 r++;
             }
             return data;
-        }
-        
+        }       
         public static List<List<double>> ReadSampleFile(string parFile, out List<string> header)
         {
             List<string> rawFile = File.ReadAllLines(parFile).ToList();
@@ -223,11 +240,16 @@ namespace IDFFile
             List<string> parameters = new List<string>();
             List<List<double>> samples = ReadSampleFile(dataFile, out parameters);
 
-            int iLen = -1, iWid = -1, iArea = -1;
+            int iLen = -1, iWid = -1, iArea = -1, iNFloors = -1;
             try
             {
                 iLen = parameters.FindIndex(s => s.Contains("Length"));
                 iWid = parameters.FindIndex(s => s.Contains("Width"));
+            }
+            catch { }
+            try
+            {
+                iNFloors = parameters.FindIndex(s => s.Contains("Floors"));
             }
             catch { }
             try
@@ -282,7 +304,7 @@ namespace IDFFile
                 if (iLHG != -1) { lhg = sample[iLHG]; ehg = sample[iEHG]; } else { lhg = sample[iLEHG] * 0.5; ehg = sample[iLEHG] * 0.5; }
                 if (iUIWall != -1) { uIWall = sample[iUIWall]; uIFloor = sample[iUIFloor]; } else { uIWall = 0.25; uIFloor = 0.25; }
 
-
+                if (iNFloors != -1) { value.NFloors = (int) sample[iNFloors]; }
                 if (iLen != -1) { value.Length = sample[iLen]; value.Width = sample[iWid]; }
                 else { value.FloorArea = sample[iArea]; }
                 
@@ -408,8 +430,6 @@ namespace IDFFile
             double y1 = xyz.X * Math.Sin(angle) + xyz.Y * Math.Cos(angle);
             return new XYZ(x1, y1, xyz.Z);
         }
-
-
         public static XYZ Copy(this XYZ xyz)
         {
             return new XYZ(xyz.X, xyz.Y, xyz.Z);
@@ -642,7 +662,7 @@ namespace IDFFile
             }
             return info;
         }
-        private List<String> writePeople()
+        private List<string> writePeople()
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: PEOPLE ===========\r\n");
@@ -819,6 +839,8 @@ namespace IDFFile
         public BuildingConstruction construction;
         public BuildingOperation operation;
         public BuildingDesignParameters() { }
+
+        public int NFloors;
     }
     [Serializable]
     public class Building
@@ -1171,19 +1193,19 @@ namespace IDFFile
                     { "AllDays", new Dictionary<string, double>() {{"24:00", 1} } } }
             };
             schedulescomp.Add(alwaysOn);
-            schedulescomp.Add(heatingSP);
-            schedulescomp.Add(coolingSP);
-            schedulescomp.Add(heatingSP18);
-            schedulescomp.Add(nocooling);
+            //schedulescomp.Add(heatingSP);
+            //schedulescomp.Add(coolingSP);
+            //schedulescomp.Add(heatingSP18);
+            //schedulescomp.Add(nocooling);
             schedulescomp.Add(occupSchedule);
-            schedulescomp.Add(ventilSchedule);
-            schedulescomp.Add(lehgSchedule);
-            schedulescomp.Add(activity);
+            //schedulescomp.Add(ventilSchedule);
+            //schedulescomp.Add(lehgSchedule);
+            //schedulescomp.Add(activity);
             schedulescomp.Add(workEff);
             schedulescomp.Add(airVelo);
             schedulescomp.Add(infiltration);
         }
-        public void GenerateConstructionWithIComponentsU()
+        void GenerateConstructionWithIComponentsU()
         {
             double uWall = buildingConstruction.uWall, uGFloor = buildingConstruction.uGFloor, uIFloor = buildingConstruction.uIFloor,
                 uRoof = buildingConstruction.uRoof, uIWall = buildingConstruction.uIWall, uWindow = buildingConstruction.uWindow,
@@ -1257,44 +1279,21 @@ namespace IDFFile
             //window shades
             windowMaterialShades = new List<WindowMaterialShade>() { (new WindowMaterialShade()) };          
         }
-        public void GeneratePeopleLightEquipmentInfiltrationVentilation()
+        void GeneratePeopleLightEquipmentInfiltrationVentilation()
         {
-            foreach (ZoneList z in zoneLists)
+            double startTime = 13 - .5 * buildingOperation.operatingHours;
+            double endTime = 13 + .5 * buildingOperation.operatingHours;
+            foreach (ZoneList zList in zoneLists)
             {
-                if (z.ZoneInternalConditions == null) 
-                {
-                    if (buildingOperation.areaPerPeople == 0) { z.People = new People(10) { Name = "People " + z.name, ZoneName = z.name }; }
-                    else { z.People = new People(buildingOperation.areaPerPeople) { Name = "People " + z.name, ZoneName = z.name }; }
-
-                    z.ElectricEquipment = new ElectricEquipment(buildingOperation.equipmentHeatGain) { Name = "Equipment " + z.name, ZoneName = z.name };
-                    z.Light = new Light(buildingOperation.lightHeatGain) { Name = "Light " + z.name, ZoneName = z.name };
-
-                    ZoneInfiltration i = new ZoneInfiltration(buildingConstruction.infiltration)
-                    {
-                        Name = "Infiltration " + z.name,
-                        ZoneName = z.name
-                    };
-                    ZoneVentilation v = new ZoneVentilation();
-                    if (buildingOperation.ventillation != 0)
-                    {
-                        v = new ZoneVentilation(buildingOperation.ventillation);
-                    }
-                    v.Name = "Ventilation " + z.name; v.ZoneName = z.name;
-                    z.ZoneInfiltration = i; z.ZoneVentilation = v;
-                }
-                else
-                {
-                    z.People = z.ZoneInternalConditions.People;
-                    z.Light = z.ZoneInternalConditions.Light;
-                    z.ElectricEquipment = z.ZoneInternalConditions.Equipment;
-                    z.ZoneVentilation = z.ZoneInternalConditions.Ventilation;
-                    z.ZoneInfiltration = z.ZoneInternalConditions.Infiltration;
-                }
+                zList.GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(startTime, endTime, buildingOperation.areaPerPeople,
+                    buildingOperation.lightHeatGain, buildingOperation.equipmentHeatGain, buildingConstruction.infiltration);
+                schedulescomp.AddRange(zList.Schedules.Values);
+                tStats.Add(zList.Thermostat);
             }
         }
         public void GenerateHVAC()
         {
-            zoneLists.ForEach(zl => zl.listZones.ForEach(z => z.thermostat = zl.ZoneInternalConditions.Thermostat));
+            zoneLists.ForEach(zl => zl.listZones.ForEach(z => z.thermostat = zl.Thermostat));
             switch (HVACSystem)
             {
                 case HVACSystem.FCU:
@@ -1481,7 +1480,6 @@ namespace IDFFile
         public Building AddZoneList(ZoneList zoneList) 
         { 
             zoneLists.Add(zoneList);
-            try { schedulescomp.AddRange(zoneList.ZoneInternalConditions.Schedules); tStats.Add(zoneList.ZoneInternalConditions.Thermostat); } catch{ }
             return this; 
         }
         public Building Transform(double angle)
@@ -1491,7 +1489,6 @@ namespace IDFFile
                 bSurf.fenestrations.ForEach(fen => fen.verticesList.Transform(angle));
                 bSurf.shading.ForEach(shading => shading.listVertice.Transform(angle));
             }));
-
             return this;
         }
         public List<string> WriteInfo()
@@ -1508,30 +1505,6 @@ namespace IDFFile
                 Utility.IDFLineFormatter(maxNWarmUpDays, "Maximum Number of Warmup Days"),
                 Utility.IDFLastLineFormatter(minNWarmUpDays, "Minimum Number of Warmup Days")
             };
-        }
-    }
-    [Serializable]
-    public class ZoneInternalConditions
-    {
-        string Name { get; }
-        public People People { get; }
-        public ElectricEquipment Equipment { get; }
-        public Light Light { get; }
-        public ZoneVentilation Ventilation { get; }
-        public ZoneInfiltration Infiltration { get; }
-        public Thermostat Thermostat { get; }
-        public List<ScheduleCompact> Schedules { get; }
-        public ZoneInternalConditions(string Name, People people, ElectricEquipment equipment, Light light, ZoneVentilation ventilation,
-            ZoneInfiltration infiltration, Thermostat thermostat, List<ScheduleCompact> schedules )
-        {
-            this.Name = Name;
-            People = people;
-            Equipment = equipment;
-            Light = light;
-            Ventilation = ventilation;
-            Infiltration = infiltration;
-            Schedules = schedules;
-            Thermostat = thermostat;
         }
     }
     [Serializable]
@@ -1774,7 +1747,7 @@ namespace IDFFile
     public class BuildingOperation
     {
         public double operatingHours = 0, lightHeatGain = 0 , equipmentHeatGain = 0, boilerEfficiency = 0, chillerCOP = 0;
-        public double areaPerPeople = 0, ventillation = 0;
+        public double areaPerPeople = 10, ventillation = 0;
         public double startTime = 0 , endTime = 0;
         public double[] heatingSetPoints, coolingSetPoints;
         public BuildingOperation() { }
@@ -1959,7 +1932,7 @@ namespace IDFFile
         public Building building;
 
         public double totalWallArea, totalWindowArea, totalGFloorArea, totalIFloorArea, totalIWallArea, totalRoofArea,
-            heatCapacity, SurfAreaU, SolarRadiation, TotalHeatFlows, ExSurfAreaU, GSurfAreaU, ISurfAreaU,
+            TotalHeatCapacity, SurfAreaU, SolarRadiation, TotalHeatFlows, ExSurfAreaU, GSurfAreaU, ISurfAreaU,
             wallAreaU, windowAreaU, gFloorAreaU, roofAreaU, iFloorAreaU, iWallAreaU,
             wallHeatFlow, windowHeatFlow, gFloorHeatFlow, iFloorHeatFlow, iWallHeatFlow, roofHeatFlow, infiltrationFlow, windowAreaG;
 
@@ -1988,7 +1961,7 @@ namespace IDFFile
             totalWindowArea = surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
                 .Where(w => w.fenestrations.Count != 0).SelectMany(w => w.fenestrations).Select(wi => wi.area).Sum();
 
-            heatCapacity = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor + 
+            TotalHeatCapacity = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor + 
                 totalIFloorArea * building.buildingConstruction.hcIFloor +
                 totalIWallArea * building.buildingConstruction.hcIWall + totalRoofArea * building.buildingConstruction.hcRoof +
                 iMasses.Select(m=>m.area* building.buildingConstruction.hcIWall).Sum();
@@ -2322,7 +2295,7 @@ namespace IDFFile
         }
         public List<BuildingSurface> createWalls(Zone z, double height, double basementDepth)
         {
-            List<BuildingSurface> walls = new List<BuildingSurface>();
+            List<BuildingSurface> walls = new List<BuildingSurface>(); 
             foreach (XYZ v1 in xyzs)
             {
                 XYZ v2 = new XYZ(0, 0, 0);
@@ -2441,7 +2414,6 @@ namespace IDFFile
     public class Fenestration
     {
         public Fenestration() { }
-        public double[] annualHeatGain, annualHeatLoss;
         public double area;
         public double SolarRadiation;
         public double HeatFlow;
@@ -2718,19 +2690,182 @@ namespace IDFFile
     [Serializable]
     public class ZoneList
     {
-        public ZoneInternalConditions ZoneInternalConditions;
         public List<Zone> listZones;
         public People People;
         public ZoneVentilation ZoneVentilation;
         public ZoneInfiltration ZoneInfiltration;
         public Light Light;
         public ElectricEquipment ElectricEquipment;
+        public Thermostat Thermostat;
+        public Dictionary<string, ScheduleCompact> Schedules = new Dictionary<string, ScheduleCompact>();
         public string name { get; set; }
         public ZoneList() { }
         public ZoneList(string n)
         {
             name = n;
             listZones = new List<Zone>();
+        }
+        public void CreateSchedules(double startTime, double endTime)
+        {
+            Schedules = new Dictionary<string, ScheduleCompact>();
+            int hour1, hour2, minutes1, minutes2;
+            hour1 = (int)Math.Truncate(startTime);
+            hour2 = (int)Math.Truncate(endTime);
+            minutes1 = (int)Math.Round(Math.Round((startTime - hour1) * 6)) * 10;
+            minutes2 = (int)Math.Round(Math.Round((endTime - hour2) * 6)) * 10;
+
+
+            double[] heatingSetPoints = new double[] { 10, 20 };
+            double[] coolingSetPoints = new double[] { 28, 24 };
+
+            double heatingSetpoint1 = heatingSetPoints[0];//16;
+            double heatingSetpoint2 = heatingSetPoints[1];//20;
+
+            double coolingSetpoint1 = coolingSetPoints[0];//28;
+            double coolingSetpoint2 = coolingSetPoints[1];//25;
+
+            //60 minutes earlier
+            int hour1b = hour1 - 1;
+            int minutes1b = minutes1;
+
+            Dictionary<string, Dictionary<string, double>> heatSP = new Dictionary<string, Dictionary<string, double>>(),
+                coolSP = new Dictionary<string, Dictionary<string, double>>(),
+                heatSP18 = new Dictionary<string, Dictionary<string, double>>(),
+                occupancyS = new Dictionary<string, Dictionary<string, double>>(),
+                ventilS = new Dictionary<string, Dictionary<string, double>>(),
+                leHeatGain = new Dictionary<string, Dictionary<string, double>>();
+
+            string days1 = "WeekDays SummerDesignDay WinterDesignDay CustomDay1 CustomDay2";
+            string days2 = "Weekends Holiday";
+
+            Dictionary<string, double> heatSPV1 = new Dictionary<string, double>(), heatSPV2 = new Dictionary<string, double>();
+            heatSPV1.Add(hour1b + ":" + minutes1b, heatingSetpoint1);
+            heatSPV1.Add(hour2 + ":" + minutes2, heatingSetpoint2);
+            heatSPV1.Add("24:00", heatingSetpoint1);
+            heatSP.Add(days1, heatSPV1);
+            heatSPV2.Add("24:00", heatingSetpoint1);
+            heatSP.Add(days2, heatSPV2);
+            ScheduleCompact heatingSP = new ScheduleCompact()
+            {
+                name = name + "_Heating Set Point Schedule",
+                daysTimeValue = heatSP
+            };
+            Schedules.Add("HeatingSP", heatingSP);
+
+            Dictionary<string, double> coolSPV1 = new Dictionary<string, double>(), coolSPV2 = new Dictionary<string, double>();
+            coolSPV1.Add(hour1b + ":" + minutes1b, coolingSetpoint1);
+            coolSPV1.Add(hour2 + ":" + minutes2, coolingSetpoint2);
+            coolSPV1.Add("24:00", coolingSetpoint1);
+            coolSP.Add(days1, coolSPV1);
+            coolSPV2.Add("24:00", coolingSetpoint1);
+            coolSP.Add(days2, coolSPV2);
+            ScheduleCompact coolingSP = new ScheduleCompact()
+            {
+                name = name + "_Cooling Set Point Schedule",
+                daysTimeValue = coolSP
+            };
+            Schedules.Add("CoolingSP", coolingSP);
+
+            Dictionary<string, double> occupV1 = new Dictionary<string, double>(), occupV2 = new Dictionary<string, double>();
+            occupV1.Add(hour1 + ":" + minutes1, 0);
+            occupV1.Add(hour2 + ":" + minutes2, 1);
+            occupV1.Add("24:00", 0);
+            occupancyS.Add(days1, occupV1);
+            occupV2.Add("24:00", 0);
+            occupancyS.Add(days2, occupV2);
+            ScheduleCompact occupSchedule = new ScheduleCompact()
+            {
+                name = name + "_Occupancy Schedule",
+                daysTimeValue = occupancyS
+            };
+            Schedules.Add("Occupancy", occupSchedule);
+
+            Dictionary<string, double> ventilV1 = new Dictionary<string, double>(), ventilV2 = new Dictionary<string, double>();
+            ventilV1.Add(hour1 + ":" + minutes1, 0);
+            ventilV1.Add(hour2 + ":" + minutes2, 1);
+            ventilV1.Add("24:00", 0);
+            ventilS.Add(days1, ventilV1);
+            ventilV2.Add("24:00", 0);
+            ventilS.Add(days2, ventilV2);
+            ScheduleCompact ventilSchedule = new ScheduleCompact()
+            {
+                name = name + "_Ventilation Schedule",
+                daysTimeValue = ventilS
+            };
+            Schedules.Add("Ventilation", ventilSchedule);
+
+            double equipOffsetFraction = .1;
+            Dictionary<string, double> lehgV1 = new Dictionary<string, double>(), lehgV2 = new Dictionary<string, double>();
+            lehgV1.Add(hour1 + ":" + minutes1, equipOffsetFraction);
+            lehgV1.Add(hour2 + ":" + minutes2, 1);
+            lehgV1.Add("24:00", equipOffsetFraction);
+            leHeatGain.Add(days1, lehgV1);
+            lehgV2.Add("24:00", equipOffsetFraction);
+            leHeatGain.Add(days2, lehgV2);
+            ScheduleCompact lSchedule = new ScheduleCompact()
+            {
+                name = name + "_Lighting Schedule",
+                daysTimeValue = leHeatGain
+            };
+            Schedules.Add("Light", lSchedule);
+
+            ScheduleCompact eSchedule = new ScheduleCompact()
+            {
+                name = name + "_Electric Equipment Schedule",
+                daysTimeValue = leHeatGain
+            };
+            Schedules.Add("Equipment", eSchedule);
+
+            ScheduleCompact activity = new ScheduleCompact()
+            {
+                name = name + "_People Activity Schedule",
+                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
+                    { "AllDays", new Dictionary<string, double>() {{"24:00", 125} } } }
+            };
+            Schedules.Add("Activity", activity);
+        }
+        public void GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(double startTime, double endTime, double areaPerPerson, double lHG, double eHG, double infil)
+        {
+            CreateSchedules(startTime, endTime);
+            listZones.ForEach(z => z.DayLightControl.AvailabilitySchedule = Schedules["Occupancy"].name);
+            People = new People(areaPerPerson)
+            {
+                Name = "People_" + name,
+                ZoneName = name,
+                scheduleName = Schedules["Occupancy"].name,
+                activityLvlSchedName = Schedules["Activity"].name
+            };
+            ZoneVentilation = new ZoneVentilation()
+            {
+                Name = "Ventilation_" + name,
+                ZoneName = name,
+                scheduleName = Schedules["Ventilation"].name,
+                CalculationMethod = "Flow/Person"
+            };
+            
+            Light = new Light(lHG)
+            {
+                Name = "Light_" + name,
+                ZoneName = name,
+                scheduleName = Schedules["Light"].name
+            };
+            ElectricEquipment = new ElectricEquipment(eHG)
+            {
+                Name = "Equipment_" + name,
+                ZoneName = name,
+                scheduleName = Schedules["Equipment"].name
+            };
+            Thermostat = new Thermostat()
+            {
+                name = name + "_Thermostat",
+                ScheduleHeating = Schedules["HeatingSP"],
+                ScheduleCooling = Schedules["CoolingSP"]
+            };
+            ZoneInfiltration = new ZoneInfiltration(infil)
+            {
+                Name = "Infiltration_" + name,
+                ZoneName = name
+            };
         }
     }
     [Serializable]
@@ -2789,7 +2924,7 @@ namespace IDFFile
                 Utility.IDFLineFormatter(areaPerPerson, "Zone Floor Area per Person {m2/person}"),
                 Utility.IDFLineFormatter(fractionRadiant, "Fraction Radiant"),
                 Utility.IDFLineFormatter("", "Sensible Heat Fraction"),
-                Utility.IDFLineFormatter("People Activity Schedule", "Activity Level Schedule Name"),
+                Utility.IDFLineFormatter(activityLvlSchedName, "Activity Level Schedule Name"),
                 Utility.IDFLineFormatter(c02genRate, "Carbon Dioxide Generation Rate {m3/s-W}"),
                 Utility.IDFLineFormatter("", "Enable ASHRAE 55 Comfort Warnings"),
                 Utility.IDFLineFormatter(meanRadiantTempCalcType, "Mean Radiant Temperature Calculation Type"),
