@@ -31,3 +31,4 @@ C:\Users\abaku\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.pdb
 C:\Users\abaku\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyReference.cache
 C:\Users\abaku\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.dll
 C:\Users\abaku\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.pdb
+C:\Users\manav\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csproj.CoreCompileInputs.cache
