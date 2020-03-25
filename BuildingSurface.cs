@@ -135,7 +135,8 @@ namespace IDFObjects
         internal void CreateFenestration(int count)
         {
             List<Fenestration> fenestrationList = new List<Fenestration>();
-            if (WWR > 0)
+            double fenArea = GrossArea * WWR / count;
+            if (fenArea > 0.5)
             {                
                 for (int i = 0; i < count; i++)
                 {
@@ -151,10 +152,14 @@ namespace IDFObjects
                     fen.VerticesList = new XYZList(VerticesList.xyzs.Select(v => new XYZ(pMid.X + (v.X - pMid.X) * openingFactor,
                                                                 pMid.Y + (v.Y - pMid.Y) * openingFactor,
                                                                 pMid.Z + (v.Z - pMid.Z) * openingFactor)).ToList());
-                    fen.Area = GrossArea * WWR / count;
+                    fen.Area = fenArea;
                     fenestrationList.Add(fen);
                 }
             }
+            else
+            {
+                WWR = 0;
+            }           
             Fenestrations = fenestrationList;
             Area = GrossArea * (1 - WWR);
         }

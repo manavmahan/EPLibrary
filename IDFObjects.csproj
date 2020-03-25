@@ -48,6 +48,10 @@
     <Compile Include="BuildingSurface.cs" />
     <Compile Include="ChilledWaterLoop.cs" />
     <Compile Include="Chiller.cs" />
+    <Compile Include="ElectricLoadCenterDistribution.cs" />
+    <Compile Include="ElectricLoadCenterGenerators.cs" />
+    <Compile Include="GeneratorPhotovoltaic.cs" />
+    <Compile Include="GridPoint.cs" />
     <Compile Include="OutputDiagnostics.cs" />
     <Compile Include="OutputPreProcessorMessage.cs" />
     <Compile Include="OutputVariable.cs" />

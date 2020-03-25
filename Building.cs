@@ -92,77 +92,6 @@ namespace IDFObjects
 
         //HVAC System
         public HVACSystem HVACSystem;
-
-        Dictionary<string, IList<string>> CSVData = new Dictionary<string, IList<string>>();
-        public void GetMLCSVLines()
-        {
-            string idfFile = name;
-            CSVData.Add("Wall", new List<string>());
-            CSVData.Add("Window", new List<string>());
-            CSVData.Add("GFloor", new List<string>());
-            CSVData.Add("Roof", new List<string>());
-            CSVData.Add("Infiltration", new List<string>());
-            CSVData.Add("Zone", new List<string>());
-            CSVData.Add("Building", new List<string>());
-
-             foreach (Zone z in zones)
-            {
-                double[] spaChr = Utility.GetSpaceChr(z);
-                z.Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").ToList().ForEach(
-                    s => CSVData["Wall"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.Orientation, s.WWR, buildingConstruction.uWall, buildingConstruction.hcWall, s.SolarRadiation,
-                    string.Join(",", spaChr), s.HeatFlow)));
-                z.Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
-                    .Where(w => w.Fenestrations.Count != 0).SelectMany(w => w.Fenestrations).ToList().
-                    ForEach(s => CSVData["Window"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.Face.Orientation,
-                    buildingConstruction.uWindow, buildingConstruction.gWindow, s.SolarRadiation,
-                    string.Join(",", spaChr), s.HeatFlow)));
-                z.Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList().ForEach(
-                    s => CSVData["GFloor"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.uGFloor, buildingConstruction.hcGFloor,
-                    string.Join(",", spaChr), s.HeatFlow)));
-                z.Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).ToList().ForEach(
-                    s => CSVData["Roof"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.uRoof, buildingConstruction.hcRoof, s.SolarRadiation,
-                    string.Join(",", spaChr), s.HeatFlow)));
-                CSVData["Infiltration"].Add(string.Join(",", idfFile, z.Name, z.Name, string.Join(",", spaChr), z.infiltrationFlow));
-                CSVData["Zone"].Add(string.Join(",", idfFile, z.Name, string.Join(",", spaChr),
-                    z.wallHeatFlow, z.windowHeatFlow, z.gFloorHeatFlow, z.roofHeatFlow, z.iFloorHeatFlow, z.iWallHeatFlow, z.infiltrationFlow,
-                    z.TotalHeatFlows - z.infiltrationFlow, z.TotalHeatFlows,
-                    z.HeatingEnergy, z.CoolingEnergy, z.LightingEnergy));
-            }
-
-            CSVData["Building"].Add(string.Join(",", idfFile,
-                            zones.Select(z => z.Area).Sum(),
-                            FloorHeight,
-                            zones.Select(z => z.Volume).Sum(),
-                            zones.Select(z => z.totalWallArea).Sum(),
-                            zones.Select(z => z.totalWindowArea).Sum(),
-                            zones.Select(z => z.totalRoofArea).Sum(),
-                            zones.Select(z => z.totalGFloorArea).Sum(),
-                            zones.Select(z => z.totalIFloorArea).Sum(),
-                            zones.Select(z => z.totalIWallArea).Sum(),
-                            buildingConstruction.uWall,
-                            buildingConstruction.uWindow,
-                            buildingConstruction.gWindow,
-                            buildingConstruction.uRoof,
-                            buildingConstruction.uGFloor,
-                            buildingConstruction.uIFloor,
-                            buildingConstruction.uIWall,
-                            buildingConstruction.infiltration,
-                            zones.Select(z => z.TotalHeatCapacityExInternalSurfaces).Sum(),
-                            buildingOperation.operatingHours,
-                            buildingOperation.lightHeatGain,
-                            buildingOperation.equipmentHeatGain,
-                            buildingOperation.lightHeatGain + buildingOperation.equipmentHeatGain,
-                            buildingOperation.boilerEfficiency,
-                            buildingOperation.chillerCOP,
-                            LightingEnergy,
-                            ZoneHeatingEnergy,
-                            ZoneCoolingEnergy,
-                            BoilerEnergy,
-                            ChillerEnergy,
-                            ThermalEnergy,
-                            OperationalEnergy));
-        }
-
         public void UpdateBuildingConstructionWWROperations(BuildingConstruction construction, WWR wWR, BuildingOperation bOperation)
             {
                 buildingConstruction = Utility.DeepClone(construction);
@@ -735,7 +664,5 @@ namespace IDFObjects
                     Utility.IDFLastLineFormatter(minNWarmUpDays, "Minimum Number of Warmup Days")
                 };
             }
-        }
-
-    
+        }    
 }

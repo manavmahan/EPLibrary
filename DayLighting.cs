@@ -16,7 +16,7 @@ namespace IDFObjects
 
         public ControlType CType = ControlType.Continuous;
         public double GlareCalcAngle = 180;
-        public double DiscomGlare = 20;
+        public double DiscomGlare = 22;
         public double MinPower = 0.3;
         public double MinLight = 0.3;
         public int NStep = 3;
@@ -29,14 +29,14 @@ namespace IDFObjects
         {
             List<DayLightReferencePoint> dlRefPoints = new List<DayLightReferencePoint>();
             double totalPoints = points.Count();
-            double pControlled = Math.Round(.99 / totalPoints, 5);
+            double pControlled = Math.Floor(1000 / totalPoints) / 1000;
             points.ForEach(p => dlRefPoints.Add(new DayLightReferencePoint()
             {
                 Zone = zone,
                 Point = p,
                 Name = "Day Light Reference Point " + (points.IndexOf(p) + 1) + " for " + zone.Name,
                 Illuminance = illuminance,
-                PartControlled = pControlled
+                PartControlled = p != points.Last() ? pControlled:1-(points.Count-1)*pControlled
             }));
             return dlRefPoints;
         }
@@ -69,7 +69,7 @@ namespace IDFObjects
                 Utility.IDFLineFormatter(MinLight, "Minimum light output fraction for continuous dimming control"),
                 Utility.IDFLineFormatter(NStep, "Number of steps, excluding off, for stepped control"),
                 Utility.IDFLineFormatter(ProbabilityManual, "Probability electric lighting will be reset when needed"),
-                Utility.IDFLineFormatter(null, "Glare Calculation Reference Point Name"),
+                Utility.IDFLineFormatter(ReferencePoints.Last().Name, "Glare Calculation Reference Point Name"),
                 Utility.IDFLineFormatter(GlareCalcAngle, "Azimuth angle of view direction for glare calculation {deg}"),
                 Utility.IDFLineFormatter(DiscomGlare, "Maximum discomfort glare index for window shade control"),
                 Utility.IDFLineFormatter(DELightGridResolution, "DE Light Gridding Resolution")

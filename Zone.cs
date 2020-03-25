@@ -28,7 +28,7 @@ namespace IDFObjects
         public Building building;
 
         public double totalWallArea, totalWindowArea, totalGFloorArea, totalIFloorArea, totalIWallArea, totalIFloorAreaExOther, totalIWallAreaExOther, totalRoofArea,
-            TotalHeatCapacity, TotalHeatCapacityExInternalSurfaces, SurfAreaU, SolarRadiation, TotalHeatFlows, ExSurfAreaU, GSurfAreaU, ISurfAreaU,
+            TotalHeatCapacity, TotalHeatCapacityDeDuplicatingIntSurfaces, SurfAreaU, SolarRadiation, TotalHeatFlows, ExSurfAreaU, GSurfAreaU, ISurfAreaU,
             wallAreaU, windowAreaU, gFloorAreaU, roofAreaU, iFloorAreaU, iWallAreaU,
             wallHeatFlow, windowHeatFlow, gFloorHeatFlow, iFloorHeatFlow, iWallHeatFlow, roofHeatFlow, infiltrationFlow, windowAreaG;
 
@@ -65,7 +65,7 @@ namespace IDFObjects
                 totalIWallArea * building.buildingConstruction.hcIWall + totalRoofArea * building.buildingConstruction.hcRoof +
                 iMasses.Select(m => m.area * building.buildingConstruction.hcIWall).Sum();
 
-            TotalHeatCapacityExInternalSurfaces = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor +
+            TotalHeatCapacityDeDuplicatingIntSurfaces = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor +
                 totalIFloorAreaExOther * building.buildingConstruction.hcIFloor +
                 totalIWallAreaExOther * building.buildingConstruction.hcIWall + totalRoofArea * building.buildingConstruction.hcRoof +
                 iMasses.Select(m => m.area * building.buildingConstruction.hcIWall).Sum();

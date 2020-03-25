@@ -118,9 +118,9 @@ namespace IDFObjects
             string info = "";
             string[] spaceChar = new string[] { "Zone Area", "Zone Height", "Zone Volume",
                 "Light Heat Gain", "Equipment Heat Gain", "Internal Heat Gain", "Infiltration",
-                "Total Internal Heat Gain", "Total Infiltration", "Operating Hours", "Total Heat Capacity", "Solar Radiation",
-                "Surface Area U", "Ex-Surface Area U", "G-Surface Area U", "I-Surface Area U",
-                "Wall Area X U", "GFloor Area X U", "Roof Area X U", "Window Area X U", "IFloor Area X U", "IWall Area X U", "Window Area X g"};
+                "Operating Hours", "Solar Radiation", "Total Heat capacity",
+                "Total Wall Area", "Total Window Area", "Total Roof Area", "Total Ground Floor Area", "Total Internal Floor Area", "Total Internal Wall Area",
+                "uWall", "uWindow", "gWindow", "uRoof", "uGFloor", "uIFloor", "uIWall"};
             string[] adSpaceChar = spaceChar.Select(p => "Adjacent_" + p).ToArray();
 
             switch (comp)
@@ -161,39 +161,69 @@ namespace IDFObjects
                     "uWall", "uWindow", "gWindow", "uRoof", "uGFloor", "uIFloor", "uIWall", "Infiltration", "Total heat capacity", "Operating Hours", "Light Heat Gain", "Equipment Heat Gain",
                     "Internal Heat Gain",
 
-                        "Boiler Efficiency", "ChillerCOP", "Lighting Energy", "Heating Energy", "Cooling Energy",
-                        "Bolier Electric Energy", "Chiller Electric Energy", "Energy Demand", "Operational Energy");
+                        "Boiler Efficiency", "ChillerCOP", "Lighting Energy", "Zone Heating Energy", "Zone Cooling Energy",
+                        "Heating Energy", "Cooling Energy", "Thermal Energy", "Operational Energy");
                     break;
             }
             return info;
         }
-
+        public static GridPoint GetDirection(List<GridPoint> Line)
+        {
+            double x = Line[1].x - Line[0].x; double y = Line[1].y - Line[0].y;
+            double dist = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
+            return new GridPoint(x / dist, y / dist);
+        }
+        public static bool IsCounterClockWise(List<GridPoint> points)
+        {
+            double area = 0;
+            for (int i = 0; i < points.Count; i++)
+            {
+                GridPoint point = points[i];
+                double x1 = point.x, y1 = point.y;
+                GridPoint nextPoint = new GridPoint();
+                try
+                {
+                    nextPoint = points[i + 1];
+                }
+                catch
+                {
+                    nextPoint = points[0];
+                }
+                double x2 = nextPoint.x, y2 = nextPoint.y;
+                area += (x2 - x1) * (y2 + y1);
+            }
+            bool returnVal = area > 0;
+            return returnVal;
+        }
         public static double[] GetSpaceChr(Zone z)
         {
             double light = 0, equipment = 0, infiltration = 0;
             //"Zone Area", "Zone Height", "Zone Volume",
-            //    "Light & Equipment Heat Gain", "Infiltration", "Operating Hours", "Heat Capacity", "Solar Radiation",
-            //    "Surface Area U", "Ex-Surface Area U", "G-Surface Area U", "I-Surface Area U",
-            //    "Wall Area X U", "GFloor Area X U", "Roof Area X U", "Window Area X U", "IFloor Area X U", "IWall Area X U", "Window Area X g"
+            //    "Light Heat Gain", "Equipment Heat Gain", "Internal Heat Gain", "Infiltration",
+            //    "Operating Hours", "Solar Radiation", "Total heat capacity"
+            //    "Total Wall Area", "Total Window Area", "Total Roof Area", "Total Ground Floor Area", "Total Internal Floor Area", "Total Internal Wall Area",
+            //    "uWall", "uWindow", "gWindow", "uRoof", "uGFloor", "uIFloor", "uIWall"
+            
             try
             {
                 ZoneList zList = z.building.zoneLists.First(
                 zL => zL.listZones.Select(zone => zone.Name).Contains(z.Name));
                 light = zList.Light.wattsPerArea; equipment = zList.ElectricEquipment.wattsPerArea;
-                infiltration = zList.ZoneInfiltration.airChangesHour;
+                infiltration = zList.ZoneInfiltration.airChangesHour;           
             }
             catch
             {
                 light = z.Lights.wattsPerArea; equipment = z.equipment.wattsPerArea;
                 infiltration = z.Infiltration.airChangesHour;
             }
-
+            BuildingConstruction buiCons = z.building.buildingConstruction;
             return new double[] {
-                z.Area, z.Height, z.Volume, light, equipment, light+equipment, infiltration,
-                z.Area*light + z.Area*equipment, z.Volume*infiltration,
-                z.building.buildingOperation.operatingHours, z.TotalHeatCapacity, z.SolarRadiation,
-                z.SurfAreaU, z.ExSurfAreaU, z.GSurfAreaU, z.ISurfAreaU,
-                z.wallAreaU, z.gFloorAreaU, z.roofAreaU, z.windowAreaU, z.iFloorAreaU, z.iWallAreaU, z.windowAreaG};
+                z.Area, z.Height, z.Volume, 
+                light, equipment, light+equipment, infiltration,
+                z.building.buildingOperation.operatingHours, z.SolarRadiation, z.TotalHeatCapacity,
+                z.totalWallArea, z.totalWindowArea, z.totalRoofArea, z.totalGFloorArea, z.totalIFloorArea, z.totalIWallArea,
+                buiCons.uWall, buiCons.uWindow, buiCons.gWindow, buiCons.uRoof, buiCons.uGFloor, buiCons.uIFloor, buiCons.uIWall
+                };
         }
         public static Dictionary<string, IList<string>> GetMLCSVLines(Building building)
         {
@@ -241,8 +271,8 @@ namespace IDFObjects
                             building.zones.Select(z => z.totalWindowArea).Sum(),
                             building.zones.Select(z => z.totalRoofArea).Sum(),
                             building.zones.Select(z => z.totalGFloorArea).Sum(),
-                            building.zones.Select(z => z.totalIFloorArea).Sum(),
-                            building.zones.Select(z => z.totalIWallArea).Sum(),
+                            building.zones.Select(z => z.totalIFloorAreaExOther).Sum(),
+                            building.zones.Select(z => z.totalIWallAreaExOther).Sum(),
                             buildingConstruction.uWall,
                             buildingConstruction.uWindow,
                             buildingConstruction.gWindow,
@@ -251,7 +281,7 @@ namespace IDFObjects
                             buildingConstruction.uIFloor,
                             buildingConstruction.uIWall,
                             buildingConstruction.infiltration,
-                            building.zones.Select(z => z.TotalHeatCapacityExInternalSurfaces).Sum(),
+                            building.zones.Select(z => z.TotalHeatCapacityDeDuplicatingIntSurfaces).Sum(),
                             building.buildingOperation.operatingHours,
                             building.buildingOperation.lightHeatGain,
                             building.buildingOperation.equipmentHeatGain,
