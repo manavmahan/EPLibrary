@@ -7,14 +7,13 @@ using System.Threading.Tasks;
 
 namespace IDFObjects
 {
+    [Serializable]
     public class ShadingBuildingDetailed
     {
-        public Building Building;
         public string Name, ShadowingTransmittanceSchedule;
         public XYZList XYZList;
         public ShadingBuildingDetailed(Building Building, string Name, string ShadowingTransmittanceSchedule, XYZList XYZList)
-        {
-            this.Building = Building;           
+        {    
             this.Name = Name; this.ShadowingTransmittanceSchedule = ShadowingTransmittanceSchedule; this.XYZList = XYZList;
             Building.DetachedShading.Add(this);
         }

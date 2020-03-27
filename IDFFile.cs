@@ -57,7 +57,7 @@ namespace IDFObjects
             info.AddRange(writeZone());
             info.AddRange(writeZoneList());
             info.AddRange(writeBuildingSurfaceList());
-            building.iMasses.ForEach(m => info.AddRange(m.WriteInfo()));
+            building.zones.SelectMany(z=>z.iMasses).ToList().ForEach(m => info.AddRange(m.WriteInfo()));
             info.AddRange(writeFenestrationSurfaceList());
             info.AddRange(writeShading());
 
@@ -115,7 +115,8 @@ namespace IDFObjects
             info.Add("!-   ===========  ALL OBJECTS IN CLASS: WINDOWMATERIAL:SHADING ===========");
             building.windowMaterialShades.ForEach(sh => info.AddRange(sh.writeInfo()));
             info.Add("!-   ===========  ALL OBJECTS IN CLASS: SHADINGCONTROL ===========");
-            building.bSurfaces.Where(s => s.Fenestrations != null && s.Fenestrations.Count > 0)
+            List<BuildingSurface> bSurfaces = building.zones.SelectMany(z => z.Surfaces).ToList();
+            bSurfaces.Where(s => s.Fenestrations != null && s.Fenestrations.Count > 0)
                 .SelectMany(s => s.Fenestrations).Where(f => f.ShadingControl != null).Select(f => f.ShadingControl)
                 .ToList().ForEach(shc => info.AddRange(shc.WriteInfo()));
             return info;
@@ -145,9 +146,9 @@ namespace IDFObjects
                 idfString.Add("ZoneList,");
                 idfString.Add(Utility.IDFLineFormatter(zl.name, "Name"));
 
-                foreach (Zone z in zl.listZones)
+                foreach (string z in zl.zoneNames)
                 {
-                    idfString.Add(Utility.IDFLineFormatter(z.Name, "Zone " + (zl.listZones.IndexOf(z) + 1) + " Name"));
+                    idfString.Add(Utility.IDFLineFormatter(z, "Zone " + (zl.zoneNames.IndexOf(z) + 1) + " Name"));
                 }
                 idfString.ReplaceLastComma();
             }
@@ -230,7 +231,7 @@ namespace IDFObjects
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: HVACTEMPLATE:THERMOSTAT ===========\r\n");
 
-            foreach (Thermostat t in building.tStats)
+            foreach (Thermostat t in building.zoneLists.Select(z=>z.Thermostat))
             {
                 info.Add("HVACTemplate:Thermostat,");
                 info.Add("\t" + t.name + ", \t\t\t\t!- Name");
@@ -249,9 +250,9 @@ namespace IDFObjects
             {
                 try
                 {
-                    building.zones.ForEach(z => info.AddRange((z.HVAC as ZoneFanCoilUnit).writeInfo()));
+                    building.zones.ForEach(z => info.AddRange((z.ZoneFCU).writeInfo()));
                 }
-                catch { building.zones.ForEach(z => info.AddRange((z.HVAC as ZoneVAV).writeInfo())); info.AddRange(building.vav.writeInfo()); }
+                catch { building.zones.ForEach(z => info.AddRange((z.ZoneVAV).writeInfo())); info.AddRange(building.vav.writeInfo()); }
                 info.AddRange(building.cWaterLoop.writeInfo());
                 info.AddRange(building.chiller.writeInfo());
                 info.AddRange(building.tower.writeInfo());
@@ -261,12 +262,12 @@ namespace IDFObjects
             catch { }
             try
             {
-                building.zones.ForEach(z => info.AddRange((z.HVAC as ZoneIdealLoad).writeInfo()));
+                building.zones.ForEach(z => info.AddRange((z.ZoneIL).writeInfo()));
             }
             catch { }
             try
             {
-                building.zones.ForEach(z => info.AddRange((z.HVAC as ZoneBaseBoardHeat).writeInfo()));
+                building.zones.ForEach(z => info.AddRange((z.ZoneBBH).writeInfo()));
                 info.AddRange(building.hWaterLoop.writeInfo());
                 info.AddRange(building.boiler.writeInfo());
             }

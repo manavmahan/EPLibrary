@@ -32,7 +32,7 @@ namespace IDFObjects
                     Utility.IDFLineFormatter(g.Name, "Generator Name"),
                     Utility.IDFLineFormatter(g.Type, "Generator Type"),
                     Utility.IDFLineFormatter(g.GeneratorPowerOutput, "Generator Power Output"),
-                    Utility.IDFLineFormatter(g.Schedule.name, "Generator Schedule"),
+                    Utility.IDFLineFormatter(g.Schedule, "Generator Schedule"),
                     Utility.IDFLineFormatter(g.RatedThermalElectricalPowerRatio, "Generator Rated Thermal to Electrical Power Ratio")
                 })
             );

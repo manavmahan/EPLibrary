@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using Newtonsoft.Json;
 
 namespace IDFObjects
 { 
@@ -195,35 +195,26 @@ namespace IDFObjects
             bool returnVal = area > 0;
             return returnVal;
         }
-        public static double[] GetSpaceChr(Zone z)
+        public static double[] GetSpaceChr(Building building, Zone z)
         {
-            double light = 0, equipment = 0, infiltration = 0;
             //"Zone Area", "Zone Height", "Zone Volume",
             //    "Light Heat Gain", "Equipment Heat Gain", "Internal Heat Gain", "Infiltration",
             //    "Operating Hours", "Solar Radiation", "Total heat capacity"
             //    "Total Wall Area", "Total Window Area", "Total Roof Area", "Total Ground Floor Area", "Total Internal Floor Area", "Total Internal Wall Area",
             //    "uWall", "uWindow", "gWindow", "uRoof", "uGFloor", "uIFloor", "uIWall"
             
-            try
-            {
-                ZoneList zList = z.building.zoneLists.First(
-                zL => zL.listZones.Select(zone => zone.Name).Contains(z.Name));
-                light = zList.Light.wattsPerArea; equipment = zList.ElectricEquipment.wattsPerArea;
-                infiltration = zList.ZoneInfiltration.airChangesHour;           
-            }
-            catch
-            {
-                light = z.Lights.wattsPerArea; equipment = z.equipment.wattsPerArea;
-                infiltration = z.Infiltration.airChangesHour;
-            }
-            BuildingConstruction buiCons = z.building.buildingConstruction;
+            ZoneList zList = building.zoneLists.First(zL => zL.zoneNames.Contains(z.Name));
+            double light = zList.Light.wattsPerArea, equipment = zList.ElectricEquipment.wattsPerArea,
+            infiltration = zList.ZoneInfiltration.airChangesHour;           
+            
+            BuildingConstruction buiCons = building.buildingConstruction;
             return new double[] {
                 z.Area, z.Height, z.Volume, 
                 light, equipment, light+equipment, infiltration,
-                z.building.buildingOperation.operatingHours, z.SolarRadiation, z.TotalHeatCapacity,
+                building.buildingOperation.operatingHours, z.SolarRadiation, z.TotalHeatCapacity,
                 z.totalWallArea, z.totalWindowArea, z.totalRoofArea, z.totalGFloorArea, z.totalIFloorArea, z.totalIWallArea,
                 buiCons.uWall, buiCons.uWindow, buiCons.gWindow, buiCons.uRoof, buiCons.uGFloor, buiCons.uIFloor, buiCons.uIWall
-                };
+            };
         }
         public static Dictionary<string, IList<string>> GetMLCSVLines(Building building)
         {
@@ -241,13 +232,12 @@ namespace IDFObjects
 
             foreach (Zone z in building.zones)
             {
-                double[] spaChr = Utility.GetSpaceChr(z);
+                double[] spaChr = Utility.GetSpaceChr(building, z);
                 z.Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").ToList().ForEach(
                     s => CSVData["Wall"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.Orientation, s.WWR, buildingConstruction.uWall, buildingConstruction.hcWall, s.SolarRadiation,
                     string.Join(",", spaChr), s.HeatFlow)));
-                z.Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors")
-                    .Where(w => w.Fenestrations.Count != 0).SelectMany(w => w.Fenestrations).ToList().
-                    ForEach(s => CSVData["Window"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.Face.Orientation,
+                z.Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).ToList().
+                    ForEach(s => CSVData["Window"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.Orientation,
                     buildingConstruction.uWindow, buildingConstruction.gWindow, s.SolarRadiation,
                     string.Join(",", spaChr), s.HeatFlow)));
                 z.Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList().ForEach(
@@ -493,6 +483,20 @@ namespace IDFObjects
                 ms.Position = 0;
                 return (T)formatter.Deserialize(ms);
             }
+        }
+        public static void Seialise<T>(this T obj, string filePath)
+        {
+            TextWriter tW = File.CreateText(filePath);
+            new JsonSerializer() { Formatting = Formatting.Indented }.Serialize(tW, obj);
+            tW.Close(); 
+        }
+        public static T DeSeialise<T>(string filePath)
+        {
+            TextReader tR = File.OpenText(filePath);
+           
+            T val = new JsonSerializer().Deserialize<T>(new JsonTextReader(tR));
+            tR.Close();
+            return val ;
         }
         public static double ConvertKWhfromJoule(this double d) { return d * 2.7778E-7; }
         public static double[] ConvertKWhfromJoule(this double[] dArray) { return dArray.Select(d => d.ConvertKWhfromJoule()).ToArray(); }

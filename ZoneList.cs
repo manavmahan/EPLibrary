@@ -9,7 +9,7 @@ namespace IDFObjects
     [Serializable]
     public class ZoneList
     {
-        public List<Zone> listZones;
+        public List<string> zoneNames;
         public People People;
         public ZoneVentilation ZoneVentilation;
         public ZoneInfiltration ZoneInfiltration;
@@ -22,7 +22,7 @@ namespace IDFObjects
         public ZoneList(string n)
         {
             name = n;
-            listZones = new List<Zone>();
+            zoneNames = new List<string>();
         }
         void CreateZoneSchedules(double startTime, double endTime)
         {
@@ -32,7 +32,6 @@ namespace IDFObjects
             hour2 = (int)Math.Truncate(endTime);
             minutes1 = (int)Math.Round(Math.Round((startTime - hour1) * 6)) * 10;
             minutes2 = (int)Math.Round(Math.Round((endTime - hour2) * 6)) * 10;
-
 
             double[] heatingSetPoints = new double[] { 10, 20 };
             double[] coolingSetPoints = new double[] { 28, 24 };
@@ -143,10 +142,11 @@ namespace IDFObjects
             };
             Schedules.Add("Activity", activity);
         }
-        public void GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(double startTime, double endTime, double areaPerPerson, double lHG, double eHG, double infil)
+        public void GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(Building building, double startTime, double endTime, double areaPerPerson, double lHG, double eHG, double infil)
         {
             CreateZoneSchedules(startTime, endTime);
-            listZones.Where(z => z.DayLightControl != null).ToList().ForEach(z => z.DayLightControl.AvailabilitySchedule = Schedules["Occupancy"].name);
+            List<Zone> zones = building.zones.Where(z=>zoneNames.Contains(z.Name)).ToList();
+            zones.Where(z => z.DayLightControl != null).ToList().ForEach(z => z.DayLightControl.AvailabilitySchedule = Schedules["Occupancy"].name);
             People = new People(areaPerPerson)
             {
                 Name = "People_" + name,

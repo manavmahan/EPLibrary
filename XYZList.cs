@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace IDFObjects
 {
@@ -135,11 +136,30 @@ namespace IDFObjects
             xyzs.ForEach(v => newXYZ.Add(v.Transform(angle)));
             xyzs = newXYZ;
         }
-        public double GetWallDirection()
+        public double GetWallOrientation(out Direction Direction)
         {
             XYZ v1 = xyzs[0]; XYZ v2 = xyzs[1]; XYZ v3 = xyzs[2];
-            XYZ nVector1 = v1.Subtract(v2).CrossProduct(v1.Subtract(v3));
-            return nVector1.AngleOnPlaneTo(new XYZ(0, 1, 0), new XYZ(0, 0, 1));
+            XYZ nVector1 = v2.Subtract(v1).CrossProduct(v3.Subtract(v1));
+            
+            double Orientation = nVector1.AngleOnPlaneTo(new XYZ(0, 1, 0), new XYZ(0, 0, 1));
+            Direction = Direction.North;
+            if (Orientation < 45 || Orientation >= 315)
+            {
+                Direction = Direction.North;
+            }
+            if (Orientation >= 45 && Orientation < 135)
+            {
+                Direction = Direction.East;
+            }
+            if (Orientation >= 135 && Orientation < 225)
+            {
+                Direction = Direction.South;
+            }
+            if (Orientation >= 225 && Orientation < 315)
+            {
+                Direction = Direction.West;
+            }
+            return Orientation;
         }
         public XYZList ChangeZValue(double newZ)
         {

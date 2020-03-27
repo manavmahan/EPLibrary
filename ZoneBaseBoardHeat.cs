@@ -7,15 +7,17 @@ using System.Threading.Tasks;
 namespace IDFObjects
 {
     [Serializable]
-    public class ZoneBaseBoardHeat : ZoneHVAC
+    public class ZoneBaseBoardHeat
     {
         public ZoneBaseBoardHeat() { }
-        Zone zone;
+        string ZoneName;
+        public string ThermostatName;
 
-        public ZoneBaseBoardHeat(Zone z, Thermostat t)
+        public ZoneBaseBoardHeat(Zone z, string t)
         {
-            zone = z;
-            thermostat = t;
+            ZoneName = z.Name;
+            ThermostatName = t;
+            z.ZoneBBH = this;
         }
 
         public List<String> writeInfo()
@@ -23,8 +25,8 @@ namespace IDFObjects
             List<string> info = new List<string>()
             {
                 "HVACTemplate:Zone:BaseBoardHeat,",
-                zone.Name + ", !-Zone Name",
-                thermostat.name + ", !-Template Thermostat Name",
+                ZoneName + ", !-Zone Name",
+                ThermostatName + ", !-Template Thermostat Name",
                 "1.2, !-Zone Heating Sizing Factor",
                 "Electric, !-Baseboard Heating Type",
                 ", !-Baseboard Heating Availability Schedule Name",

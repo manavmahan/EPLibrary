@@ -9,8 +9,8 @@ namespace IDFObjects
     [Serializable]
     public class Chiller
     {
-        string name = "Main Chiller";
-        double chillerCOP;
+        public string name = "Main Chiller";
+        public double chillerCOP;
         public Chiller() { }
 
         public Chiller(double COP)

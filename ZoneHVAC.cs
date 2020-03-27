@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace IDFObjects
 {
-    [Serializable]
-    public abstract class ZoneHVAC
-    {
-        public ZoneHVAC() { }
-        public Thermostat thermostat { get; set; }
-        public ZoneHVAC(Thermostat thermostat)
-        {
-            this.thermostat = thermostat;
-        }
-    }
+    //[Serializable]
+    //public class ZoneHVAC
+    //{
+    //    public ZoneHVAC() { }
+    //    public string ThermostatName { get; set; }
+    //    public ZoneHVAC(string thermostat)
+    //    {
+    //        ThermostatName = thermostat;
+    //    }
+    //}
 }

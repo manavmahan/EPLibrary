@@ -11,7 +11,7 @@ namespace IDFObjects
     {
         public string Name;
         public XYZ Point;
-        public Zone Zone;
+        public string ZoneName;
         public double PartControlled;
         public double Illuminance;
         public DayLightReferencePoint() { }
@@ -21,7 +21,7 @@ namespace IDFObjects
             {
                 "Daylighting:ReferencePoint,",
                 Utility.IDFLineFormatter(Name, "Name"),
-                Utility.IDFLineFormatter(Zone.Name, "Zone Name"),
+                Utility.IDFLineFormatter(ZoneName, "Zone Name"),
                 Utility.IDFLineFormatter(Point, "XYZ of Point")
             };
             return info.ReplaceLastComma();

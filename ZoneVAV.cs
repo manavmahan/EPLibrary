@@ -7,16 +7,18 @@ using System.Threading.Tasks;
 namespace IDFObjects
 {
     [Serializable]
-    public class ZoneVAV : ZoneHVAC
+    public class ZoneVAV
     {
         public ZoneVAV() { }
-        VAV vav;
-        Zone zone;
-        public ZoneVAV(VAV v, Zone z, Thermostat t) : base(t)
+        public string ThermostatName;
+        public VAV vav;
+        string ZoneName;
+        public ZoneVAV(VAV v, Zone z, string t)
         {
-            zone = z;
+            ZoneName = z.Name;
             vav = v;
-            thermostat = t;
+            ThermostatName = t;
+            z.ZoneVAV = this;
         }
 
         public List<String> writeInfo()
@@ -25,9 +27,9 @@ namespace IDFObjects
 
 
             info.Add("\r\nHVACTemplate:Zone:VAV,");
-            info.Add("\t" + zone.Name + ", \t\t\t\t!- Zone Name");
+            info.Add("\t" + ZoneName + ", \t\t\t\t!- Zone Name");
             info.Add("\t" + vav.name + ",\t\t\t\t!-Template VAV System Name");
-            info.Add("\t" + thermostat.name + ",\t\t\t\t!-Template Thermostat Name");
+            info.Add("\t" + ThermostatName + ",\t\t\t\t!-Template Thermostat Name");
             info.Add("\tautosize" + ",\t\t\t\t!-Supply Air Maximum Flow Rate {m3/s}");
             info.Add("\t" + ",\t\t\t\t!-Zone Heating Sizing Factor");
             info.Add("\t" + ",\t\t\t\t!-Zone Cooling Sizing Factor");

@@ -11,24 +11,24 @@ namespace IDFObjects
     {
         public string Name;
         public string Type = "Generator:Photovoltaic";
-        public BuildingSurface bSurface;
+        public string bSurfaceName;
         public string PhotovoltaicPerformanceObjectType;
         public PhotovoltaicPerformanceSimple pperformance;
         public string HeatTransferIntegrationMode = "Decoupled";
 
         public double GeneratorPowerOutput = 50000;
-        public ScheduleCompact Schedule;
+        public string Schedule;
         public double RatedThermalElectricalPowerRatio = 0;
 
 
         public GeneratorPhotovoltaic() { }
-        public GeneratorPhotovoltaic(BuildingSurface Surface, PhotovoltaicPerformanceSimple Performance, ScheduleCompact scheduleOn)
+        public GeneratorPhotovoltaic(BuildingSurface Surface, PhotovoltaicPerformanceSimple Performance, string schedule)
         {
             Name = "PV on " + Surface.Name;
-            bSurface = Surface;
-            pperformance = Performance;
+            bSurfaceName = Surface.Name;
+            pperformance = Performance; 
             PhotovoltaicPerformanceObjectType = Performance.Type;
-            Schedule = scheduleOn;
+            Schedule = schedule;
         }
         public List<string> WriteInfo()
         {
@@ -36,7 +36,7 @@ namespace IDFObjects
             {
                 "Generator:Photovoltaic,",
                 Utility.IDFLineFormatter(Name, "Name"),
-                Utility.IDFLineFormatter(bSurface.Name, "Surface Name"),
+                Utility.IDFLineFormatter(bSurfaceName, "Surface Name"),
                 Utility.IDFLineFormatter(PhotovoltaicPerformanceObjectType, "Photovoltaic Performance Object Type"),
                 Utility.IDFLineFormatter(pperformance.Name, "Module Performance Name"),
                 Utility.IDFLastLineFormatter(HeatTransferIntegrationMode, "Heat Transfer Integration Mode")

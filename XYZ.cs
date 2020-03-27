@@ -26,7 +26,7 @@ namespace IDFObjects
         }
         public override int GetHashCode()
         {
-            return X.GetHashCode() ^ Y.GetHashCode() ^ Z.GetHashCode();
+            return (X+Y+Z).GetHashCode();
         }
 
         public XYZ OffsetHeight(double height)

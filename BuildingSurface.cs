@@ -13,7 +13,7 @@ namespace IDFObjects
         public double Orientation, GrossArea, Area, WWR = 0, ShadingLength = 0;
 
         public XYZList VerticesList;
-        public Zone Zone;
+
         public SurfaceType surfaceType;
         public Direction Direction;
         public List<Fenestration> Fenestrations;
@@ -21,61 +21,57 @@ namespace IDFObjects
         public double SolarRadiation, HeatFlow;
         public double[] p_SolarRadiation, p_HeatFlow;
 
+        //[NonSerialized]
+        //public Zone Zone;
+        public string ZoneName;
         public BuildingSurface() { }
-        private void AddName()
+        private void AddName(string zoneName, int sCount)
         {
-            Name = Zone.Name + ":" + ConstructionName + ":" + (Zone.Surfaces.Count + 1);
-            if (surfaceType == SurfaceType.Wall)
-            {
-                Name = Zone.Name + ":" + Direction + ":" + ConstructionName + ":" + (Zone.Surfaces.Count + 1);
-            }
+            ZoneName = zoneName;
+            Name = surfaceType == SurfaceType.Wall  ? ZoneName + ":" + Direction + ":" + surfaceType + ":" + (sCount + 1)
+                                                        : ZoneName + ":" + surfaceType + ":" + (sCount + 1);          
         }
-        internal void CreateWindowsShadingControlShadingOverhang()
+        public void CreateWindowsShadingControlShadingOverhang(Zone zone, WWR wWR, ShadingLength shadingLength)
         {
-            Orientation = VerticesList.GetWallDirection();
-            if (Orientation < 45 || Orientation >= 315)
-            {
-                WWR = Zone.building.WWR.north;
-                ShadingLength = Zone.building.shadingLength.north;
-                Direction = Direction.North;
-            }
-            if (Orientation >= 45 && Orientation < 135)
-            {
-                WWR = Zone.building.WWR.east;
-                ShadingLength = Zone.building.shadingLength.east;
-                Direction = Direction.East;
-            }
-            if (Orientation >= 135 && Orientation < 225)
-            {
-                WWR = Zone.building.WWR.south;
-                ShadingLength = Zone.building.shadingLength.south;
-                Direction = Direction.South;
-            }
-            if (Orientation >= 225 && Orientation < 315)
-            {
-                WWR = Zone.building.WWR.west;
-                ShadingLength = Zone.building.shadingLength.west;
-                Direction = Direction.West;
-            }
-            CreateFenestration(1);
-            List<WindowShadingControl> shadingControls = new List<WindowShadingControl>();
-            
             switch (Direction)
             {
                 case Direction.North:
-                    Fenestrations.ForEach(f => f.ShadingControl = null);
+                    WWR = wWR.north;
+                    ShadingLength = shadingLength.north;
                     break;
-                case Direction.East:
+                case Direction.East:           
+                WWR = wWR.east;
+                ShadingLength = shadingLength.east;
+                    break;
                 case Direction.South:
-                case Direction.West:
-                    Fenestrations.ForEach(f => f.ShadingControl = new WindowShadingControl(f));
-                    shadingControls.AddRange(Fenestrations.Select(f => f.ShadingControl));
+                WWR = wWR.south;
+                ShadingLength = shadingLength.south;
                     break;
-            }           
+                case Direction.West:
+                    WWR = wWR.west;
+                    ShadingLength = shadingLength.west;
+                    break;
+            }
+            CreateFenestration(1);
+
+            if (Fenestrations != null)
+            {
+                switch (Direction)
+                {
+                    case Direction.North:
+                        Fenestrations.ForEach(f => f.ShadingControl = null);
+                        break;
+                    case Direction.East:
+                    case Direction.South:
+                    case Direction.West:
+                        string dayLightControlObjectName = zone.DayLightControl == null ? "" : zone.DayLightControl.Name;
+                        Fenestrations.ForEach(f => f.ShadingControl = new WindowShadingControl(f, dayLightControlObjectName));
+                        break;
+                }
+            }        
         }
         public BuildingSurface(Zone zone, XYZList verticesList, double grossArea, SurfaceType surfaceType)
         {
-            Zone = zone;
             Area = grossArea;
             GrossArea = grossArea;
             VerticesList = verticesList;
@@ -96,6 +92,7 @@ namespace IDFObjects
                     SunExposed = "SunExposed";
                     WindExposed = "WindExposed";
                     ConstructionName = "Wall ConcreteBlock";
+                    Orientation = verticesList.GetWallOrientation(out Direction);                    
                     break;
                 case (SurfaceType.Ceiling):
                     ConstructionName = "General_Floor_Ceiling";
@@ -111,7 +108,7 @@ namespace IDFObjects
                     WindExposed = "WindExposed";
                     break;
             }
-            AddName();
+            AddName(zone.Name, zone.Surfaces.Count());
             zone.Surfaces.Add(this);
         }
 
@@ -122,7 +119,7 @@ namespace IDFObjects
             info.Add("\t" + Name + ",\t\t!- Name");
             info.Add("\t" + surfaceType + ",\t\t\t\t\t!-Surface Type");
             info.Add("\t" + ConstructionName + ",\t\t\t\t!-Construction Name");
-            info.Add("\t" + Zone.Name + ",\t\t\t\t\t\t!-Zone Name");
+            info.Add("\t" + ZoneName + ",\t\t\t\t\t\t!-Zone Name");
             info.Add("\t" + OutsideCondition + ",\t\t\t\t\t!-Outside Boundary Condition");
             info.Add("\t" + OutsideObject + ",\t\t\t\t\t\t!-Outside Boundary Condition Object");
             info.Add("\t" + SunExposed + ",\t\t\t\t\t\t!-Sun Exposure");
@@ -155,13 +152,16 @@ namespace IDFObjects
                     fen.Area = fenArea;
                     fenestrationList.Add(fen);
                 }
+                Fenestrations = fenestrationList;
+                Area = GrossArea * (1 - WWR);
             }
             else
             {
+                Fenestrations = null;
                 WWR = 0;
+                Area = GrossArea;
             }           
-            Fenestrations = fenestrationList;
-            Area = GrossArea * (1 - WWR);
+            
         }
     }
 }

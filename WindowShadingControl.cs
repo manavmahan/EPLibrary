@@ -10,7 +10,9 @@ namespace IDFObjects
     public class WindowShadingControl
     {
         public string name = "CONTROL ON ZONE TEMP";
-        public Zone zone;
+        public string zoneName;
+        public string fenestrationName;
+       
         public string sequenceNumber = "";
         public string shadingType = "InteriorShade";
         public string construction = "";
@@ -26,16 +28,16 @@ namespace IDFObjects
         public string slatSchedule = "";
 
         public string setPoint2 = "";
-        public DayLighting daylightcontrolobjectname;
+        public string daylightControlObjectName;
         public string multipleSurfaceControlType = "";
-        public Fenestration fenestration;
+       
 
         public WindowShadingControl() { }
-        public WindowShadingControl(Fenestration fenestration)
+        public WindowShadingControl(Fenestration fenestration, string zoneDayLightControlName)
         {
-            this.fenestration = fenestration; zone = fenestration.Face.Zone;
+            fenestrationName = fenestration.Name; zoneName = fenestration.ZoneName;
             name = string.Format("CONTROL ON ZONE TEMP {0}", fenestration.Name);
-            daylightcontrolobjectname = zone.DayLightControl;
+            daylightControlObjectName = zoneDayLightControlName;
         }
         public List<string> WriteInfo()
         {
@@ -43,7 +45,7 @@ namespace IDFObjects
             {
                 "WindowShadingControl,",
                 Utility.IDFLineFormatter(name, "Name"),
-                Utility.IDFLineFormatter(zone.Name, "Zone Name"),
+                Utility.IDFLineFormatter(zoneName, "Zone Name"),
                 Utility.IDFLineFormatter(sequenceNumber, "Sequence Number"),
                 Utility.IDFLineFormatter(shadingType, "Shading Type"),
                 Utility.IDFLineFormatter(construction, "Construction with Shading Name"),
@@ -56,9 +58,9 @@ namespace IDFObjects
                 Utility.IDFLineFormatter(angleControl, "Type of Slat Angle Control for Blinds"),
                 Utility.IDFLineFormatter(slatSchedule, "Slat Angle Schedule Name"),
                 Utility.IDFLineFormatter(setPoint2, "Setpoint 2"),
-                Utility.IDFLineFormatter(daylightcontrolobjectname==null? "": daylightcontrolobjectname.Name , "Daylight Control Object Name"),
+                Utility.IDFLineFormatter(daylightControlObjectName, "Daylight Control Object Name"),
                 Utility.IDFLineFormatter(multipleSurfaceControlType, "Multiple Control Type"),
-                Utility.IDFLastLineFormatter(fenestration.Name, "Fenestration")
+                Utility.IDFLastLineFormatter(fenestrationName, "Fenestration")
 
             };
         }

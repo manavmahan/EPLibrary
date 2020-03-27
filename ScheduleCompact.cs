@@ -11,7 +11,7 @@ namespace IDFObjects
     {
         public ScheduleCompact() { }
         public string name { get; set; }
-        public ScheduleLimits scheduleLimits { get; set; }
+        public string scheduleLimitName { get; set; }
         public double value { get; set; }
         public Dictionary<string, Dictionary<string, double>> daysTimeValue;
 
@@ -43,12 +43,10 @@ namespace IDFObjects
         }
         public List<string> WriteInfo()
         {
-            string sLimitName = scheduleLimits == null ? "" : scheduleLimits.name;
-
             List<string> info = new List<string>();
             info.Add("Schedule:compact,");
             info.Add(Utility.IDFLineFormatter(name, "Name"));
-            info.Add(Utility.IDFLineFormatter(sLimitName, "Schedule Type Limits Name"));
+            info.Add(Utility.IDFLineFormatter(scheduleLimitName, "Schedule Type Limits Name"));
             info.Add(Utility.IDFLineFormatter("Through: 12/31", "Field1"));
 
             foreach (KeyValuePair<string, Dictionary<string, double>> kV in daysTimeValue)

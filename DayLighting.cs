@@ -9,8 +9,7 @@ namespace IDFObjects
     [Serializable]
     public class DayLighting
     {
-        public string Name;
-        public Zone Zone { get; set; }
+        public string Name, ZoneName;
         public string DLMethod = "SplitFlux";
         public List<DayLightReferencePoint> ReferencePoints = new List<DayLightReferencePoint>();
 
@@ -32,7 +31,7 @@ namespace IDFObjects
             double pControlled = Math.Floor(1000 / totalPoints) / 1000;
             points.ForEach(p => dlRefPoints.Add(new DayLightReferencePoint()
             {
-                Zone = zone,
+                ZoneName = zone.Name,
                 Point = p,
                 Name = "Day Light Reference Point " + (points.IndexOf(p) + 1) + " for " + zone.Name,
                 Illuminance = illuminance,
@@ -45,7 +44,7 @@ namespace IDFObjects
             if (points.Count > 0)
             {
                 Name = "DayLight Control For " + zone.Name;
-                Zone = zone;
+                ZoneName = zone.Name;
                 AvailabilitySchedule = schedule;
                 ReferencePoints = CreateZoneDayLightReferencePoints(zone, points, illuminance);
                 zone.DayLightControl = this;
@@ -61,7 +60,7 @@ namespace IDFObjects
             {
                 "Daylighting:Controls,",
                 Utility.IDFLineFormatter(Name, "Name"),
-                Utility.IDFLineFormatter(Zone.Name, "Zone Name"),
+                Utility.IDFLineFormatter(ZoneName, "Zone Name"),
                 Utility.IDFLineFormatter(DLMethod, "Daylighting Method"),
                 Utility.IDFLineFormatter(AvailabilitySchedule, "Availability Schedule Name"),
                 Utility.IDFLineFormatter(CType, "Lighting control type {1=continuous,2=stepped,3=continuous/off}"),

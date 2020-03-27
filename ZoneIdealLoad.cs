@@ -7,21 +7,23 @@ using System.Threading.Tasks;
 namespace IDFObjects
 {
     [Serializable]
-    public class ZoneIdealLoad : ZoneHVAC
+    public class ZoneIdealLoad
     {
-        Zone zone;
+        string ZoneName;
+        public string ThermostatName;
         public ZoneIdealLoad() { }
-        public ZoneIdealLoad(Zone z, Thermostat thermostat) : base(thermostat)
+        public ZoneIdealLoad(Zone z, string thermostat)
         {
-            zone = z;
+            ZoneName = z.Name;
+            ThermostatName = thermostat;
         }
 
         public List<String> writeInfo()
         {
             List<string> info = new List<string>();
             info.Add("HVACTemplate:Zone:IdealLoadsAirSystem,");
-            info.Add("\t" + zone.Name + ",\t\t\t\t\t\t!- Zone Name");
-            info.Add("\t" + thermostat.name + ", \t\t\t\t!- Template Thermostat Name");
+            info.Add("\t" + ZoneName + ",\t\t\t\t\t\t!- Zone Name");
+            info.Add("\t" + ThermostatName + ", \t\t\t\t!- Template Thermostat Name");
             info.Add("\t, \t\t\t\t!- System Availability Schedule Name");
             info.Add("\t50, \t\t\t\t!- Maximum Heating Supply Air Temperature {C}");
             info.Add("\t13, \t\t\t\t!- Minimum Cooling Supply Air Temperature {C}");

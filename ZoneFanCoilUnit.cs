@@ -7,13 +7,16 @@ using System.Threading.Tasks;
 namespace IDFObjects
 {
     [Serializable]
-    public class ZoneFanCoilUnit : ZoneHVAC
+    public class ZoneFanCoilUnit
     {
         public ZoneFanCoilUnit() { }
-        Zone zone;
-        public ZoneFanCoilUnit(Zone z, Thermostat thermostat) : base(thermostat)
+        public string ThermostatName;
+        public string ZoneName;
+        public ZoneFanCoilUnit(Zone z, string thermostat)
         {
-            zone = z;
+            ZoneName = z.Name;
+            ThermostatName = thermostat;
+            z.ZoneFCU = this;
         }
 
         public List<String> writeInfo()
@@ -21,8 +24,8 @@ namespace IDFObjects
             List<string> info = new List<string>()
             {
                 "HVACTemplate:Zone:FanCoil,",
-                zone.Name + ",                  !- Zone Name",
-                thermostat.name + ",              !- Template Thermostat Name",
+                ZoneName + ",                  !- Zone Name",
+                ThermostatName + ",              !- Template Thermostat Name",
                 "autosize,                !- Supply Air Maximum Flow Rate {m3/s}",
                 ",                        !- Zone Heating Sizing Factor",
                 ",                        !- Zone Cooling Sizing Factor",
