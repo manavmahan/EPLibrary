@@ -30,6 +30,8 @@ namespace IDFObjects
             wallHeatFlow, windowHeatFlow, gFloorHeatFlow, iFloorHeatFlow, iWallHeatFlow, roofHeatFlow, infiltrationFlow, windowAreaG;
 
         public double[] p_TotalHeatFlows, p_wallHeatFlow, p_windowHeatFlow, p_gFloorHeatFlow, p_iFloorHeatFlow, p_iWallHeatFlow, p_roofHeatFlow, p_infiltrationFlow, p_SolarRadiation;
+        internal string OccupancyScheduleName;
+
         //[NonSerialized]
         // public Building building;
         public void CreateDaylighting()

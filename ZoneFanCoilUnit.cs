@@ -12,10 +12,12 @@ namespace IDFObjects
         public ZoneFanCoilUnit() { }
         public string ThermostatName;
         public string ZoneName;
+        public string OccupancyScheduleName;
         public ZoneFanCoilUnit(Zone z, string thermostat)
         {
             ZoneName = z.Name;
             ThermostatName = thermostat;
+            OccupancyScheduleName = z.OccupancyScheduleName;
             z.ZoneFCU = this;
         }
 
@@ -54,7 +56,7 @@ namespace IDFObjects
                 "ConstantFanVariableFlow, !- Capacity Control Method",
                 ",                        !- Low Speed Supply Air Flow Ratio",
                 ",                        !- Medium Speed Supply Air Flow Ratio",
-                "Occupancy Schedule,      !- Outdoor Air Schedule Name",
+                Utility.IDFLineFormatter(OccupancyScheduleName, "Outdoor Air Schedule Name"),
                 "None,                    !- Baseboard Heating Type",
                 ",                        !- Baseboard Heating Availability Schedule Name",
                 "Autosize; !-Baseboard Heating Capacity { W}"
