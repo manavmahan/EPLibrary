@@ -11,7 +11,6 @@ namespace IDFObjects
     public class XYZList
     {
         public List<XYZ> xyzs;
-        public double Area;
         public XYZList() { }
         
         public void RemoveCollinearPoints()
@@ -63,6 +62,7 @@ namespace IDFObjects
         }
         public double CalculateArea()
         {
+            double Area = 0;
             for (int i = 0; i < xyzs.Count(); i++)
             {
                 IDFObjects.XYZ point = xyzs[i], nextPoint;
@@ -79,9 +79,9 @@ namespace IDFObjects
             xyzs.ForEach(xyz => info.Add(string.Join(",", xyz.X, xyz.Y, xyz.Z) + ", !- X Y Z of Point"));
             return info.ReplaceLastComma();
         }
-        public List<BuildingSurface> CreateZoneWallExternal(Zone zone, double height)
+        public List<Surface> CreateZoneWallExternal(Zone zone, double height)
         {
-            List<BuildingSurface> walls = new List<BuildingSurface>();
+            List<Surface> walls = new List<Surface>();
             foreach (XYZ v1 in xyzs)
             {
                 XYZ v2;
@@ -93,14 +93,40 @@ namespace IDFObjects
                 XYZ v4 = v1.OffsetHeight(height);
 
                 XYZList vList = new XYZList(new List<XYZ>() { v4, v3, v2, v1 });
-                BuildingSurface wall = new BuildingSurface(zone, vList, v1.DistanceTo(v2) * height, SurfaceType.Wall);
+                double area = v1.DistanceTo(v2) * height;
+                Surface wall = new Surface(zone, vList, area, SurfaceType.Wall);
                 walls.Add(wall);
             }
             return walls;
         }
-        public List<BuildingSurface> CreateZoneWallExternal(Zone z, double height, double basementDepth)
+        public void CreateZoneWallExternal(Zone zone, double height, List<string> exposures, List<string> constructions)
         {
-            List<BuildingSurface> walls = new List<BuildingSurface>();
+            for (int i = 0; i < xyzs.Count; i++)
+            {
+                XYZ v1 = xyzs[i], v2;
+                try
+                { v2 = xyzs.ElementAt(i + 1); }
+                catch { v2 = xyzs.First(); }
+
+                XYZ v3 = v2.OffsetHeight(height), v4 = v1.OffsetHeight(height);
+
+                XYZList vList = new XYZList(new List<XYZ>() { v4, v3, v2, v1 });
+                double area = v1.DistanceTo(v2) * height;
+                Surface wall = new Surface(zone, vList, area, SurfaceType.Wall);
+                if (exposures[i] == "Adiabatic")
+                {
+                    wall.OutsideCondition = "Adiabatic";
+                    wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind";
+                }
+                if (constructions[i] == "Internal Wall")
+                {
+                    wall.ConstructionName = "InternalWall";
+                }
+            }
+        }
+        public List<Surface> CreateZoneWallExternal(Zone z, double height, double basementDepth)
+        {
+            List<Surface> walls = new List<Surface>();
             foreach (XYZ v1 in xyzs)
             {
                 XYZ v2 = new XYZ(0, 0, 0);
@@ -115,15 +141,18 @@ namespace IDFObjects
                 XYZ v6 = v1.OffsetHeight(height);
 
                 XYZList vList1 = new XYZList(new List<XYZ>() { v4, v3, v2, v1 });
-                BuildingSurface wall1 = new BuildingSurface(z, vList1, v1.DistanceTo(v2) * height, SurfaceType.Wall);
+                double area = v1.DistanceTo(v2) * basementDepth;
+
+                Surface wall1 = new Surface(z, vList1, area, SurfaceType.Wall);
                 wall1.Fenestrations = new List<Fenestration>();
                 wall1.OutsideCondition = "Ground";
                 wall1.OutsideObject = "";
                 wall1.SunExposed = "NoSun";
                 wall1.WindExposed = "NoWind";
 
+                area = v5.DistanceTo(v6) * (height-basementDepth);
                 XYZList vList2 = new XYZList(new List<XYZ>() { v6, v5, v3, v4 });
-                BuildingSurface wall2 = new BuildingSurface(z, vList2, v3.DistanceTo(v4) * height, SurfaceType.Wall);
+                Surface wall2 = new Surface(z, vList2,area, SurfaceType.Wall);
                 walls.Add(wall1);
                 walls.Add(wall2);
             }

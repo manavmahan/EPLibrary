@@ -1,0 +1,26 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace IDFObjects
+{
+    public class BuildingGeometry
+    {
+        public double Length, Width, Height, rLenA, rWidA, BasementDepth, Orientation, FloorArea, ARatio;
+        public int Shape;
+        public int NFloors;
+        public BuildingGeometry() { }
+
+        public string Header(string sep)
+        {
+            return string.Join(sep, "Length", "Width", "Height", "rLenA", "rWidA", "BasementDepth", 
+                "Orientation", "Floor Area", "ARatio", "Shape", "NFloors");
+        }
+        public string ToString(string sep)
+        {
+            return string.Join(sep, Length, Width, Height, rLenA, rWidA, BasementDepth, Orientation, FloorArea, ARatio, Shape, NFloors);
+        }
+    }
+}

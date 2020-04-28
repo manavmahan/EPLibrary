@@ -18,7 +18,7 @@ namespace IDFObjects
         public Timestep tStep = new Timestep(6);
         public ConvergenceLimits cLimits = new ConvergenceLimits();
         public SiteLocation sLocation = new SiteLocation("MUNICH_DEU");
-        public List<SizingPeriodDesignDay> SDesignDay = Utility.CreateDesignDays("MUNICH_DEU");
+        public List<SizingPeriodDesignDay> SDesignDay;
         public RunPeriod rPeriod = new RunPeriod();
         public SiteGroundTemperature gTemperature = new SiteGroundTemperature("MUNICH_DEU");
         public GlobalGeometryRules geomRules = new GlobalGeometryRules();
@@ -26,7 +26,11 @@ namespace IDFObjects
         //Building - contain schedules, material, constructions, zones, zoneLists, 
         public Building building = new Building();
         public Output output;
-        public IDFFile() { }
+        public IDFFile(string location) 
+        {
+            sLocation = new SiteLocation(location);
+            SDesignDay = Utility.CreateDesignDays(location);
+        }
         public List<string> WriteFile()
         {
             //Version, Simulation Control, Building, TimeStep, ConvergenceLimits, Site:Location, SizingPeriod, RunPeriod, GroundTemperature
@@ -115,7 +119,7 @@ namespace IDFObjects
             info.Add("!-   ===========  ALL OBJECTS IN CLASS: WINDOWMATERIAL:SHADING ===========");
             building.windowMaterialShades.ForEach(sh => info.AddRange(sh.writeInfo()));
             info.Add("!-   ===========  ALL OBJECTS IN CLASS: SHADINGCONTROL ===========");
-            List<BuildingSurface> bSurfaces = building.zones.SelectMany(z => z.Surfaces).ToList();
+            List<Surface> bSurfaces = building.zones.SelectMany(z => z.Surfaces).ToList();
             bSurfaces.Where(s => s.Fenestrations != null && s.Fenestrations.Count > 0)
                 .SelectMany(s => s.Fenestrations).Where(f => f.ShadingControl != null).Select(f => f.ShadingControl)
                 .ToList().ForEach(shc => info.AddRange(shc.WriteInfo()));
@@ -144,11 +148,11 @@ namespace IDFObjects
             foreach (ZoneList zl in building.zoneLists)
             {
                 idfString.Add("ZoneList,");
-                idfString.Add(Utility.IDFLineFormatter(zl.name, "Name"));
+                idfString.Add(Utility.IDFLineFormatter(zl.Name, "Name"));
 
-                foreach (string z in zl.zoneNames)
+                foreach (string z in zl.ZoneNames)
                 {
-                    idfString.Add(Utility.IDFLineFormatter(z, "Zone " + (zl.zoneNames.IndexOf(z) + 1) + " Name"));
+                    idfString.Add(Utility.IDFLineFormatter(z, "Zone " + (zl.ZoneNames.IndexOf(z) + 1) + " Name"));
                 }
                 idfString.ReplaceLastComma();
             }
@@ -160,7 +164,7 @@ namespace IDFObjects
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: BUILDINGSURFACE:DETAILED ===========\r\n");
             foreach (Zone z in building.zones)
             {
-                foreach (BuildingSurface bSur in z.Surfaces)
+                foreach (Surface bSur in z.Surfaces)
                 {
                     info.AddRange(bSur.SurfaceInfo());
                 }
@@ -173,7 +177,7 @@ namespace IDFObjects
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: FENESTRATIONSURFACE:DETAILED ===========\r\n");
             foreach (Zone z in building.zones)
             {
-                foreach (BuildingSurface bSur in z.Surfaces)
+                foreach (Surface bSur in z.Surfaces)
                 {
                     if (bSur.Fenestrations != null)
                     {

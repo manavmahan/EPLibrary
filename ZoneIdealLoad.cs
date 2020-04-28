@@ -16,6 +16,7 @@ namespace IDFObjects
         {
             ZoneName = z.Name;
             ThermostatName = thermostat;
+            z.ZoneIL = this;
         }
 
         public List<String> writeInfo()

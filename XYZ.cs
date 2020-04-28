@@ -12,6 +12,7 @@ namespace IDFObjects
         public double X = 0, Y = 0, Z = 0;
         public XYZ() { }
         public XYZ(double x, double y, double z) { X = x; Y = y; Z = z; }
+        public XYZ(double[] point) { X = point[0]; Y = point[1]; Z = point[2]; }
         public XYZ Subtract(XYZ newXYZ) { return new XYZ(X - newXYZ.X, Y - newXYZ.Y, Z - newXYZ.Z); }
 
         public XYZ Transform(double angle)

@@ -22,7 +22,7 @@ namespace IDFObjects
 
 
         public GeneratorPhotovoltaic() { }
-        public GeneratorPhotovoltaic(BuildingSurface Surface, PhotovoltaicPerformanceSimple Performance, string schedule)
+        public GeneratorPhotovoltaic(Surface Surface, PhotovoltaicPerformanceSimple Performance, string schedule)
         {
             Name = "PV on " + Surface.Name;
             bSurfaceName = Surface.Name;

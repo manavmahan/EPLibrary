@@ -11,7 +11,7 @@ namespace IDFObjects
     {
         public double HeatingEnergy, CoolingEnergy, LightingEnergy;
         public double[] p_HeatingEnergy, p_CoolingEnergy, p_LightingEnergy;
-        public List<BuildingSurface> Surfaces { get; set; }
+        public List<Surface> Surfaces { get; set; }
         public List<InternalMass> iMasses = new List<InternalMass>();
         public double Area, Volume, Height;
         public DayLighting DayLightControl;
@@ -34,7 +34,7 @@ namespace IDFObjects
 
         //[NonSerialized]
         // public Building building;
-        public void CreateDaylighting()
+        public void CreateDaylighting(double lightingLux)
         {
             List<XYZ[]> exWallPoints = Surfaces.Where(s => s.surfaceType == SurfaceType.Wall &&
                        s.OutsideCondition == "Outdoors").Select(w => w.VerticesList.xyzs.Take(2).ToArray()).ToList();
@@ -42,19 +42,19 @@ namespace IDFObjects
             if (exWallPoints != null && exWallPoints.Count > 0)
             {
                 XYZList dlPoint = Utility.GetDayLightPointsXYZList(floorPoints, exWallPoints);
-                new DayLighting(this, "Occupancy Schedule", dlPoint.OffsetHeight(0.9).xyzs, 500);
+                new DayLighting(this, "Occupancy Schedule", dlPoint.OffsetHeight(0.9).xyzs, lightingLux);
             }
         }
         internal void CalcAreaVolume()
         {
-            IEnumerable<BuildingSurface> floors = Surfaces.Where(a => a.surfaceType == SurfaceType.Floor);
+            IEnumerable<Surface> floors = Surfaces.Where(a => a.surfaceType == SurfaceType.Floor);
             Area = floors.Select(a => a.Area).Sum();
             Volume = Area * Height;
         }
         internal void CalcAreaVolumeHeatCapacity(Building building)
         {
             CalcAreaVolume();
-            List<BuildingSurface> bSurfaces = building.zones.SelectMany(z => z.Surfaces).ToList();
+            List<Surface> bSurfaces = building.zones.SelectMany(z => z.Surfaces).ToList();
             totalWallArea = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(w => w.Area).Sum();
             totalGFloorArea = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(gF => gF.Area).Sum();
 
@@ -70,28 +70,28 @@ namespace IDFObjects
             totalRoofArea = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(r => r.Area).Sum();
             totalWindowArea = Surfaces.Where(w => w.Fenestrations != null).Select(wi => wi.Area).Sum();
 
-            TotalHeatCapacity = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor +
-                totalIFloorArea * building.buildingConstruction.hcIFloor +
-                totalIWallArea * building.buildingConstruction.hcIWall + totalRoofArea * building.buildingConstruction.hcRoof +
-                iMasses.Select(m => m.area * building.buildingConstruction.hcIWall).Sum();
+            TotalHeatCapacity = totalWallArea * building.Construction.hcWall + totalGFloorArea * building.Construction.hcGFloor +
+                totalIFloorArea * building.Construction.hcIFloor +
+                totalIWallArea * building.Construction.hcIWall + totalRoofArea * building.Construction.hcRoof +
+                iMasses.Select(m => m.area * building.Construction.hcIWall).Sum();
 
-            TotalHeatCapacityDeDuplicatingIntSurfaces = totalWallArea * building.buildingConstruction.hcWall + totalGFloorArea * building.buildingConstruction.hcGFloor +
-                totalIFloorAreaExOther * building.buildingConstruction.hcIFloor +
-                totalIWallAreaExOther * building.buildingConstruction.hcIWall + totalRoofArea * building.buildingConstruction.hcRoof +
-                iMasses.Select(m => m.area * building.buildingConstruction.hcIWall).Sum();
+            TotalHeatCapacityDeDuplicatingIntSurfaces = totalWallArea * building.Construction.hcWall + totalGFloorArea * building.Construction.hcGFloor +
+                totalIFloorAreaExOther * building.Construction.hcIFloor +
+                totalIWallAreaExOther * building.Construction.hcIWall + totalRoofArea * building.Construction.hcRoof +
+                iMasses.Select(m => m.area * building.Construction.hcIWall).Sum();
 
-            wallAreaU = totalWallArea * building.buildingConstruction.uWall;
-            gFloorAreaU = totalGFloorArea * building.buildingConstruction.uGFloor;
-            iFloorAreaU = totalIFloorArea * building.buildingConstruction.uIFloor;
-            windowAreaU = totalWindowArea * building.buildingConstruction.uWindow;
-            iWallAreaU = totalIWallArea * building.buildingConstruction.uIWall;
-            roofAreaU = totalRoofArea * building.buildingConstruction.uRoof;
+            wallAreaU = totalWallArea * building.Construction.UWall;
+            gFloorAreaU = totalGFloorArea * building.Construction.UGFloor;
+            iFloorAreaU = totalIFloorArea * building.Construction.UIFloor;
+            windowAreaU = totalWindowArea * building.Construction.UWindow;
+            iWallAreaU = totalIWallArea * building.Construction.UIWall;
+            roofAreaU = totalRoofArea * building.Construction.URoof;
 
             ExSurfAreaU = wallAreaU + windowAreaU + roofAreaU;
             GSurfAreaU = gFloorAreaU;
             ISurfAreaU = iFloorAreaU + iWallAreaU;
             SurfAreaU = ExSurfAreaU + GSurfAreaU + ISurfAreaU;
-            windowAreaG = totalWindowArea * building.buildingConstruction.gWindow;
+            windowAreaG = totalWindowArea * building.Construction.GWindow;
         }
         public void AssociateEnergyPlusResults(Building building, Dictionary<string, double[]> resultsDF)
         {
@@ -101,7 +101,7 @@ namespace IDFObjects
                 .SelectMany(w => w.Fenestrations).Select(s => s.HeatFlow).Sum();
             roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.HeatFlow).Sum();
            
-            SolarRadiation = building.buildingConstruction.gWindow * Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f => f.Area * f.SolarRadiation).Sum();
+            SolarRadiation = building.Construction.GWindow * Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f => f.Area * f.SolarRadiation).Sum();
 
             infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy"))].SubtractArrayElementWise(
                      resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy"))]).Average().ConvertKWhfromJoule();
@@ -114,7 +114,7 @@ namespace IDFObjects
         }
         public void AssociateProbabilisticEnergyPlusResults(Building building, Dictionary<string, double[]> resultsDF)
         {
-            List<BuildingSurface> bSurfaces = building.zones.SelectMany(z => z.Surfaces).ToList();
+            List<Surface> bSurfaces = building.zones.SelectMany(z => z.Surfaces).ToList();
             p_wallHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
             p_gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
             p_iFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
@@ -161,17 +161,16 @@ namespace IDFObjects
         }
 
         public Zone() { }
-        public Zone(Building building, string n, int l)
+        public Zone(double height, string name, int level)
         {
-            Name = n;
-            Level = l;
-            Surfaces = new List<BuildingSurface>();
-            Height = building.FloorHeight;
+            Name = name;
+            Level = level;
+            Surfaces = new List<Surface>();
+            Height = height;
         }
         public void CreateNaturalVentillation()
         {
             NaturalVentiallation = new ZoneVentilation(this, true);
         }
     }
-
 }

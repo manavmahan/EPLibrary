@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace IDFObjects
 {
@@ -26,8 +27,8 @@ namespace IDFObjects
         
         //Probablistic Attributes
         public ProbabilisticBuildingConstruction pBuildingConstruction;
-        public ProbabilisticBuildingOperation pBuildingOperation;
-        public ProbabilisticWWR pWWR;
+        public ProbabilisticBuildingZoneOperation pBuildingOperation;
+        public ProbabilisticBuildingWWR pWWR;
         public ProbabilisticEmbeddedEnergyParameters p_EEParameters;
 
         //Probabilistic Operational Energy
@@ -47,12 +48,15 @@ namespace IDFObjects
         public double life, PERTFactor, PENRTFactor;
 
         //Deterministic Attributes
-        public BuildingConstruction buildingConstruction;
-        public BuildingOperation buildingOperation;
+        public BuildingConstruction Construction;
+        public BuildingZoneOperation Operation;
+        public BuildingZoneEnvironment Environment;
+        public BuildingService Service;
+        public BuildingZoneOccupant Occupants;
+
         public EmbeddedEnergyParameters EEParameters;
 
-        public double FloorHeight;
-        public WWR WWR { get; set; } = new WWR(0.5, 0.5, 0.5, 0.5); //North, West, South, East
+        public BuildingWWR WWR { get; set; } = new BuildingWWR(0, 0, 0, 0); //North, West, South, East
         public ShadingLength shadingLength { get; set; } = new ShadingLength(0, 0, 0, 0); //North, West, South, East
 
         public double[] heatingSetPoints = new double[] { 10, 20 };
@@ -60,8 +64,8 @@ namespace IDFObjects
         public double equipOffsetFraction = 0.1;
 
         //Schedules Limits and Schedule
-        public List<ScheduleLimits> schedulelimits { get; set; } = new List<ScheduleLimits>();
-        public List<ScheduleCompact> schedulescomp { get; set; } = new List<ScheduleCompact>();
+        public List<ScheduleLimits> schedulelimits  = new List<ScheduleLimits>();
+        public List<ScheduleCompact> schedulescomp  = new List<ScheduleCompact>();
 
         //Material, WindowMaterial, Shade, Shading Control, Constructions and Window Constructions
         public List<Material> materials = new List<Material>();
@@ -92,28 +96,28 @@ namespace IDFObjects
 
         //HVAC System
         public HVACSystem HVACSystem;
-        public void UpdateBuildingConstructionWWROperations(BuildingConstruction construction, WWR wWR, BuildingOperation bOperation)
+        public void UpdateBuildingConstructionWWROperations(BuildingConstruction construction, BuildingWWR wWR, 
+            BuildingZoneOperation bOperation)
         {
-            buildingConstruction = Utility.DeepClone(construction);
+            Construction = Utility.DeepClone(construction);
             WWR = Utility.DeepClone(wWR);
-            buildingOperation = Utility.DeepClone(bOperation);
+            Operation = Utility.DeepClone(bOperation);
 
             GenerateConstructionWithIComponentsU();
+            CreateInternalMass(Construction.InternalMass);
             UpdateFenestrations();
-            UpdateBuildingOperations();
-            UpdateZoneInfo();
-        }
-        void UpdateBuildingOperations()
-        {
+
             CreateSchedules();
-            GeneratePeopleLightEquipmentInfiltrationVentilation();
+            if (zoneLists.Any(zl=>zl.Schedules==null)) { GeneratePeopleLightEquipmentInfiltrationVentilation(); }
+            zoneLists.ForEach(zl=>zl.UpdateDayLightControlSchedule(this));
             GenerateHVAC();
-        }
+            UpdateZoneInfo();
+        } 
         void UpdateFenestrations()
         {            
             foreach (Zone zone in zones)
             {
-                foreach (BuildingSurface toupdate in zone.Surfaces.Where(s => s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors"))
+                foreach (Surface toupdate in zone.Surfaces.Where(s => s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors"))
                 {
                     toupdate.CreateWindowsShadingControlShadingOverhang(zone, WWR, shadingLength);
                 }
@@ -123,7 +127,8 @@ namespace IDFObjects
                 }
             }
         }
-        void UpdateZoneInfo()
+        
+        public void UpdateZoneInfo()
         {
             zones.ForEach(z => z.CalcAreaVolumeHeatCapacity(this));
         }
@@ -132,16 +137,28 @@ namespace IDFObjects
             zones.ForEach(z =>
             {
                 z.CalcAreaVolume();
-                InternalMass mass = new InternalMass(z, percentArea * z.Area * FloorHeight, "InternalWall", IsWall);
+                InternalMass mass = new InternalMass(z, percentArea * z.Area * z.Height, "InternalWall", IsWall);
             });
 
-        }           
+        }
+        public void CreateInternalMass(double kJoulePerKgKm2)
+        {
+            double hcIWall = Construction.hcIWall;
+            if (kJoulePerKgKm2 > 0) { 
+                zones.ForEach(z =>
+                {
+                    z.CalcAreaVolume();
+                    InternalMass mass = new InternalMass(z, 1000 * kJoulePerKgKm2 * z.Area / hcIWall, "InternalWall", false);
+                });
+            }
+
+        }
         public void CreatePVPanelsOnRoof()
         {
             PhotovoltaicPerformanceSimple photovoltaicPerformanceSimple = new PhotovoltaicPerformanceSimple();
             List<GeneratorPhotovoltaic> listPVs = new List<GeneratorPhotovoltaic>();
-            List<BuildingSurface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
-            List<BuildingSurface> roofs = bSurfaces.FindAll(s => s.surfaceType == SurfaceType.Roof);
+            List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
+            List<Surface> roofs = bSurfaces.FindAll(s => s.surfaceType == SurfaceType.Roof);
 
             roofs.ForEach(s => listPVs.Add(new GeneratorPhotovoltaic(s, photovoltaicPerformanceSimple, "AlwaysOn")));
             ElectricLoadCenterGenerators electricLoadCenterGenerators = new ElectricLoadCenterGenerators(listPVs);
@@ -228,9 +245,9 @@ namespace IDFObjects
         }
         void GenerateConstructionWithIComponentsU()
         {
-            double uWall = buildingConstruction.uWall, uGFloor = buildingConstruction.uGFloor, uIFloor = buildingConstruction.uIFloor,
-                uRoof = buildingConstruction.uRoof, uIWall = buildingConstruction.uIWall, uWindow = buildingConstruction.uWindow,
-                gWindow = buildingConstruction.gWindow, hcSlab = buildingConstruction.hcSlab;
+            double uWall = Construction.UWall, uGFloor = Construction.UGFloor, uIFloor = Construction.UIFloor,
+                uRoof = Construction.URoof, uIWall = Construction.UIWall, uWindow = Construction.UWindow,
+                gWindow = Construction.GWindow, hcSlab = Construction.HCSlab;
 
             double lambda_insulation = 0.04;
 
@@ -273,22 +290,22 @@ namespace IDFObjects
             materials = new List<Material>() { layer_F13, layer_G03, layer_I03, layer_M11, layer_M03, layer_I04, layer_G01, layer_floorSlab, layer_gFloorInsul, layer_iFloorInsul, layer_Plasterboard };
 
             List<Material> layerListRoof = new List<Material>() { layer_F13, layer_G03, layer_I03, layer_M11 };
-            buildingConstruction.hcRoof = layerListRoof.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Construction.hcRoof = layerListRoof.Select(l => l.thickness * l.sHC * l.density).Sum();
             Construction constructionRoof = new Construction("Up Roof Concrete", layerListRoof);
 
             List<Material> layerListWall = new List<Material>() { layer_M03, layer_I04, layer_G01 };
 
             Construction construction_Wall = new Construction("Wall ConcreteBlock", layerListWall);
-            buildingConstruction.hcWall = layerListWall.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Construction.hcWall = layerListWall.Select(l => l.thickness * l.sHC * l.density).Sum();
             List<Material> layerListInternallWall = new List<Material>() { layer_Plasterboard, layer_iWallInsul, layer_Plasterboard };
             Construction construction_internalWall = new Construction("InternalWall", layerListInternallWall);
-            buildingConstruction.hcIWall = layerListInternallWall.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Construction.hcIWall = layerListInternallWall.Select(l => l.thickness * l.sHC * l.density).Sum();
             List<Material> layerListGfloor = new List<Material>() { layer_floorSlab, layer_gFloorInsul };
             Construction construction_gFloor = new Construction("Slab_Floor", layerListGfloor);
-            buildingConstruction.hcGFloor = layerListGfloor.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Construction.hcGFloor = layerListGfloor.Select(l => l.thickness * l.sHC * l.density).Sum();
             List<Material> layerListIFloor = new List<Material>() { layer_floorSlab, layer_iFloorInsul };
             Construction construction_floor = new Construction("General_Floor_Ceiling", layerListIFloor);
-            buildingConstruction.hcIFloor = layerListIFloor.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Construction.hcIFloor = layerListIFloor.Select(l => l.thickness * l.sHC * l.density).Sum();
             constructions = new List<Construction>() { constructionRoof, construction_Wall, construction_gFloor, construction_floor, construction_internalWall };
 
             //window construction
@@ -302,20 +319,21 @@ namespace IDFObjects
         }
         void GeneratePeopleLightEquipmentInfiltrationVentilation()
         {
-            double startTime = 13 - .5 * buildingOperation.operatingHours;
-            double endTime = 13 + .5 * buildingOperation.operatingHours;
             foreach (ZoneList zList in zoneLists)
             {
-                zList.GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(this, startTime, endTime, buildingOperation.areaPerPeople,
-                    buildingOperation.lightHeatGain, buildingOperation.equipmentHeatGain, buildingConstruction.infiltration);
-                schedulescomp.AddRange(zList.Schedules.Values);
+                zList.GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(this, Operation.GetStartEndTime(13), 
+                    Occupants.AreaPerPerson, Operation.LHG, Operation.EHG,
+                    Construction.Infiltration);
+
+                schedulescomp.AddRange(zList.Schedules);
             }
+            
         }
         public void GenerateHVAC()
         {
-            zones.ForEach(z => z.ThermostatName = zoneLists.First(zl => zl.zoneNames.Contains(z.Name)).Thermostat.name);
-            zones.ForEach(z => z.OccupancyScheduleName = zoneLists.First(zl => zl.zoneNames.Contains(z.Name)).
-            Schedules.First(s=>s.Key.Contains("Occupancy")).Value.name);
+            zones.ForEach(z => z.ThermostatName = zoneLists.First(zl => zl.ZoneNames.Contains(z.Name)).Thermostat.name);
+            zones.ForEach(z => z.OccupancyScheduleName = zoneLists.First(zl => zl.ZoneNames.Contains(z.Name)).
+            Schedules.First(s=>s.name.Contains("Occupancy")).name);
             switch (HVACSystem)
             {
                 case HVACSystem.FCU:
@@ -340,19 +358,19 @@ namespace IDFObjects
                     break;
             }
         }
-        private void GenerateWaterLoopsAndSystem()
+        private void GenerateWaterLoopsAndSystem() 
         {
             hWaterLoop = new HotWaterLoop();
             cWaterLoop = new ChilledWaterLoop();
-            boiler = new Boiler(buildingOperation.boilerEfficiency, "Electricity");
-            chiller = new Chiller(buildingOperation.chillerCOP);
+            boiler = new Boiler(Service.BoilerEfficiency, "Electricity");
+            chiller = new Chiller(Service.ChillerCOP);
             tower = new Tower();
         }
         public Building() { }
         public void AssociateEnergyPlusResults(Dictionary<string, double[]> data)
         {
-            List<BuildingSurface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
-            foreach (BuildingSurface surf in bSurfaces)
+            List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
+            foreach (Surface surf in bSurfaces)
             {
                 if (surf.OutsideCondition == "Outdoors")
                 {
@@ -382,8 +400,8 @@ namespace IDFObjects
         }
         public void AssociateProbabilisticEnergyPlusResults(Dictionary<string, double[]> resultsDF)
         {
-            List<BuildingSurface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
-            foreach (BuildingSurface surf in bSurfaces)
+            List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
+            foreach (Surface surf in bSurfaces)
             {
                 if (surf.surfaceType == SurfaceType.Wall || surf.surfaceType == SurfaceType.Roof)
                 {
@@ -426,8 +444,8 @@ namespace IDFObjects
         }
         public void AssociateProbabilisticMLResults(Dictionary<string, double[]> resultsDF)
         {
-            List<BuildingSurface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
-            foreach (BuildingSurface surf in bSurfaces)
+            List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
+            foreach (Surface surf in bSurfaces)
             {
                 if (surf.surfaceType == SurfaceType.Wall && surf.OutsideCondition == "Outdoors" && surf.Fenestrations != null && surf.Fenestrations.Count != 0)
                 {
@@ -502,6 +520,7 @@ namespace IDFObjects
         public void AddZoneList(ZoneList zoneList)
         {
             zoneLists.Add(zoneList);
+            try { schedulescomp.AddRange(zoneList.Schedules); } catch { }
         }
         public List<string> WriteInfo()
         {

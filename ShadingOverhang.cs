@@ -10,10 +10,10 @@ namespace IDFObjects
     public class ShadingOverhang
     {
         public ShadingOverhang() { }
-        public BuildingSurface face { get; set; }
+        public Surface face { get; set; }
         public XYZList listVertice { get; set; }
 
-        public ShadingOverhang(BuildingSurface face1)
+        public ShadingOverhang(Surface face1)
         {
             face = face1;
 

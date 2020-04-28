@@ -2,17 +2,211 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Windows.Forms;
+using DocumentFormat.OpenXml.Drawing.Charts;
+using Microsoft.JScript;
 using Newtonsoft.Json;
+using Formatting = Newtonsoft.Json.Formatting;
 
 namespace IDFObjects
-{ 
+{
+    public enum PDF { unif, triang, norm }
     public enum SurfaceType { Floor, Ceiling, Wall, Roof };
     public enum HVACSystem { FCU, BaseboardHeating, VAV, IdealLoad };
     public enum Direction { North, East, South, West };
     public enum ControlType { none, Continuous, Stepped, ContinuousOff }
     public static class Utility
     {
+        public static void ZipAll<T>(this IEnumerable<IEnumerable<T>> all, Action<IEnumerable<T>> action)
+        {
+            var enumerators = all.Select(e => e.GetEnumerator()).ToList();
+            try
+            {
+                while (enumerators.All(e => e.MoveNext()))
+                    action(enumerators.Select(e => e.Current));
+            }
+            finally
+            {
+                foreach (var e in enumerators)
+                    e.Dispose();
+            }
+        }
+        
+        
+        public static List<ZoneGeometryInformation> GetZoneGeometryInformation(Dictionary<string, List<XYZ[]>> allRoomSegmentsIDF,
+            List<XYZ[]> externalEdgesIDF, double heightFl)
+        {
+            List<ZoneGeometryInformation> listVal = new List<ZoneGeometryInformation>();
+            List<string> zNames = allRoomSegmentsIDF.Select(x => x.Key).ToList();
+
+            foreach (string zName in zNames)
+            {
+                ZoneGeometryInformation zoneGeometryParameters = new ZoneGeometryInformation();
+                zoneGeometryParameters.Name = zName;
+                zoneGeometryParameters.Height = heightFl;
+                
+                List<XYZ[]> roomSegments = allRoomSegmentsIDF[zName];
+                List<XYZ> floorPoints = allRoomSegmentsIDF[zName].Select(x => x[0]).ToList();
+                XYZList flPointList = new XYZList(floorPoints);
+                flPointList.RemoveCollinearPoints();
+                zoneGeometryParameters.FloorPoints = flPointList;
+            
+                IEnumerable<KeyValuePair<string, List<XYZ[]>>> allRoomSegmentsModified = allRoomSegmentsIDF.Where(x => x.Key != zName);
+                
+                foreach (XYZ[] c in allRoomSegmentsIDF[zName])
+                {
+                    try
+                    {
+                        KeyValuePair<string, List<XYZ[]>> matchingCurve = allRoomSegmentsModified.First(x => x.Value.Any(y => CompareCurves(c, y)));
+                        zoneGeometryParameters.WallCreationData.Add(c, matchingCurve.Key);
+
+                        List<XYZ[]> matchingZoneSegments = allRoomSegmentsIDF[matchingCurve.Key];
+                        matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
+                    }
+                    catch
+                    {
+                        if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
+                        { zoneGeometryParameters.WallCreationData.Add(c, "Outdoors");}
+                        else { zoneGeometryParameters.WallCreationData.Add(c, "Adiabatic"); }               
+                    }
+                }              
+            }
+            return listVal;
+        }
+        public static Building InitialiseDetailedModelBuilding_SameFloorPlan(List<ZoneGeometryInformation> zonesInformation,
+            List<ZoneList> zoneLists, int nFloors, BuildingConstruction construction, BuildingWWR wwr, BuildingZoneOperation operation, 
+            HVACSystem hVACSystem)
+        {
+            Building bui = new Building();
+            zoneLists.ForEach(zl => bui.AddZoneList(zl));
+            bui.HVACSystem = hVACSystem;
+
+            for (int i = 0; i < nFloors; i++)
+            {
+                foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
+                {
+                    Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name + ":" + i, i);
+                    XYZList rfPoints = zoneInfo.FloorPoints.OffsetHeight(zoneInfo.Height);
+                    if (i == 0)
+                    {
+                        new Surface(zone, zoneInfo.FloorPoints.reverse(), zoneInfo.FloorPoints.CalculateArea(), SurfaceType.Floor);
+                    }
+                    else
+                    {
+                        new Surface(zone, zoneInfo.FloorPoints.reverse(), zoneInfo.FloorPoints.CalculateArea(), SurfaceType.Floor)
+                        {
+                            ConstructionName = "General_Floor_Ceiling",
+                            OutsideCondition = "Zone",
+                            OutsideObject = zoneInfo.Name + ":" + (i - 1)
+                        };
+                    }
+                    CreateZoneWalls(zone, zoneInfo.WallCreationData, zoneInfo.FloorPoints.xyzs.First().Z);
+                    if (i == nFloors - 1)
+                    {
+                        new Surface(zone, rfPoints, rfPoints.CalculateArea(), SurfaceType.Roof);
+                    }
+
+                    zone.CreateDaylighting(500);
+                    bui.AddZone(zone);
+                    try { bui.zoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
+                    catch { bui.zoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
+                }
+            }
+            bui.UpdateBuildingConstructionWWROperations(construction, wwr, operation);
+            return bui;
+        }
+        public static Building InitialiseDetailedModelBuilding_DifferentFloorPlan(
+            Dictionary<string, List<XYZ[]>> allRoomSegmentsIDF, List<XYZ[]> externalEdgesIDF, List<ZoneList> zoneLists,
+            double heightFl, int nFloors, BuildingConstruction construction, BuildingWWR wwr, BuildingZoneOperation operation, HVACSystem hVACSystem)
+        {
+            Dictionary<string, Dictionary<XYZ[], string>> zoneWallCreationData = new Dictionary<string, Dictionary<XYZ[], string>>();
+            Dictionary<string, List<XYZ>> zoneFloorCreationData = new Dictionary<string, List<XYZ>>();
+
+            List<string> zNames = allRoomSegmentsIDF.Select(x => x.Key).ToList();
+
+            foreach (string zName in zNames)
+            {
+                List<XYZ[]> roomSegments = allRoomSegmentsIDF[zName];
+                List<XYZ> floorPoints = allRoomSegmentsIDF[zName].Select(x => x[0]).ToList();
+                XYZList flPointList = new XYZList(floorPoints);
+                flPointList.RemoveCollinearPoints();
+                zoneFloorCreationData.Add(zName, flPointList.xyzs);
+            }
+            foreach (string zName in zNames)
+            {
+                IEnumerable<KeyValuePair<string, List<XYZ[]>>> allRoomSegmentsModified = allRoomSegmentsIDF.Where(x => x.Key != zName);
+                Dictionary<XYZ[], string> zoneWallData = new Dictionary<XYZ[], string>();
+                foreach (XYZ[] c in allRoomSegmentsIDF[zName])
+                {
+                    try
+                    {
+                        KeyValuePair<string, List<XYZ[]>> matchingCurve = allRoomSegmentsModified.First(x => x.Value.Any(y => CompareCurves(c, y)));
+                        zoneWallData.Add(c, matchingCurve.Key);
+
+                        List<XYZ[]> matchingZoneSegments = allRoomSegmentsIDF[matchingCurve.Key];
+                        matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
+                    }
+                    catch
+                    {
+                        if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
+                        {
+                            zoneWallData.Add(c, "Outdoors");
+                        }
+                        else
+                        {
+                            zoneWallData.Add(c, "Adiabatic");
+                        }
+                    }
+                }
+                zoneWallCreationData.Add(zName, zoneWallData);
+            }
+
+            Building bui = new Building();
+            zoneLists.ForEach(zl => bui.AddZoneList(zl));
+            bui.HVACSystem = hVACSystem;
+
+            for (int i = 0; i < nFloors; i++)
+            {
+                foreach (KeyValuePair<string, List<XYZ>> zoneData in zoneFloorCreationData)
+                {
+                    Zone zone = new Zone(heightFl, zoneData.Key + ":" + i, i);
+                    double floorZ = zoneData.Value.First().Z;
+                    XYZList floorPoints = new XYZList(zoneData.Value.ToList()).ChangeZValue(floorZ);
+
+                    XYZList rfPoints = floorPoints.ChangeZValue(floorZ + heightFl);
+                    floorPoints.xyzs.Reverse();
+                    double area = floorPoints.CalculateArea();
+                    if (i == 0)
+                    {
+                        new Surface(zone, floorPoints, floorPoints.CalculateArea(), SurfaceType.Floor);
+                    }
+                    else
+                    {
+                        new Surface(zone, floorPoints, floorPoints.CalculateArea(), SurfaceType.Floor)
+                        {
+                            ConstructionName = "General_Floor_Ceiling",
+                            OutsideCondition = "Zone",
+                            OutsideObject = zoneData.Key + ":" + (i - 1)
+                        };
+                    }
+                    CreateZoneWalls(zone, zoneWallCreationData[zoneData.Key], floorZ);
+                    if (i == nFloors - 1)
+                    {
+                        new Surface(zone, rfPoints, rfPoints.CalculateArea(), SurfaceType.Roof);
+                    }
+
+                    zone.CreateDaylighting(500);
+                    bui.AddZone(zone);
+                    try { bui.zoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
+                    catch { bui.zoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
+                }
+            }
+            bui.UpdateBuildingConstructionWWROperations(construction, wwr, operation);
+            return bui;
+        }
         public static bool CompareCurves(IDFObjects.XYZ[] c1, IDFObjects.XYZ[] c2)
         {
             return (c2[0].Equals(c1[0]) && c2[1].Equals(c1[1])) || (c2[1].Equals(c1[0]) && c2[0].Equals(c1[1]));
@@ -27,7 +221,7 @@ namespace IDFObjects
         {
             double x = Line[1].X - Line[0].X, y = Line[1].Y - Line[0].Y, z = Line[1].Z - Line[0].Z;
             double dist = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2) + Math.Pow(z, 2));
-            return new XYZ(x / dist, y / dist, z/dist);
+            return new XYZ(x / dist, y / dist, z / dist);
         }
         public static IDFObjects.XYZList GetDayLightPointsXYZList(IDFObjects.XYZList FloorFacePoints, List<IDFObjects.XYZ[]> ExWallEdges)
         {
@@ -94,7 +288,7 @@ namespace IDFObjects
             }
             return wallEdges;
         }
-        
+
         public static List<IDFObjects.XYZ> TriangleAndCentroid(List<IDFObjects.XYZ> AllPoints)
         {
             List<IDFObjects.XYZ> CentersOfMass = new List<IDFObjects.XYZ>();
@@ -202,18 +396,18 @@ namespace IDFObjects
             //    "Operating Hours", "Solar Radiation", "Total heat capacity"
             //    "Total Wall Area", "Total Window Area", "Total Roof Area", "Total Ground Floor Area", "Total Internal Floor Area", "Total Internal Wall Area",
             //    "uWall", "uWindow", "gWindow", "uRoof", "uGFloor", "uIFloor", "uIWall"
-            
-            ZoneList zList = building.zoneLists.First(zL => zL.zoneNames.Contains(z.Name));
+
+            ZoneList zList = building.zoneLists.First(zL => zL.ZoneNames.Contains(z.Name));
             double light = zList.Light.wattsPerArea, equipment = zList.ElectricEquipment.wattsPerArea,
-            infiltration = zList.ZoneInfiltration.airChangesHour;           
-            
-            BuildingConstruction buiCons = building.buildingConstruction;
+            infiltration = zList.ZoneInfiltration.airChangesHour;
+
+            BuildingConstruction buiCons = building.Construction;
             return new double[] {
-                z.Area, z.Height, z.Volume, 
+                z.Area, z.Height, z.Volume,
                 light, equipment, light+equipment, infiltration,
-                building.buildingOperation.operatingHours, z.SolarRadiation, z.TotalHeatCapacity,
+                building.Operation.OperatingHours, z.SolarRadiation, z.TotalHeatCapacity,
                 z.totalWallArea, z.totalWindowArea, z.totalRoofArea, z.totalGFloorArea, z.totalIFloorArea, z.totalIWallArea,
-                buiCons.uWall, buiCons.uWindow, buiCons.gWindow, buiCons.uRoof, buiCons.uGFloor, buiCons.uIFloor, buiCons.uIWall
+                buiCons.UWall, buiCons.UWindow, buiCons.GWindow, buiCons.URoof, buiCons.UGFloor, buiCons.UIFloor, buiCons.UIWall
             };
         }
         public static Dictionary<string, IList<string>> GetMLCSVLines(Building building)
@@ -228,23 +422,23 @@ namespace IDFObjects
             CSVData.Add("Zone", new List<string>());
             CSVData.Add("Building", new List<string>());
 
-            BuildingConstruction buildingConstruction = building.buildingConstruction;
+            BuildingConstruction buildingConstruction = building.Construction;
 
             foreach (Zone z in building.zones)
             {
                 double[] spaChr = Utility.GetSpaceChr(building, z);
                 z.Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").ToList().ForEach(
-                    s => CSVData["Wall"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.Orientation, s.WWR, buildingConstruction.uWall, buildingConstruction.hcWall, s.SolarRadiation,
+                    s => CSVData["Wall"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.Orientation, s.WWR, buildingConstruction.UWall, buildingConstruction.hcWall, s.SolarRadiation,
                     string.Join(",", spaChr), s.HeatFlow)));
                 z.Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).ToList().
                     ForEach(s => CSVData["Window"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.Orientation,
-                    buildingConstruction.uWindow, buildingConstruction.gWindow, s.SolarRadiation,
+                    buildingConstruction.UWindow, buildingConstruction.GWindow, s.SolarRadiation,
                     string.Join(",", spaChr), s.HeatFlow)));
                 z.Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList().ForEach(
-                    s => CSVData["GFloor"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.uGFloor, buildingConstruction.hcGFloor,
+                    s => CSVData["GFloor"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.UGFloor, buildingConstruction.hcGFloor,
                     string.Join(",", spaChr), s.HeatFlow)));
                 z.Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).ToList().ForEach(
-                    s => CSVData["Roof"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.uRoof, buildingConstruction.hcRoof, s.SolarRadiation,
+                    s => CSVData["Roof"].Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.URoof, buildingConstruction.hcRoof, s.SolarRadiation,
                     string.Join(",", spaChr), s.HeatFlow)));
                 CSVData["Infiltration"].Add(string.Join(",", idfFile, z.Name, z.Name, string.Join(",", spaChr), z.infiltrationFlow));
                 CSVData["Zone"].Add(string.Join(",", idfFile, z.Name, string.Join(",", spaChr),
@@ -255,7 +449,7 @@ namespace IDFObjects
 
             CSVData["Building"].Add(string.Join(",", idfFile,
                             building.zones.Select(z => z.Area).Sum(),
-                            building.FloorHeight,
+                            building.zones.Select(z => z.Height),
                             building.zones.Select(z => z.Volume).Sum(),
                             building.zones.Select(z => z.totalWallArea).Sum(),
                             building.zones.Select(z => z.totalWindowArea).Sum(),
@@ -263,21 +457,21 @@ namespace IDFObjects
                             building.zones.Select(z => z.totalGFloorArea).Sum(),
                             building.zones.Select(z => z.totalIFloorAreaExOther).Sum(),
                             building.zones.Select(z => z.totalIWallAreaExOther).Sum(),
-                            buildingConstruction.uWall,
-                            buildingConstruction.uWindow,
-                            buildingConstruction.gWindow,
-                            buildingConstruction.uRoof,
-                            buildingConstruction.uGFloor,
-                            buildingConstruction.uIFloor,
-                            buildingConstruction.uIWall,
-                            buildingConstruction.infiltration,
+                            buildingConstruction.UWall,
+                            buildingConstruction.UWindow,
+                            buildingConstruction.GWindow,
+                            buildingConstruction.URoof,
+                            buildingConstruction.UGFloor,
+                            buildingConstruction.UIFloor,
+                            buildingConstruction.UIWall,
+                            buildingConstruction.Infiltration,
                             building.zones.Select(z => z.TotalHeatCapacityDeDuplicatingIntSurfaces).Sum(),
-                            building.buildingOperation.operatingHours,
-                            building.buildingOperation.lightHeatGain,
-                            building.buildingOperation.equipmentHeatGain,
-                            building.buildingOperation.lightHeatGain + building.buildingOperation.equipmentHeatGain,
-                            building.buildingOperation.boilerEfficiency,
-                            building.buildingOperation.chillerCOP,
+                            building.Operation.OperatingHours,
+                            building.Operation.LHG,
+                            building.Operation.EHG,
+                            building.Operation.LHG + building.Operation.EHG,
+                            building.Service.BoilerEfficiency,
+                            building.Service.ChillerCOP,
                             building.LightingEnergy,
                             building.ZoneHeatingEnergy,
                             building.ZoneCoolingEnergy,
@@ -303,14 +497,14 @@ namespace IDFObjects
         {
             return (Math.Round(value / 0.092903, 4));
         }
-        public static void CreateZoneWalls(Zone z, Dictionary<XYZ[], string> wallsData, double baseZ, double height)
+        public static void CreateZoneWalls(Zone z, Dictionary<XYZ[], string> wallsData, double baseZ)
         {
             foreach (KeyValuePair<XYZ[], string> wallData in wallsData)
             {
-                XYZ p1 = wallData.Key[0].OffsetHeight(baseZ), p2 = wallData.Key[1].OffsetHeight(baseZ), p3 = p2.OffsetHeight(height), p4 = p1.OffsetHeight(height);
+                XYZ p1 = wallData.Key[0].OffsetHeight(baseZ), p2 = wallData.Key[1].OffsetHeight(baseZ), p3 = p2.OffsetHeight(z.Height), p4 = p1.OffsetHeight(z.Height);
                 XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
-                double area = p1.DistanceTo(p2) * p2.DistanceTo(p3);
-                BuildingSurface wall = new BuildingSurface(z, wallPoints, area, SurfaceType.Wall);
+                double area = p1.DistanceTo(p2) * z.Height;
+                Surface wall = new Surface(z, wallPoints, area, SurfaceType.Wall);
                 if (wallData.Value != "Outdoors")
                 {
                     if (wallData.Value == "Adiabatic")
@@ -323,6 +517,7 @@ namespace IDFObjects
                     }
                     wall.ConstructionName = "InternalWall";
                     wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind"; wall.Fenestrations = new List<Fenestration>();
+                    wall.Fenestrations = null;
                 }
             }
         }
@@ -348,128 +543,212 @@ namespace IDFObjects
             }
             return data;
         }
-        public static List<List<double>> ReadSampleFile(string parFile, out List<string> header)
+        public static Dictionary<string, double[]> ReadSampleFile(string parFile, out int count)
         {
-            List<string> rawFile = File.ReadAllLines(parFile).ToList();
-            int nSamples = rawFile.Count - 1;
-            List<List<double>> returnData = new List<List<double>>();
+            List<string> rawFile = File.ReadAllLines(parFile).Where(s => s[0] != '#').ToList();
 
-            header = rawFile[0].Split(',').ToList();
+            int nSamples = rawFile.Count;
+            count = nSamples - 1;
+            Dictionary<string, double[]> returnData = new Dictionary<string, double[]>();
 
-            for (int i = 1; i < nSamples + 1; i++)
+            IEnumerable<string> header = rawFile[0].Split(',').ToList();
+
+            for (int i=0; i<header.Count(); i++ )
             {
-                returnData.Add(rawFile[i].Split(',').Select(d => double.Parse(d)).ToList());
+                double[] sampleData = new double[nSamples-1];
+                for (int s = 1; s < nSamples; s++)
+                {
+                    sampleData [s-1] = double.Parse(rawFile[s].Split(',').ElementAt(i));
+                }
+                returnData.Add(header.ElementAt(i), sampleData);
             }
             return returnData;
         }
+        public static ProbabilityDistributionFunction GetPDF(string[] data)
+        {
+            return new ProbabilityDistributionFunction(double.Parse(data[0]), double.Parse(data[1]), data[2]);
+        }
+        public static ProbabilityDistributionFunction GetProbabilisticParameter(this Dictionary<string, string[]> DataDictionary, string Parameter)
+        {
+            if (DataDictionary.ContainsKey(Parameter))
+            {
+                return GetPDF(DataDictionary[Parameter]);
+            }
+            else
+            {
+                return new ProbabilityDistributionFunction();
+            }
+        }
+        public static ProbabilisticBuildingDesignParameters ReadProbabilisticBuildingDesignParameters(string dataFile)
+        {
+            IEnumerable<string[]> allLines = File.ReadAllLines(dataFile)
+                .Where(s => s.First() != '#').Select(s => s.Split(','));
+
+            List<string> parameters = allLines.Select(s=>s.First()).ToList();
+            List<string[]> data = allLines.Select(s => s.Skip(1).ToArray()).ToList();
+
+            Dictionary<string, string[]> dataDict = new Dictionary<string, string[]>();
+            for (int i=0; i<data.Count; i++)
+            {
+                if (data[i].Count()>2)
+                {
+                    dataDict.Add(parameters[i], data[i]);
+                }
+            }
+
+            List<string> zoneListNames = parameters.Where(p => p.Contains(':'))
+                .Select(p => p.Split(':')[0]).Distinct().ToList();
+
+            ProbabilisticBuildingDesignParameters value = new ProbabilisticBuildingDesignParameters()
+            {
+                pGeometry = new ProbabilisticBuildingGeometry()
+                {
+                    Length = dataDict.GetProbabilisticParameter("Length"),
+                    Width = dataDict.GetProbabilisticParameter("Width"),
+                    Height = dataDict.GetProbabilisticParameter("Height"),
+                    FloorArea = dataDict.GetProbabilisticParameter("Floor Area"),
+                    NFloors = dataDict.GetProbabilisticParameter("NFloors"),
+                    Shape = dataDict.GetProbabilisticParameter("Shape"),
+                    ARatio = dataDict.GetProbabilisticParameter("L/W Ratio"),
+                    Orientation = dataDict.GetProbabilisticParameter("Orientation"),
+                },
+                pConstruction = new ProbabilisticBuildingConstruction()
+                {
+                    InternalMass = dataDict.GetProbabilisticParameter("Internal Mass"),
+                    UWall = dataDict.GetProbabilisticParameter("u_Wall"),
+                    UGFloor = dataDict.GetProbabilisticParameter("u_GFloor"),
+                    URoof = dataDict.GetProbabilisticParameter("u_Roof"),
+                    UWindow = dataDict.GetProbabilisticParameter("u_Window"),
+                    GWindow = dataDict.GetProbabilisticParameter("g_Window"),
+                    Infiltration = dataDict.GetProbabilisticParameter("Infiltration"),
+                    UIFloor = dataDict.GetProbabilisticParameter("u_IFloor"),
+                    UIWall = dataDict.GetProbabilisticParameter("u_IWall"),
+                    HCSlab = dataDict.GetProbabilisticParameter("hc_Slab")
+                },
+                pWWR = new ProbabilisticBuildingWWR()
+                {
+                    North = dataDict.GetProbabilisticParameter("WWR_North"),
+                    East = dataDict.GetProbabilisticParameter("WWR_East"),
+                    West = dataDict.GetProbabilisticParameter("WWR_West"),
+                    South = dataDict.GetProbabilisticParameter("WWR_South")
+                },
+                pService = new ProbabilisticBuildingService()
+                {
+                    BoilerEfficiency = dataDict.GetProbabilisticParameter("Boiler Efficiency"),
+                    ChillerCOP = dataDict.GetProbabilisticParameter("Chiller COP")
+                }
+            };
+
+            foreach (string zlN in zoneListNames)
+            {
+                value.zOperations.Add(new ProbabilisticBuildingZoneOperation()
+                {
+                    Name = zlN,
+                    LHG = dataDict.GetProbabilisticParameter(zlN + ":Light Heat Gain"),
+                    EHG = dataDict.GetProbabilisticParameter(zlN + ":Equipment Heat Gain"),
+                    StartTime = dataDict.GetProbabilisticParameter(zlN + ":Start Time"),
+                    OperatingHours = dataDict.GetProbabilisticParameter(zlN + ":Operating Hours")
+                });
+                value.zOccupants.Add(new ProbabilisticBuildingZoneOccupant()
+                {
+                    Name = zlN,
+                    AreaPerPerson = dataDict.GetProbabilisticParameter(zlN + ":Area Per Person")
+                });
+                value.zEnvironments.Add(new ProbabilisticBuildingZoneEnvironment()
+                {
+                    Name = zlN,
+                    HeatingSetPoint = dataDict.GetProbabilisticParameter(zlN + ":Heating Setpoint"),
+                    CoolingSetPoint = dataDict.GetProbabilisticParameter(zlN + ":Cooling Setpoint")
+                });
+            }
+            return value;
+        }
+
+        public static double GetSamplesValues(this Dictionary<string, double[]> DataDictionary, string Parameter, int Number)
+        {
+            if (DataDictionary.ContainsKey(Parameter))
+            {
+                return DataDictionary[Parameter][Number];
+            }
+            else
+            {
+                return 0;
+            }
+        }
         public static List<BuildingDesignParameters> ReadBuildingDesignParameters(string dataFile)
         {
-            List<string> parameters = new List<string>();
-            List<List<double>> samples = ReadSampleFile(dataFile, out parameters);
-
-            int iLen = -1, iWid = -1, iArea = -1, iNFloors = -1, iShape = -1, iARatio = -1;
-            try
-            {
-                iShape = parameters.FindIndex(s => s.Contains("Shape"));
-            }
-            catch { }
-            try
-            {
-                iARatio = parameters.FindIndex(s => s.Contains("L/W Ratio"));
-            }
-            catch { }
-            try
-            {
-                iLen = parameters.FindIndex(s => s.Contains("Length"));
-                iWid = parameters.FindIndex(s => s.Contains("Width"));
-            }
-            catch { }
-            try
-            {
-                iNFloors = parameters.FindIndex(s => s.Contains("Floors"));
-            }
-            catch { }
-            try
-            {
-                iArea = parameters.FindIndex(s => s.Contains("Area"));
-            }
-            catch { }
-            int iHeight = parameters.FindIndex(s => s.Contains("Height"));
-            int iOrientation = parameters.FindIndex(s => s.Contains("Orientation"));
-            int iUWall = parameters.FindIndex(s => s.Contains("u_Wall"));
-            int iUGFloor = parameters.FindIndex(s => s.Contains("u_GFloor"));
-            int iURoof = parameters.FindIndex(s => s.Contains("u_Roof"));
-            int iUWindow = parameters.FindIndex(s => s.Contains("u_Window"));
-            int igWindow = parameters.FindIndex(s => s.Contains("g_Window"));
-            int iWWRN = parameters.FindIndex(s => s.Contains("WWR_N"));
-            int iWWRE = parameters.FindIndex(s => s.Contains("WWR_E"));
-            int iWWRW = parameters.FindIndex(s => s.Contains("WWR_W"));
-            int iWWRS = parameters.FindIndex(s => s.Contains("WWR_S"));
-            int iInfiltration = parameters.FindIndex(s => s.Contains("Infiltration"));
-            int iOperatingHours = parameters.FindIndex(s => s.Contains("Operating Hours"));
-            int ibEff = parameters.FindIndex(s => s.Contains("Boiler Efficiency"));
-            int iCCOP = parameters.FindIndex(s => s.Contains("Chiller COP"));
-
-            int irLenA = -1, irWidA = -1, iBDepth = -1, iHCIFloor = -1, iLEHG = -1, iLHG = -1, iEHG = -1, iUIWall = -1, iUIFloor = -1;
-            try { irLenA = parameters.FindIndex(s => s.Contains("rLenA")); irWidA = parameters.FindIndex(s => s.Contains("rWidA")); } catch { }
-            try { iBDepth = parameters.FindIndex(s => s.Contains("Basement Depth")); } catch { }
-            try { iHCIFloor = parameters.FindIndex(s => s.Contains("hc_Slab")); } catch { }
-            try { iLEHG = parameters.FindIndex(s => s.Contains("Light & Equipment Heat Gain")); }
-            catch { }
-            try
-            {
-                iLHG = parameters.FindIndex(s => s.Contains("Light Heat Gain"));
-                iEHG = parameters.FindIndex(s => s.Contains("Equipment Heat Gain"));
-            }
-            catch { }
-            try
-            {
-                iUIWall = parameters.FindIndex(s => s.Contains("u_IWall"));
-                iUIFloor = parameters.FindIndex(s => s.Contains("u_IFloor"));
-            }
-            catch { }
+            Dictionary<string, double[]> samples = ReadSampleFile(dataFile, out int Count);
+            List<string> zoneListNames = samples.Keys.Where(p => p.Contains(':'))
+                .Select(s => s.Split(':')[0]).Distinct().ToList();
 
             List<BuildingDesignParameters> values = new List<BuildingDesignParameters>();
-            foreach (List<double> sample in samples)
+            for (int s =0; s<Count; s++)
             {
-                double hcSlab, lhg, ehg, uIWall, uIFloor;
                 BuildingDesignParameters value = new BuildingDesignParameters();
-
-                if (irLenA != -1) { value.rLenA = sample[irLenA]; value.rWidA = sample[irWidA]; } else { value.rLenA = 0.5; value.rWidA = 0.5; }
-                if (iBDepth != -1) { value.BasementDepth = sample[iBDepth]; }
-                if (iHCIFloor != -1) { hcSlab = sample[iHCIFloor]; } else { hcSlab = 1050; }
-                if (iLHG != -1) { lhg = sample[iLHG]; ehg = sample[iEHG]; } else { lhg = sample[iLEHG] * 0.5; ehg = sample[iLEHG] * 0.5; }
-                if (iUIWall != -1) { uIWall = sample[iUIWall]; uIFloor = sample[iUIFloor]; } else { uIWall = 0.25; uIFloor = 0.25; }
-                if (iARatio != -1) { value.ARatio = sample[iARatio]; }
-                if (iNFloors != -1) { value.NFloors = (int)sample[iNFloors]; }
-                if (iLen != -1) { value.Length = sample[iLen]; value.Width = sample[iWid]; }
-                else { value.FloorArea = sample[iArea]; }
-
-                if (iShape != -1) { value.Shape = "Shape" + Math.Floor(sample[iShape]); }
-                value.Height = sample[iHeight];
-                value.Orientation = Math.Round(sample[iOrientation]/9) * Math.PI / 20;
-                value.construction = new BuildingConstruction()
+                value.Geometry = new BuildingGeometry()
                 {
-                    uWall = sample[iUWall],
-                    uGFloor = sample[iUGFloor],
-                    uRoof = sample[iURoof],
-                    uWindow = sample[iUWindow],
-                    gWindow = sample[igWindow],
-                    infiltration = sample[iInfiltration],
+                    Length = samples.GetSamplesValues("Length",s),
+                    Width = samples.GetSamplesValues("Width", s),
+                    Height = samples.GetSamplesValues("Height", s),
+                    FloorArea = samples.GetSamplesValues("Floor Area", s),
+                    NFloors = (int)samples.GetSamplesValues("NFloors", s),
+                    Shape = (int)samples.GetSamplesValues("Shape", s),
+                    ARatio = samples.GetSamplesValues("ARatio", s),
+                    Orientation = samples.GetSamplesValues("Orientation", s),
 
-                    uIFloor = uIFloor,
-                    uIWall = uIWall,
-                    hcSlab = hcSlab
+                    rLenA = samples.GetSamplesValues("rLenA", s),
+                    rWidA = samples.GetSamplesValues("rWidA", s),
+                    BasementDepth = samples.GetSamplesValues("Basement Depth", s),
                 };
-                value.wwr = new WWR(sample[iWWRN], sample[iWWRE], sample[iWWRS], sample[iWWRW]);
-                value.operation = new BuildingOperation()
+                value.Construction = new BuildingConstruction()
                 {
-                    operatingHours = sample[iOperatingHours],
-                    boilerEfficiency = sample[ibEff],
-                    chillerCOP = sample[iCCOP],
-                    equipmentHeatGain = ehg,
-                    lightHeatGain = lhg
+                    InternalMass = samples.GetSamplesValues("Internal Mass", s),
+                    UWall = samples.GetSamplesValues("u_Wall", s),
+                    UGFloor = samples.GetSamplesValues("u_GFloor", s),
+                    URoof = samples.GetSamplesValues("u_Roof", s),
+                    UWindow = samples.GetSamplesValues("u_Window", s),
+                    GWindow = samples.GetSamplesValues("g_Window", s),
+                    Infiltration = samples.GetSamplesValues("Infiltration", s),
+
+                    UIFloor = samples.GetSamplesValues("u_IFloor", s),
+                    UIWall = samples.GetSamplesValues("u_IWall", s),
+                    HCSlab = samples.GetSamplesValues("hc_Slab", s),
                 };
+                value.WWR = new BuildingWWR()
+                {
+                    North = samples.GetSamplesValues("WWR_North", s),
+                    East = samples.GetSamplesValues("WWR_East", s),
+                    West = samples.GetSamplesValues("WWR_West", s),
+                    South = samples.GetSamplesValues("WWR_South", s),
+                };                
+                value.Service = new BuildingService()
+                {
+                    BoilerEfficiency = samples.GetSamplesValues("Boiler Efficiency", s),
+                    ChillerCOP = samples.GetSamplesValues("Chiller COP", s)
+                };
+
+                foreach (string zlN in zoneListNames)
+                {
+                    value.Operations.Add(new BuildingZoneOperation()
+                    { 
+                        Name = zlN,
+                        LHG = samples.GetSamplesValues(zlN + ":Light Heat Gain", s),
+                        EHG = samples.GetSamplesValues(zlN + ":Equipment Heat Gain", s),
+                        StartTime = samples.GetSamplesValues(zlN + ":Start Time", s),
+                        OperatingHours = samples.GetSamplesValues(zlN + ":Operating Hours", s),
+                    });
+                    value.Occupants.Add(new BuildingZoneOccupant()
+                    {
+                        Name = zlN,
+                        AreaPerPerson = samples.GetSamplesValues(zlN + ":Area Per Person",s)
+                    });
+                    value.Environments.Add(new BuildingZoneEnvironment()
+                    {
+                        Name = zlN,
+                        HeatingSetPoint = samples.GetSamplesValues(zlN + ":Heating Setpoint", s),
+                        CoolingSetPoint = samples.GetSamplesValues(zlN + ":Cooling Setpoint", s)
+                    });
+                }
                 values.Add(value);
             }
             return values;
@@ -488,15 +767,15 @@ namespace IDFObjects
         {
             TextWriter tW = File.CreateText(filePath);
             new JsonSerializer() { Formatting = Formatting.Indented }.Serialize(tW, obj);
-            tW.Close(); 
+            tW.Close();
         }
         public static T DeSeialise<T>(string filePath)
         {
             TextReader tR = File.OpenText(filePath);
-           
+
             T val = new JsonSerializer().Deserialize<T>(new JsonTextReader(tR));
             tR.Close();
-            return val ;
+            return val;
         }
         public static double ConvertKWhfromJoule(this double d) { return d * 2.7778E-7; }
         public static double[] ConvertKWhfromJoule(this double[] dArray) { return dArray.Select(d => d.ConvertKWhfromJoule()).ToArray(); }
@@ -587,18 +866,51 @@ namespace IDFObjects
         }
         public static List<SizingPeriodDesignDay> CreateDesignDays(string location)
         {
+            SizingPeriodDesignDay winterday, summerday, summerday1, summerday2, summerday3, summerday4;
             switch (location)
             {
                 case "MUNICH_DEU":
                 default:
-                    SizingPeriodDesignDay winterday = new SizingPeriodDesignDay("MUNICH Ann Htg 99.6% Condns DB", 2, 21, "WinterDesignDay", -12.8, 0.0, -13.9, 0.0, 95900.0, 1.0, 130.0, "No", "No", "No", "AshraeClearSky", 0.0);
-                    SizingPeriodDesignDay summerday = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns Enth=>MDB", 7, 21, "SummerDesignDay", 31.5, 10.9, 17.8, 0.0, 95300.0, 1.5, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
-                    SizingPeriodDesignDay summerday1 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 6)", 6, 21, "SummerDesignDay", 29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
-                    SizingPeriodDesignDay summerday2 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 7)", 7, 21, "SummerDesignDay", 29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
-                    SizingPeriodDesignDay summerday3 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 8)", 8, 21, "SummerDesignDay", 29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
-                    SizingPeriodDesignDay summerday4 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 9)", 9, 21, "SummerDesignDay", 29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
-                    return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
+                    winterday = new SizingPeriodDesignDay("MUNICH Ann Htg 99.6% Condns DB", 2, 21, "WinterDesignDay", 
+                        -12.8, 0.0, -13.9, 0.0, 95900.0, 1.0, 130.0, "No", "No", "No", "AshraeClearSky", 0.0);
+
+                    summerday = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns Enth=>MDB", 7, 21, "SummerDesignDay",
+                        31.5, 10.9, 17.8, 0.0, 95300.0, 1.5, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+
+                    summerday1 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 6)", 6, 21, "SummerDesignDay", 
+                        29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+
+                    summerday2 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 7)", 7, 21, "SummerDesignDay",
+                        29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+
+                    summerday3 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 8)", 8, 21, "SummerDesignDay", 
+                        29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+
+                    summerday4 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 9)", 9, 21, "SummerDesignDay",
+                        29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+                    break;
+                case "BRUSSELS_BEL":
+                    winterday = new SizingPeriodDesignDay("BRUSSELS Ann Htg 99.6% Condns DB", 1, 21, "WinterDesignDay", 
+                        -4.9, 0.0, -6.2,0.0, 102600.0, 1.0, 70.0, "No", "No", "No", "AshraeClearSky", 0.0);
+
+                    summerday = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4% Condns Enth=>MDB", 7, 21, "SummerDesignDay",  
+                        33.6, 8.4, 19.5, 0.0, 100600.0, 4.4, 90.0, "No", "No", "No", "AshraeClearSky", 1.0);
+
+                    summerday1 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 6)", 6, 21, "SummerDesignDay",
+                        28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
+
+                    summerday2 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 7)", 7, 21, "SummerDesignDay",
+                        28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
+
+                    summerday3 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 8)", 8, 21, "SummerDesignDay",
+                       28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
+
+                    summerday4 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 9)", 9, 21, "SummerDesignDay",
+                       28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
+                    break;
             }
-        }
+            return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
+
+        } 
     }    
 }

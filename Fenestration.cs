@@ -18,7 +18,7 @@ namespace IDFObjects
         public string ConstructionName, SurfaceType, Name;
         public WindowShadingControl ShadingControl { get; set; }
         public OverhangProjection Overhang { get; set; }
-        internal Fenestration(BuildingSurface wallFace)
+        internal Fenestration(Surface wallFace)
         {
             SurfaceType = "Window";
             ConstructionName = "Glazing";

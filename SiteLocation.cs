@@ -21,18 +21,19 @@ namespace IDFObjects
             switch (location)
             {
                 case "MUNICH_DEU":
-                    name = "MUNICH_DEU";
+                default:
+                    name = location;
                     latitude = 48.13;
                     longitude = 11.7;
                     timeZone = 1.0;
                     elevation = 529.0;
                     break;
-                default:
-                    name = "MUNICH_DEU";
-                    latitude = 48.13;
-                    longitude = 11.7;
+                case "BRUSSELS_BEL":
+                    name = location;
+                    latitude = 50.9;
+                    longitude = 4.53;
                     timeZone = 1.0;
-                    elevation = 529.0;
+                    elevation = 58.0;
                     break;
             }
         }

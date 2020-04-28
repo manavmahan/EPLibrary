@@ -10,16 +10,16 @@ namespace IDFObjects
     public class BuildingConstruction
     {
         //To store the values from samples
-        public double uWall, uGFloor, uRoof, uIFloor, uIWall, uWindow, gWindow, hcSlab, infiltration;
+        public double UWall, UGFloor, URoof, UIFloor, UIWall, UWindow, GWindow, HCSlab, Infiltration, InternalMass;
         public double hcWall, hcRoof, hcGFloor, hcIFloor, hcIWall;
         public BuildingConstruction() { }
-        public string ToCSVString()
+        public  string ToString(string sep)
         {
-            return string.Join(",", uWall, uGFloor, uRoof, uIFloor, uIWall, uWindow, gWindow, hcSlab, infiltration);
+            return string.Join(sep, UWall, UGFloor, URoof, UIFloor, UIWall, UWindow, GWindow, HCSlab, Infiltration, InternalMass);
         }
-        public string Header()
+        public string Header(string sep)
         {
-            return string.Join(",", "u_Wall", "u_GFloor", "u_Roof", "u_IFloor", "u_IWall", "u_Window", "g_Window", "hc_Slab", "Infiltration");
+            return string.Join(sep, "u_Wall", "u_GFloor", "u_Roof", "u_IFloor", "u_IWall", "u_Window", "g_Window", "hc_Slab", "Infiltration", "Internal Mass");
         }
     }
 }
