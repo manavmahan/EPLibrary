@@ -9,7 +9,7 @@ namespace IDFObjects
     [Serializable]
     public class Version
     {
-        public double VersionIdentifier = 9.2;
+        public double VersionIdentifier = 9.3;
         public Version()
         {
 

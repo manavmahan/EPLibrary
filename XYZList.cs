@@ -54,7 +54,7 @@ namespace IDFObjects
         {
             xyzs = list;
         }
-        public XYZList reverse()
+        public XYZList Reverse()
         {
             XYZList newList = Utility.DeepClone(this);
             newList.xyzs.Reverse();

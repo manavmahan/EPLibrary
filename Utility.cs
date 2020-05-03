@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -13,6 +14,11 @@ using Formatting = Newtonsoft.Json.Formatting;
 
 namespace IDFObjects
 {
+    public enum Location
+    {
+        [Description("Brussels, Belgium")] BRUSSELS_BEL,
+        [Description("Munich, Germany")] MUNICH_DEU,
+    }
     public enum PDF { unif, triang, norm }
     public enum SurfaceType { Floor, Ceiling, Wall, Roof };
     public enum HVACSystem { FCU, BaseboardHeating, VAV, IdealLoad };
@@ -34,34 +40,54 @@ namespace IDFObjects
                     e.Dispose();
             }
         }
-        
-        
-        public static List<ZoneGeometryInformation> GetZoneGeometryInformation(Dictionary<string, List<XYZ[]>> allRoomSegmentsIDF,
+        public static ZoneGeometryInformation GetZoneGeometryInformation(
+            List<XYZ> groundPoints, double heightFl, string zoneName)
+        {
+            List<XYZ[]> externalEdgesIDF = GetExternalEdges(groundPoints);
+            ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
+            zInfo.Name = zoneName;
+            zInfo.Height = heightFl;
+            zInfo.FloorPoints = new XYZList(groundPoints);
+            externalEdgesIDF.ForEach(w => zInfo.WallCreationData.Add(w, "Outdoors"));
+            return zInfo;
+        }
+
+        public static List<ZoneGeometryInformation> GetZoneGeometryInformation(
+            Dictionary<string, List<XYZ[]>> allRoomSegmentsIDF,
             List<XYZ[]> externalEdgesIDF, double heightFl)
         {
-            List<ZoneGeometryInformation> listVal = new List<ZoneGeometryInformation>();
+            List<ZoneGeometryInformation> zoneInfoList = new List<ZoneGeometryInformation>();
             List<string> zNames = allRoomSegmentsIDF.Select(x => x.Key).ToList();
-
             foreach (string zName in zNames)
             {
-                ZoneGeometryInformation zoneGeometryParameters = new ZoneGeometryInformation();
-                zoneGeometryParameters.Name = zName;
-                zoneGeometryParameters.Height = heightFl;
-                
-                List<XYZ[]> roomSegments = allRoomSegmentsIDF[zName];
-                List<XYZ> floorPoints = allRoomSegmentsIDF[zName].Select(x => x[0]).ToList();
+                ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
+                zInfo.Name = zName;
+                zInfo.Height = heightFl;
+
+                List<XYZ[]> thisRoomSegments = allRoomSegmentsIDF[zName];
+                List<XYZ> floorPoints = thisRoomSegments.Select(x => x[0]).ToList();
                 XYZList flPointList = new XYZList(floorPoints);
                 flPointList.RemoveCollinearPoints();
-                zoneGeometryParameters.FloorPoints = flPointList;
+                zInfo.FloorPoints = flPointList;
+                zoneInfoList.Add(zInfo);
+            }
+
+            foreach (ZoneGeometryInformation zone in zoneInfoList)
+            {
+                Dictionary<string, List<XYZ[]>> allRoomSegmentsNotThisRoom = new Dictionary<string, List<XYZ[]>>();
+                List<XYZ[]> thisRoomSegments = allRoomSegmentsIDF[zone.Name];
+                foreach (KeyValuePair<string, List<XYZ[]>> exRoomSegment in allRoomSegmentsIDF.Where(x => x.Key != zone.Name))
+                {
+                    allRoomSegmentsNotThisRoom.Add(exRoomSegment.Key, exRoomSegment.Value);
+                }
             
-                IEnumerable<KeyValuePair<string, List<XYZ[]>>> allRoomSegmentsModified = allRoomSegmentsIDF.Where(x => x.Key != zName);
-                
-                foreach (XYZ[] c in allRoomSegmentsIDF[zName])
+                foreach (XYZ[] c in thisRoomSegments)
                 {
                     try
                     {
-                        KeyValuePair<string, List<XYZ[]>> matchingCurve = allRoomSegmentsModified.First(x => x.Value.Any(y => CompareCurves(c, y)));
-                        zoneGeometryParameters.WallCreationData.Add(c, matchingCurve.Key);
+                        KeyValuePair<string, List<XYZ[]>> matchingCurve = allRoomSegmentsNotThisRoom
+                            .First(x => x.Value.Any(y => CompareCurves(c, y)));
+                        zone.WallCreationData.Add(c, matchingCurve.Key);
 
                         List<XYZ[]> matchingZoneSegments = allRoomSegmentsIDF[matchingCurve.Key];
                         matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
@@ -69,82 +95,50 @@ namespace IDFObjects
                     catch
                     {
                         if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
-                        { zoneGeometryParameters.WallCreationData.Add(c, "Outdoors");}
-                        else { zoneGeometryParameters.WallCreationData.Add(c, "Adiabatic"); }               
+                        { zone.WallCreationData.Add(c, "Outdoors"); }
+                        else { zone.WallCreationData.Add(c, "Adiabatic"); }
                     }
-                }              
-            }
-            return listVal;
-        }
-        public static Building InitialiseDetailedModelBuilding_SameFloorPlan(List<ZoneGeometryInformation> zonesInformation,
-            List<ZoneList> zoneLists, int nFloors, BuildingConstruction construction, BuildingWWR wwr, BuildingZoneOperation operation, 
-            HVACSystem hVACSystem)
-        {
-            Building bui = new Building();
-            zoneLists.ForEach(zl => bui.AddZoneList(zl));
-            bui.HVACSystem = hVACSystem;
-
-            for (int i = 0; i < nFloors; i++)
-            {
-                foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
-                {
-                    Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name + ":" + i, i);
-                    XYZList rfPoints = zoneInfo.FloorPoints.OffsetHeight(zoneInfo.Height);
-                    if (i == 0)
-                    {
-                        new Surface(zone, zoneInfo.FloorPoints.reverse(), zoneInfo.FloorPoints.CalculateArea(), SurfaceType.Floor);
-                    }
-                    else
-                    {
-                        new Surface(zone, zoneInfo.FloorPoints.reverse(), zoneInfo.FloorPoints.CalculateArea(), SurfaceType.Floor)
-                        {
-                            ConstructionName = "General_Floor_Ceiling",
-                            OutsideCondition = "Zone",
-                            OutsideObject = zoneInfo.Name + ":" + (i - 1)
-                        };
-                    }
-                    CreateZoneWalls(zone, zoneInfo.WallCreationData, zoneInfo.FloorPoints.xyzs.First().Z);
-                    if (i == nFloors - 1)
-                    {
-                        new Surface(zone, rfPoints, rfPoints.CalculateArea(), SurfaceType.Roof);
-                    }
-
-                    zone.CreateDaylighting(500);
-                    bui.AddZone(zone);
-                    try { bui.zoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
-                    catch { bui.zoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
                 }
             }
-            bui.UpdateBuildingConstructionWWROperations(construction, wwr, operation);
-            return bui;
+            return zoneInfoList;
         }
-        public static Building InitialiseDetailedModelBuilding_DifferentFloorPlan(
-            Dictionary<string, List<XYZ[]>> allRoomSegmentsIDF, List<XYZ[]> externalEdgesIDF, List<ZoneList> zoneLists,
-            double heightFl, int nFloors, BuildingConstruction construction, BuildingWWR wwr, BuildingZoneOperation operation, HVACSystem hVACSystem)
+
+        public static List<ZoneGeometryInformation> GetZoneGeometryInformation(Dictionary<string, int> zoneLevels,
+            Dictionary<string, List<XYZ[]>> allRoomSegmentsIDF, List<XYZ[]> externalEdgesIDF, double heightFl)
         {
-            Dictionary<string, Dictionary<XYZ[], string>> zoneWallCreationData = new Dictionary<string, Dictionary<XYZ[], string>>();
-            Dictionary<string, List<XYZ>> zoneFloorCreationData = new Dictionary<string, List<XYZ>>();
-
+            List<ZoneGeometryInformation> zoneInfoList = new List<ZoneGeometryInformation>();
             List<string> zNames = allRoomSegmentsIDF.Select(x => x.Key).ToList();
-
             foreach (string zName in zNames)
             {
-                List<XYZ[]> roomSegments = allRoomSegmentsIDF[zName];
-                List<XYZ> floorPoints = allRoomSegmentsIDF[zName].Select(x => x[0]).ToList();
+                ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
+                zInfo.Name = zName;
+                zInfo.Height = heightFl;
+                zInfo.Level = zoneLevels[zName];
+
+                List<XYZ[]> thisRoomSegments = allRoomSegmentsIDF[zName];
+                List<XYZ> floorPoints = thisRoomSegments.Select(x => x[0]).ToList();
                 XYZList flPointList = new XYZList(floorPoints);
                 flPointList.RemoveCollinearPoints();
-                zoneFloorCreationData.Add(zName, flPointList.xyzs);
+                zInfo.FloorPoints = flPointList;
+                zoneInfoList.Add(zInfo);
             }
-            foreach (string zName in zNames)
+
+            foreach (ZoneGeometryInformation zone in zoneInfoList)
             {
-                IEnumerable<KeyValuePair<string, List<XYZ[]>>> allRoomSegmentsModified = allRoomSegmentsIDF.Where(x => x.Key != zName);
-                Dictionary<XYZ[], string> zoneWallData = new Dictionary<XYZ[], string>();
-                foreach (XYZ[] c in allRoomSegmentsIDF[zName])
+                Dictionary<string, List<XYZ[]>> allRoomSegmentsNotThisRoom = new Dictionary<string, List<XYZ[]>>();
+                List<XYZ[]> thisRoomSegments = allRoomSegmentsIDF[zone.Name];
+                foreach (KeyValuePair<string, List<XYZ[]>> exRoomSegment in allRoomSegmentsIDF.Where(x => x.Key != zone.Name))
+                {
+                    allRoomSegmentsNotThisRoom.Add(exRoomSegment.Key, exRoomSegment.Value);
+                }
+
+                foreach (XYZ[] c in thisRoomSegments)
                 {
                     try
                     {
-                        KeyValuePair<string, List<XYZ[]>> matchingCurve = allRoomSegmentsModified.First(x => x.Value.Any(y => CompareCurves(c, y)));
-                        zoneWallData.Add(c, matchingCurve.Key);
+                        KeyValuePair<string, List<XYZ[]>> matchingCurve = allRoomSegmentsNotThisRoom
+                            .First(x => x.Value.Any(y => CompareCurves(c, y)));
+                        zone.WallCreationData.Add(c, matchingCurve.Key);
 
                         List<XYZ[]> matchingZoneSegments = allRoomSegmentsIDF[matchingCurve.Key];
                         matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
@@ -152,60 +146,12 @@ namespace IDFObjects
                     catch
                     {
                         if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
-                        {
-                            zoneWallData.Add(c, "Outdoors");
-                        }
-                        else
-                        {
-                            zoneWallData.Add(c, "Adiabatic");
-                        }
+                        { zone.WallCreationData.Add(c, "Outdoors"); }
+                        else { zone.WallCreationData.Add(c, "Adiabatic"); }
                     }
                 }
-                zoneWallCreationData.Add(zName, zoneWallData);
             }
-
-            Building bui = new Building();
-            zoneLists.ForEach(zl => bui.AddZoneList(zl));
-            bui.HVACSystem = hVACSystem;
-
-            for (int i = 0; i < nFloors; i++)
-            {
-                foreach (KeyValuePair<string, List<XYZ>> zoneData in zoneFloorCreationData)
-                {
-                    Zone zone = new Zone(heightFl, zoneData.Key + ":" + i, i);
-                    double floorZ = zoneData.Value.First().Z;
-                    XYZList floorPoints = new XYZList(zoneData.Value.ToList()).ChangeZValue(floorZ);
-
-                    XYZList rfPoints = floorPoints.ChangeZValue(floorZ + heightFl);
-                    floorPoints.xyzs.Reverse();
-                    double area = floorPoints.CalculateArea();
-                    if (i == 0)
-                    {
-                        new Surface(zone, floorPoints, floorPoints.CalculateArea(), SurfaceType.Floor);
-                    }
-                    else
-                    {
-                        new Surface(zone, floorPoints, floorPoints.CalculateArea(), SurfaceType.Floor)
-                        {
-                            ConstructionName = "General_Floor_Ceiling",
-                            OutsideCondition = "Zone",
-                            OutsideObject = zoneData.Key + ":" + (i - 1)
-                        };
-                    }
-                    CreateZoneWalls(zone, zoneWallCreationData[zoneData.Key], floorZ);
-                    if (i == nFloors - 1)
-                    {
-                        new Surface(zone, rfPoints, rfPoints.CalculateArea(), SurfaceType.Roof);
-                    }
-
-                    zone.CreateDaylighting(500);
-                    bui.AddZone(zone);
-                    try { bui.zoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
-                    catch { bui.zoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
-                }
-            }
-            bui.UpdateBuildingConstructionWWROperations(construction, wwr, operation);
-            return bui;
+            return zoneInfoList;
         }
         public static bool CompareCurves(IDFObjects.XYZ[] c1, IDFObjects.XYZ[] c2)
         {
@@ -386,7 +332,7 @@ namespace IDFObjects
                 double x2 = nextPoint.x, y2 = nextPoint.y;
                 area += (x2 - x1) * (y2 + y1);
             }
-            bool returnVal = area > 0;
+            bool returnVal = area < 0;
             return returnVal;
         }
         public static double[] GetSpaceChr(Building building, Zone z)
@@ -397,15 +343,15 @@ namespace IDFObjects
             //    "Total Wall Area", "Total Window Area", "Total Roof Area", "Total Ground Floor Area", "Total Internal Floor Area", "Total Internal Wall Area",
             //    "uWall", "uWindow", "gWindow", "uRoof", "uGFloor", "uIFloor", "uIWall"
 
-            ZoneList zList = building.zoneLists.First(zL => zL.ZoneNames.Contains(z.Name));
+            ZoneList zList = building.ZoneLists.First(zL => zL.ZoneNames.Contains(z.Name));
             double light = zList.Light.wattsPerArea, equipment = zList.ElectricEquipment.wattsPerArea,
             infiltration = zList.ZoneInfiltration.airChangesHour;
 
-            BuildingConstruction buiCons = building.Construction;
+            BuildingConstruction buiCons = building.Parameters.Construction;
             return new double[] {
                 z.Area, z.Height, z.Volume,
                 light, equipment, light+equipment, infiltration,
-                building.Operation.OperatingHours, z.SolarRadiation, z.TotalHeatCapacity,
+                building.Parameters.Operations[0].OperatingHours, z.SolarRadiation, z.TotalHeatCapacity,
                 z.totalWallArea, z.totalWindowArea, z.totalRoofArea, z.totalGFloorArea, z.totalIFloorArea, z.totalIWallArea,
                 buiCons.UWall, buiCons.UWindow, buiCons.GWindow, buiCons.URoof, buiCons.UGFloor, buiCons.UIFloor, buiCons.UIWall
             };
@@ -422,7 +368,7 @@ namespace IDFObjects
             CSVData.Add("Zone", new List<string>());
             CSVData.Add("Building", new List<string>());
 
-            BuildingConstruction buildingConstruction = building.Construction;
+            BuildingConstruction buildingConstruction = building.Parameters.Construction;
 
             foreach (Zone z in building.zones)
             {
@@ -466,19 +412,19 @@ namespace IDFObjects
                             buildingConstruction.UIWall,
                             buildingConstruction.Infiltration,
                             building.zones.Select(z => z.TotalHeatCapacityDeDuplicatingIntSurfaces).Sum(),
-                            building.Operation.OperatingHours,
-                            building.Operation.LHG,
-                            building.Operation.EHG,
-                            building.Operation.LHG + building.Operation.EHG,
-                            building.Service.BoilerEfficiency,
-                            building.Service.ChillerCOP,
-                            building.LightingEnergy,
-                            building.ZoneHeatingEnergy,
-                            building.ZoneCoolingEnergy,
-                            building.BoilerEnergy,
-                            building.ChillerEnergy,
-                            building.ThermalEnergy,
-                            building.OperationalEnergy));
+                            building.Parameters.Operations[0].OperatingHours,
+                            building.Parameters.Operations[0].LHG,
+                            building.Parameters.Operations[0].EHG,
+                            building.Parameters.Operations[0].LHG + building.Parameters.Operations[0].EHG,
+                            building.Parameters.Service.BoilerEfficiency,
+                            building.Parameters.Service.ChillerCOP,
+                            building.BEnergyPerformance.LightingEnergy,
+                            building.BEnergyPerformance.ZoneHeatingEnergy,
+                            building.BEnergyPerformance.ZoneCoolingEnergy,
+                            building.BEnergyPerformance.BoilerEnergy,
+                            building.BEnergyPerformance.ChillerEnergy,
+                            building.BEnergyPerformance.ThermalEnergy,
+                            building.BEnergyPerformance.OperationalEnergy));
             return CSVData;
         }
         public static double FtToM(double value)
@@ -864,12 +810,12 @@ namespace IDFObjects
         {
             return (attribute.ToString() + ";\t\t\t\t\t\t ! - " + definition);
         }
-        public static List<SizingPeriodDesignDay> CreateDesignDays(string location)
+        public static List<SizingPeriodDesignDay> CreateDesignDays(Location location)
         {
             SizingPeriodDesignDay winterday, summerday, summerday1, summerday2, summerday3, summerday4;
             switch (location)
             {
-                case "MUNICH_DEU":
+                case Location.MUNICH_DEU:
                 default:
                     winterday = new SizingPeriodDesignDay("MUNICH Ann Htg 99.6% Condns DB", 2, 21, "WinterDesignDay", 
                         -12.8, 0.0, -13.9, 0.0, 95900.0, 1.0, 130.0, "No", "No", "No", "AshraeClearSky", 0.0);
@@ -889,7 +835,7 @@ namespace IDFObjects
                     summerday4 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 9)", 9, 21, "SummerDesignDay",
                         29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
                     break;
-                case "BRUSSELS_BEL":
+                case Location.BRUSSELS_BEL:
                     winterday = new SizingPeriodDesignDay("BRUSSELS Ann Htg 99.6% Condns DB", 1, 21, "WinterDesignDay", 
                         -4.9, 0.0, -6.2,0.0, 102600.0, 1.0, 70.0, "No", "No", "No", "AshraeClearSky", 0.0);
 

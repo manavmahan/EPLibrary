@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.JScript;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,7 +12,8 @@ namespace IDFObjects
         public string Name;
         public double Height;
         public XYZList FloorPoints;
-        public Dictionary<XYZ[], string> WallCreationData;
+        public int Level;
+        public Dictionary<XYZ[], string> WallCreationData = new Dictionary<XYZ[], string>();
         public ZoneGeometryInformation() { }
     }
 }

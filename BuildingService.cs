@@ -9,6 +9,7 @@ namespace IDFObjects
     public class BuildingService
     {      
         public double BoilerEfficiency, ChillerCOP;
+        public HVACSystem HVACSystem;
         public BuildingService() { }
         public BuildingService(double BoilerEfficiency, double ChillerCOP) 
         {

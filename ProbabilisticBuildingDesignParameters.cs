@@ -21,6 +21,19 @@ namespace IDFObjects
 
         public List<BuildingDesignParameters> AllSamples;
         public ProbabilisticBuildingDesignParameters() { }
+        public BuildingDesignParameters GetAverage()
+        {
+            return new BuildingDesignParameters()
+            {
+                Geometry = pGeometry.GetAverage(),
+                Construction = pConstruction.GetAverage(),
+                WWR = pWWR.GetAverage(),
+                Service = pService.GetAverage(),
+                Operations = zOperations.Select(z => z.GetAverage()).ToList(),
+                Occupants = zOccupants.Select(z => z.GetAverage()).ToList(),
+                Environments = zEnvironments.Select(z => z.GetAverage()).ToList()
+            };
+        }
         public void GetSamples(Random random, int samples)
         {
             AllSamples = new List<BuildingDesignParameters>();

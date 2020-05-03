@@ -1,6 +1,8 @@
-﻿using IDFObjects;
+﻿using DocumentFormat.OpenXml.Drawing.Diagrams;
+using IDFObjects;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,23 +24,18 @@ namespace IDFObjects
 
         //Initialise blank building
         //Create zone with wall, floor, roof including orientation
-        // run UpdateBuildingConstructionWWROperations
+        //run UpdateBuildingConstructionWWROperations
                
         
         //Probablistic Attributes
-        public ProbabilisticBuildingConstruction pBuildingConstruction;
-        public ProbabilisticBuildingZoneOperation pBuildingOperation;
-        public ProbabilisticBuildingWWR pWWR;
+        public ProbabilisticBuildingDesignParameters p_Parameters;
         public ProbabilisticEmbeddedEnergyParameters p_EEParameters;
 
         //Probabilistic Operational Energy
-        public double[] p_BoilerEnergy, p_ChillerEnergy, p_ThermalEnergy, p_OperationalEnergy;
-        public double[] p_ZoneHeatingEnergy, p_ZoneCoolingEnergy, p_LightingEnergy;
+        public ProbablisticBEnergyPerformance ProbablisticBEnergyPerformance;
 
         //EnergyPlus Output
-        public double BoilerEnergy, ChillerEnergy, ThermalEnergy, OperationalEnergy;
-        public double ZoneHeatingEnergy, ZoneCoolingEnergy, LightingEnergy;
-        public double TotalArea, TotalVolume;
+        public BEnergyPerformance BEnergyPerformance;
 
         //Probabilistic Embedded Energy Output
         public double[] p_EmbeddedEnergy, p_PERT_EmbeddedEnergy, p_PENRT_EmbeddedEnergy,
@@ -48,20 +45,9 @@ namespace IDFObjects
         public double life, PERTFactor, PENRTFactor;
 
         //Deterministic Attributes
-        public BuildingConstruction Construction;
-        public BuildingZoneOperation Operation;
-        public BuildingZoneEnvironment Environment;
-        public BuildingService Service;
-        public BuildingZoneOccupant Occupants;
-
+        public BuildingDesignParameters Parameters;
         public EmbeddedEnergyParameters EEParameters;
-
-        public BuildingWWR WWR { get; set; } = new BuildingWWR(0, 0, 0, 0); //North, West, South, East
         public ShadingLength shadingLength { get; set; } = new ShadingLength(0, 0, 0, 0); //North, West, South, East
-
-        public double[] heatingSetPoints = new double[] { 10, 20 };
-        public double[] coolingSetPoints = new double[] { 28, 24 };
-        public double equipOffsetFraction = 0.1;
 
         //Schedules Limits and Schedule
         public List<ScheduleLimits> schedulelimits  = new List<ScheduleLimits>();
@@ -75,7 +61,7 @@ namespace IDFObjects
 
         //Zone, ZoneList, BuidlingSurface, ShadingOverhangs
         public List<Zone> zones = new List<Zone>();
-        public List<ZoneList> zoneLists = new List<ZoneList>();
+        public List<ZoneList> ZoneLists = new List<ZoneList>();
         public List<ShadingBuildingDetailed> DetachedShading = new List<ShadingBuildingDetailed>();
 
         //to generate building in Revit
@@ -88,28 +74,40 @@ namespace IDFObjects
         public ChilledWaterLoop cWaterLoop;
         public Chiller chiller;
         public Tower tower;
+
+        public void CreateZoneLists()
+        {
+            IEnumerable<string> zoneListNames = Parameters.Operations.Select(o => o.Name);
+            foreach(string zoneListName in zoneListNames)
+            {
+                BuildingZoneOperation op = Parameters.Operations.First(o => o.Name == zoneListName);
+                BuildingZoneOccupant oc = Parameters.Occupants.First(o => o.Name == zoneListName);
+                BuildingZoneEnvironment ev = Parameters.Environments.First(o => o.Name == zoneListName);
+
+                AddZoneList(new ZoneList()
+                {
+                    Name = zoneListName,
+                    Operation = op,
+                    Occupant = oc,
+                    Environment = ev
+                }) ;
+            }
+        }
+
         public HotWaterLoop hWaterLoop;
         public Boiler boiler;
 
         //PV Panel on Roof
         public ElectricLoadCenterDistribution electricLoadCenterDistribution;
 
-        //HVAC System
-        public HVACSystem HVACSystem;
-        public void UpdateBuildingConstructionWWROperations(BuildingConstruction construction, BuildingWWR wWR, 
-            BuildingZoneOperation bOperation)
+        public void UpdateBuildingConstructionWWROperations()
         {
-            Construction = Utility.DeepClone(construction);
-            WWR = Utility.DeepClone(wWR);
-            Operation = Utility.DeepClone(bOperation);
-
             GenerateConstructionWithIComponentsU();
-            CreateInternalMass(Construction.InternalMass);
+            CreateInternalMass();
             UpdateFenestrations();
-
             CreateSchedules();
-            if (zoneLists.Any(zl=>zl.Schedules==null)) { GeneratePeopleLightEquipmentInfiltrationVentilation(); }
-            zoneLists.ForEach(zl=>zl.UpdateDayLightControlSchedule(this));
+            if (ZoneLists.Any(zl=>zl.Schedules==null)) { GeneratePeopleLightEquipmentInfiltrationVentilation(); }
+            ZoneLists.ForEach(zl=>zl.UpdateDayLightControlSchedule(this));
             GenerateHVAC();
             UpdateZoneInfo();
         } 
@@ -119,7 +117,7 @@ namespace IDFObjects
             {
                 foreach (Surface toupdate in zone.Surfaces.Where(s => s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors"))
                 {
-                    toupdate.CreateWindowsShadingControlShadingOverhang(zone, WWR, shadingLength);
+                    toupdate.CreateWindowsShadingControlShadingOverhang(zone, Parameters.WWR, shadingLength);
                 }
                 if (!zone.Surfaces.Any(s => s.Fenestrations!=null)) 
                 {
@@ -141,17 +139,17 @@ namespace IDFObjects
             });
 
         }
-        public void CreateInternalMass(double kJoulePerKgKm2)
+        public void CreateInternalMass()
         {
-            double hcIWall = Construction.hcIWall;
-            if (kJoulePerKgKm2 > 0) { 
+            double hcIWall = Parameters.Construction.hcIWall;
+            if (Parameters.Construction.InternalMass > 0) { 
                 zones.ForEach(z =>
                 {
                     z.CalcAreaVolume();
-                    InternalMass mass = new InternalMass(z, 1000 * kJoulePerKgKm2 * z.Area / hcIWall, "InternalWall", false);
+                    InternalMass mass = new InternalMass(z, 1000 * Parameters.Construction.InternalMass * 
+                        z.Area / hcIWall, "InternalWall", false);
                 });
             }
-
         }
         public void CreatePVPanelsOnRoof()
         {
@@ -245,9 +243,10 @@ namespace IDFObjects
         }
         void GenerateConstructionWithIComponentsU()
         {
-            double uWall = Construction.UWall, uGFloor = Construction.UGFloor, uIFloor = Construction.UIFloor,
-                uRoof = Construction.URoof, uIWall = Construction.UIWall, uWindow = Construction.UWindow,
-                gWindow = Construction.GWindow, hcSlab = Construction.HCSlab;
+            double uWall = Parameters.Construction.UWall, uGFloor = Parameters.Construction.UGFloor, 
+                uIFloor = Parameters.Construction.UIFloor,
+                uRoof = Parameters.Construction.URoof, uIWall = Parameters.Construction.UIWall, uWindow = Parameters.Construction.UWindow,
+                gWindow = Parameters.Construction.GWindow, hcSlab = Parameters.Construction.HCSlab;
 
             double lambda_insulation = 0.04;
 
@@ -290,22 +289,22 @@ namespace IDFObjects
             materials = new List<Material>() { layer_F13, layer_G03, layer_I03, layer_M11, layer_M03, layer_I04, layer_G01, layer_floorSlab, layer_gFloorInsul, layer_iFloorInsul, layer_Plasterboard };
 
             List<Material> layerListRoof = new List<Material>() { layer_F13, layer_G03, layer_I03, layer_M11 };
-            Construction.hcRoof = layerListRoof.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Parameters.Construction.hcRoof = layerListRoof.Select(l => l.thickness * l.sHC * l.density).Sum();
             Construction constructionRoof = new Construction("Up Roof Concrete", layerListRoof);
 
             List<Material> layerListWall = new List<Material>() { layer_M03, layer_I04, layer_G01 };
 
             Construction construction_Wall = new Construction("Wall ConcreteBlock", layerListWall);
-            Construction.hcWall = layerListWall.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Parameters.Construction.hcWall = layerListWall.Select(l => l.thickness * l.sHC * l.density).Sum();
             List<Material> layerListInternallWall = new List<Material>() { layer_Plasterboard, layer_iWallInsul, layer_Plasterboard };
             Construction construction_internalWall = new Construction("InternalWall", layerListInternallWall);
-            Construction.hcIWall = layerListInternallWall.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Parameters.Construction.hcIWall = layerListInternallWall.Select(l => l.thickness * l.sHC * l.density).Sum();
             List<Material> layerListGfloor = new List<Material>() { layer_floorSlab, layer_gFloorInsul };
             Construction construction_gFloor = new Construction("Slab_Floor", layerListGfloor);
-            Construction.hcGFloor = layerListGfloor.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Parameters.Construction.hcGFloor = layerListGfloor.Select(l => l.thickness * l.sHC * l.density).Sum();
             List<Material> layerListIFloor = new List<Material>() { layer_floorSlab, layer_iFloorInsul };
             Construction construction_floor = new Construction("General_Floor_Ceiling", layerListIFloor);
-            Construction.hcIFloor = layerListIFloor.Select(l => l.thickness * l.sHC * l.density).Sum();
+            Parameters.Construction.hcIFloor = layerListIFloor.Select(l => l.thickness * l.sHC * l.density).Sum();
             constructions = new List<Construction>() { constructionRoof, construction_Wall, construction_gFloor, construction_floor, construction_internalWall };
 
             //window construction
@@ -319,11 +318,14 @@ namespace IDFObjects
         }
         void GeneratePeopleLightEquipmentInfiltrationVentilation()
         {
-            foreach (ZoneList zList in zoneLists)
+            foreach (ZoneList zList in ZoneLists)
             {
-                zList.GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(this, Operation.GetStartEndTime(13), 
-                    Occupants.AreaPerPerson, Operation.LHG, Operation.EHG,
-                    Construction.Infiltration);
+                BuildingZoneOperation operation = Parameters.Operations.First(o => o.Name == zList.Name);
+                BuildingZoneOccupant occupant = Parameters.Occupants.First(o => o.Name == zList.Name);
+                zList.GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(this, 
+                    operation.GetStartEndTime(13),
+                    occupant.AreaPerPerson, operation.LHG, operation.EHG,
+                    Parameters.Construction.Infiltration);
 
                 schedulescomp.AddRange(zList.Schedules);
             }
@@ -331,10 +333,10 @@ namespace IDFObjects
         }
         public void GenerateHVAC()
         {
-            zones.ForEach(z => z.ThermostatName = zoneLists.First(zl => zl.ZoneNames.Contains(z.Name)).Thermostat.name);
-            zones.ForEach(z => z.OccupancyScheduleName = zoneLists.First(zl => zl.ZoneNames.Contains(z.Name)).
+            zones.ForEach(z => z.ThermostatName = ZoneLists.First(zl => zl.ZoneNames.Contains(z.Name)).Thermostat.name);
+            zones.ForEach(z => z.OccupancyScheduleName = ZoneLists.First(zl => zl.ZoneNames.Contains(z.Name)).
             Schedules.First(s=>s.name.Contains("Occupancy")).name);
-            switch (HVACSystem)
+            switch (Parameters.Service.HVACSystem)
             {
                 case HVACSystem.FCU:
                     zones.ForEach(z => { ZoneFanCoilUnit zFCU = new ZoneFanCoilUnit(z, z.ThermostatName); });
@@ -362,8 +364,8 @@ namespace IDFObjects
         {
             hWaterLoop = new HotWaterLoop();
             cWaterLoop = new ChilledWaterLoop();
-            boiler = new Boiler(Service.BoilerEfficiency, "Electricity");
-            chiller = new Chiller(Service.ChillerCOP);
+            boiler = new Boiler(Parameters.Service.BoilerEfficiency, "Electricity");
+            chiller = new Chiller(Parameters.Service.ChillerCOP);
             tower = new Tower();
         }
         public Building() { }
@@ -388,15 +390,21 @@ namespace IDFObjects
             {
                 zone.CalcAreaVolumeHeatCapacity(this); zone.AssociateEnergyPlusResults(this, data);
             }
-            TotalArea = zones.Select(z => z.Area).Sum(); TotalVolume = zones.Select(z => z.Volume).Sum();
-            ZoneHeatingEnergy = zones.Select(z => z.HeatingEnergy).Sum(); ZoneCoolingEnergy = zones.Select(z => z.CoolingEnergy).Sum();
-            LightingEnergy = zones.Select(z => z.LightingEnergy).Sum();
+            BEnergyPerformance = new BEnergyPerformance()
+            {
+                TotalArea = zones.Select(z => z.Area).Sum(),
+                TotalVolume = zones.Select(z => z.Volume).Sum(),
+                ZoneHeatingEnergy = zones.Select(z => z.HeatingEnergy).Sum(),
+                ZoneCoolingEnergy = zones.Select(z => z.CoolingEnergy).Sum(),
+                LightingEnergy = zones.Select(z => z.LightingEnergy).Sum(),
 
-            BoilerEnergy = data[data.Keys.First(a => a.Contains("Boiler Electric Energy"))].ConvertKWhfromJoule().Average();
-            ChillerEnergy = data[data.Keys.First(a => a.Contains("Chiller Electric Energy"))].ConvertKWhfromJoule().Average();
-            ChillerEnergy += data[data.Keys.First(a => a.Contains("Cooling Tower Fan Electric Energy"))].ConvertKWhfromJoule().Average();
-            ThermalEnergy = ChillerEnergy + BoilerEnergy;
-            OperationalEnergy = ThermalEnergy + LightingEnergy;
+                BoilerEnergy = data[data.Keys.First(a => a.Contains("Boiler Electric Energy"))].ConvertKWhfromJoule().Sum(),
+                ChillerEnergy = data[data.Keys.First(a => a.Contains("Chiller Electric Energy"))].ConvertKWhfromJoule().Sum() +
+                    data[data.Keys.First(a => a.Contains("Cooling Tower Fan Electric Energy"))].ConvertKWhfromJoule().Sum(),
+                
+            };
+            BEnergyPerformance.ThermalEnergy = BEnergyPerformance.ChillerEnergy + BEnergyPerformance.BoilerEnergy;
+            BEnergyPerformance.OperationalEnergy = BEnergyPerformance.ThermalEnergy + BEnergyPerformance.LightingEnergy;
         }
         public void AssociateProbabilisticEnergyPlusResults(Dictionary<string, double[]> resultsDF)
         {
@@ -423,24 +431,23 @@ namespace IDFObjects
             {
                 zone.CalcAreaVolumeHeatCapacity(this); zone.AssociateProbabilisticEnergyPlusResults(this, resultsDF);
             }
-            TotalArea = zones.Select(z => z.Area).Sum(); TotalVolume = zones.Select(z => z.Volume).Sum();
-            p_ZoneHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise();
-            p_ZoneCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise();
-            p_LightingEnergy = zones.Select(z => z.p_LightingEnergy).ToList().AddArrayElementWise();
+            ProbablisticBEnergyPerformance = new ProbablisticBEnergyPerformance()
+            {
+                TotalArea = zones.Select(z => z.Area).Sum(),
+                TotalVolume = zones.Select(z => z.Volume).Sum(),
+                ZoneHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise(),
+                ZoneCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise(),
+                LightingEnergy = zones.Select(z => z.p_LightingEnergy).ToList().AddArrayElementWise(),
+                BoilerEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains("Boiler Electric Energy"))].ConvertKWhfromJoule(),
+                ChillerEnergy = new List<double[]>() { resultsDF[resultsDF.Keys.First(a => a.Contains("Chiller Electric Energy"))],
+                resultsDF[resultsDF.Keys.First(a => a.Contains("Cooling Tower Fan Electric Energy"))] }.AddArrayElementWise().ConvertKWhfromJoule()             
+            };
+            ProbablisticBEnergyPerformance.ThermalEnergy = new List<double[]>() { 
+                ProbablisticBEnergyPerformance.ChillerEnergy,
+                ProbablisticBEnergyPerformance.BoilerEnergy }.AddArrayElementWise();
 
-            ZoneHeatingEnergy = p_ZoneHeatingEnergy.Average(); ZoneCoolingEnergy = p_ZoneCoolingEnergy.Average();
-            LightingEnergy = p_LightingEnergy.Average();
-
-            p_BoilerEnergy = resultsDF[resultsDF.Keys.First(a => a.Contains("Boiler Electric Energy"))].ConvertKWhfromJoule();
-            BoilerEnergy = p_BoilerEnergy.Average();
-            p_ChillerEnergy = new List<double[]>() { resultsDF[resultsDF.Keys.First(a => a.Contains("Chiller Electric Energy"))],
-            resultsDF[resultsDF.Keys.First(a => a.Contains("Cooling Tower Fan Electric Energy"))] }.AddArrayElementWise().ConvertKWhfromJoule();
-            ChillerEnergy = p_ChillerEnergy.Average();
-
-            p_ThermalEnergy = new List<double[]>() { p_ChillerEnergy, p_BoilerEnergy }.AddArrayElementWise();
-            ThermalEnergy = p_ThermalEnergy.Average();
-            p_OperationalEnergy = new List<double[]>() { p_ThermalEnergy, p_LightingEnergy }.AddArrayElementWise();
-            OperationalEnergy = p_OperationalEnergy.Average();
+            ProbablisticBEnergyPerformance.OperationalEnergy = new List<double[]>() { ProbablisticBEnergyPerformance.ThermalEnergy,
+                ProbablisticBEnergyPerformance.LightingEnergy}.AddArrayElementWise();
         }
         public void AssociateProbabilisticMLResults(Dictionary<string, double[]> resultsDF)
         {
@@ -463,26 +470,24 @@ namespace IDFObjects
             {
                 zone.CalcAreaVolumeHeatCapacity(this); zone.AssociateProbabilisticMLResults(resultsDF);
             }
-            TotalArea = zones.Select(z => z.Area).Sum(); TotalVolume = zones.Select(z => z.Volume).Sum();
-            p_ZoneHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise();
-            p_ZoneCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise();
-
-            ZoneHeatingEnergy = p_ZoneHeatingEnergy.Average(); ZoneCoolingEnergy = p_ZoneCoolingEnergy.Average();
-            p_LightingEnergy = zones.Select(z => z.p_LightingEnergy).ToList().AddArrayElementWise();
+            ProbablisticBEnergyPerformance = new ProbablisticBEnergyPerformance()
+            {
+                TotalArea = zones.Select(z => z.Area).Sum(),
+                TotalVolume = zones.Select(z => z.Volume).Sum(),
+                ZoneHeatingEnergy = zones.Select(z => z.p_HeatingEnergy).ToList().AddArrayElementWise(),
+                ZoneCoolingEnergy = zones.Select(z => z.p_CoolingEnergy).ToList().AddArrayElementWise(),
+                LightingEnergy = zones.Select(z => z.p_LightingEnergy).ToList().AddArrayElementWise(),
+                OperationalEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Operational Energy"))]
+            };
 
             try
             {
-                p_ThermalEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Thermal Energy"))];
-                ThermalEnergy = p_ThermalEnergy.Average();
+                ProbablisticBEnergyPerformance.ThermalEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Thermal Energy"))];
             }
             catch
             {
 
             }
-
-            p_OperationalEnergy = resultsDF[resultsDF.Keys.First(s => s.Contains("Operational Energy"))];
-            OperationalEnergy = p_OperationalEnergy.Average();
-            LightingEnergy = p_LightingEnergy.Average();
         }
         public void AssociateProbabilisticEmbeddedEnergyResults(Dictionary<string, double[]> resultsDF)
         {
@@ -490,8 +495,8 @@ namespace IDFObjects
             p_PENRT_EmbeddedEnergy = resultsDF["PENRT"];
             p_EmbeddedEnergy = new List<double[]>() { p_PENRT_EmbeddedEnergy, p_PENRT_EmbeddedEnergy }.AddArrayElementWise();
 
-            p_LCE_PENRT = new List<double[]>() { p_PENRT_EmbeddedEnergy, p_OperationalEnergy.Select(x => x * life * PENRTFactor).ToArray() }.AddArrayElementWise();
-            p_LCE_PERT = new List<double[]>() { p_PERT_EmbeddedEnergy, p_OperationalEnergy.Select(x => x * life * PERTFactor).ToArray() }.AddArrayElementWise();
+            p_LCE_PENRT = new List<double[]>() { p_PENRT_EmbeddedEnergy, ProbablisticBEnergyPerformance.OperationalEnergy.Select((double x) => x * life * PENRTFactor).ToArray() }.AddArrayElementWise();
+            p_LCE_PERT = new List<double[]>() { p_PERT_EmbeddedEnergy, ProbablisticBEnergyPerformance.OperationalEnergy.Select(x => x * life * PERTFactor).ToArray() }.AddArrayElementWise();
             p_LifeCycleEnergy = new List<double[]>() { p_LCE_PENRT, p_LCE_PERT }.AddArrayElementWise();
 
             PERT_EmbeddedEnergy = p_PERT_EmbeddedEnergy.Average();
@@ -507,8 +512,8 @@ namespace IDFObjects
             PENRT_EmbeddedEnergy = resultsDF["PENRT"];
             EmbeddedEnergy = PENRT_EmbeddedEnergy + PENRT_EmbeddedEnergy;
 
-            LCE_PENRT = OperationalEnergy * life * PENRTFactor;
-            LCE_PERT = OperationalEnergy * life * PERTFactor;
+            LCE_PENRT = BEnergyPerformance.OperationalEnergy * life * PENRTFactor;
+            LCE_PERT = BEnergyPerformance.OperationalEnergy * life * PERTFactor;
             LifeCycleEnergy = LCE_PENRT + LCE_PERT;
         }
         public Building AddZone(Zone zone)
@@ -519,7 +524,7 @@ namespace IDFObjects
         public void AddZone(List<Zone> zones) { zones.ForEach(z => AddZone(z)); }
         public void AddZoneList(ZoneList zoneList)
         {
-            zoneLists.Add(zoneList);
+            ZoneLists.Add(zoneList);
             try { schedulescomp.AddRange(zoneList.Schedules); } catch { }
         }
         public List<string> WriteInfo()
@@ -538,5 +543,80 @@ namespace IDFObjects
             };
         }
        
+        public void InitialiseBuilding_SameFloorPlan(List<ZoneGeometryInformation> zonesInformation,
+            BuildingDesignParameters parameters)
+        {
+            Parameters = parameters;
+            CreateZoneLists();
+
+            for (int i = 0; i < parameters.Geometry.NFloors; i++)
+            {
+                foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
+                {
+                    Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name + ":" + i, i);
+                    XYZList floorPoints = zoneInfo.FloorPoints.ChangeZValue(i * zoneInfo.Height);                 
+                    if (i == 0)
+                    {
+                        new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor);
+                    }
+                    else
+                    {
+                        new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
+                        {
+                            ConstructionName = "General_Floor_Ceiling",
+                            OutsideCondition = "Zone",
+                            OutsideObject = zoneInfo.Name + ":" + (i - 1)
+                        };
+                    }
+                    Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, floorPoints.xyzs.First().Z);
+                    if (i == parameters.Geometry.NFloors - 1)
+                    {
+                        XYZList rfPoints = floorPoints.OffsetHeight(zoneInfo.Height);
+                        new Surface(zone, rfPoints, rfPoints.CalculateArea(), SurfaceType.Roof);
+                    }
+                    zone.CreateDaylighting(500);
+                    AddZone(zone);
+                    try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
+                    catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
+                }
+            }
+            UpdateBuildingConstructionWWROperations();
+        }
+
+        public void InitialiseBuilding(List<ZoneGeometryInformation> zonesInformation,
+           BuildingDesignParameters parameters)
+        {
+            Parameters = parameters;
+            CreateZoneLists();
+
+            foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
+            {
+                Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name + ":" + zoneInfo.Level, zoneInfo.Level);
+                XYZList floorPoints = zoneInfo.FloorPoints;
+                if (zoneInfo.Level == 0)
+                    new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor);
+                else
+                    new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
+                    {
+                        ConstructionName = "General_Floor_Ceiling",
+                        OutsideCondition = "Adiabatic"
+                    };
+                
+                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, floorPoints.xyzs.First().Z);
+                if (zoneInfo.Level == parameters.Geometry.NFloors - 1)
+                    new Surface(zone, floorPoints.OffsetHeight(zoneInfo.Height), floorPoints.CalculateArea(), SurfaceType.Roof);
+                else
+                    new Surface(zone, floorPoints.OffsetHeight(zoneInfo.Height), floorPoints.CalculateArea(), SurfaceType.Floor)
+                    {
+                        ConstructionName = "General_Floor_Ceiling",
+                        OutsideCondition = "Adiabatic"
+                    };
+                zone.CreateDaylighting(500);
+                AddZone(zone);
+                try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
+                catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
+            }          
+            UpdateBuildingConstructionWWROperations();
+        }
     }    
 }

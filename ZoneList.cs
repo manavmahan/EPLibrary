@@ -10,6 +10,10 @@ namespace IDFObjects
     public class ZoneList
     {
         public List<string> ZoneNames = new List<string>();
+        public BuildingZoneEnvironment Environment;
+        public BuildingZoneOccupant Occupant;
+        public BuildingZoneOperation Operation;
+
         public People People;
         public ZoneVentilation ZoneVentilation;
         public ZoneInfiltration ZoneInfiltration;
@@ -29,11 +33,30 @@ namespace IDFObjects
             int hour1, hour2, minutes1, minutes2;
             hour1 = (int)Math.Truncate(startTime);
             hour2 = (int)Math.Truncate(endTime);
+
             minutes1 = (int)Math.Round(Math.Round((startTime - hour1) * 6)) * 10;
             minutes2 = (int)Math.Round(Math.Round((endTime - hour2) * 6)) * 10;
 
-            double[] heatingSetPoints = building.heatingSetPoints;
-            double[] coolingSetPoints = building.coolingSetPoints;
+            if (minutes1 == 60)
+            {
+                minutes1 = 0; hour1++;
+            }
+            if(minutes2 == 60)
+            {
+                minutes2 = 0; hour2++;
+            }
+
+            double[] heatingSetPoints = new double[]
+            {
+                building.Parameters.Environments[0].HeatingSetPoint,
+                building.Parameters.Environments[0].HeatingSetPoint -5 
+            };
+
+            double[] coolingSetPoints = new double[]
+            {
+                building.Parameters.Environments[0].CoolingSetPoint,
+                building.Parameters.Environments[0].HeatingSetPoint + 5
+            };
 
             double heatingSetpoint1 = heatingSetPoints[0];//16;
             double heatingSetpoint2 = heatingSetPoints[1];//20;

@@ -70,28 +70,28 @@ namespace IDFObjects
             totalRoofArea = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(r => r.Area).Sum();
             totalWindowArea = Surfaces.Where(w => w.Fenestrations != null).Select(wi => wi.Area).Sum();
 
-            TotalHeatCapacity = totalWallArea * building.Construction.hcWall + totalGFloorArea * building.Construction.hcGFloor +
-                totalIFloorArea * building.Construction.hcIFloor +
-                totalIWallArea * building.Construction.hcIWall + totalRoofArea * building.Construction.hcRoof +
-                iMasses.Select(m => m.area * building.Construction.hcIWall).Sum();
+            TotalHeatCapacity = totalWallArea * building.Parameters.Construction.hcWall + totalGFloorArea * building.Parameters.Construction.hcGFloor +
+                totalIFloorArea * building.Parameters.Construction.hcIFloor +
+                totalIWallArea * building.Parameters.Construction.hcIWall + totalRoofArea * building.Parameters.Construction.hcRoof +
+                iMasses.Select(m => m.area * building.Parameters.Construction.hcIWall).Sum();
 
-            TotalHeatCapacityDeDuplicatingIntSurfaces = totalWallArea * building.Construction.hcWall + totalGFloorArea * building.Construction.hcGFloor +
-                totalIFloorAreaExOther * building.Construction.hcIFloor +
-                totalIWallAreaExOther * building.Construction.hcIWall + totalRoofArea * building.Construction.hcRoof +
-                iMasses.Select(m => m.area * building.Construction.hcIWall).Sum();
+            TotalHeatCapacityDeDuplicatingIntSurfaces = totalWallArea * building.Parameters.Construction.hcWall + totalGFloorArea * building.Parameters.Construction.hcGFloor +
+                totalIFloorAreaExOther * building.Parameters.Construction.hcIFloor +
+                totalIWallAreaExOther * building.Parameters.Construction.hcIWall + totalRoofArea * building.Parameters.Construction.hcRoof +
+                iMasses.Select(m => m.area * building.Parameters.Construction.hcIWall).Sum();
 
-            wallAreaU = totalWallArea * building.Construction.UWall;
-            gFloorAreaU = totalGFloorArea * building.Construction.UGFloor;
-            iFloorAreaU = totalIFloorArea * building.Construction.UIFloor;
-            windowAreaU = totalWindowArea * building.Construction.UWindow;
-            iWallAreaU = totalIWallArea * building.Construction.UIWall;
-            roofAreaU = totalRoofArea * building.Construction.URoof;
+            wallAreaU = totalWallArea * building.Parameters.Construction.UWall;
+            gFloorAreaU = totalGFloorArea * building.Parameters.Construction.UGFloor;
+            iFloorAreaU = totalIFloorArea * building.Parameters.Construction.UIFloor;
+            windowAreaU = totalWindowArea * building.Parameters.Construction.UWindow;
+            iWallAreaU = totalIWallArea * building.Parameters.Construction.UIWall;
+            roofAreaU = totalRoofArea * building.Parameters.Construction.URoof;
 
             ExSurfAreaU = wallAreaU + windowAreaU + roofAreaU;
             GSurfAreaU = gFloorAreaU;
             ISurfAreaU = iFloorAreaU + iWallAreaU;
             SurfAreaU = ExSurfAreaU + GSurfAreaU + ISurfAreaU;
-            windowAreaG = totalWindowArea * building.Construction.GWindow;
+            windowAreaG = totalWindowArea * building.Parameters.Construction.GWindow;
         }
         public void AssociateEnergyPlusResults(Building building, Dictionary<string, double[]> resultsDF)
         {
@@ -101,7 +101,7 @@ namespace IDFObjects
                 .SelectMany(w => w.Fenestrations).Select(s => s.HeatFlow).Sum();
             roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.HeatFlow).Sum();
            
-            SolarRadiation = building.Construction.GWindow * Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f => f.Area * f.SolarRadiation).Sum();
+            SolarRadiation = building.Parameters.Construction.GWindow * Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f => f.Area * f.SolarRadiation).Sum();
 
             infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Gain Energy"))].SubtractArrayElementWise(
                      resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Zone Infiltration Total Heat Loss Energy"))]).Average().ConvertKWhfromJoule();

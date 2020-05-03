@@ -16,20 +16,19 @@ namespace IDFObjects
         public double elevation { get; set; }
 
         public SiteLocation() { }
-        public SiteLocation(string location)
+        public SiteLocation(Location location)
         {
+            name = location.ToString();
             switch (location)
-            {
-                case "MUNICH_DEU":
+            {         
+                case Location.MUNICH_DEU:
                 default:
-                    name = location;
                     latitude = 48.13;
                     longitude = 11.7;
                     timeZone = 1.0;
                     elevation = 529.0;
                     break;
-                case "BRUSSELS_BEL":
-                    name = location;
+                case Location.BRUSSELS_BEL:
                     latitude = 50.9;
                     longitude = 4.53;
                     timeZone = 1.0;

@@ -10,23 +10,22 @@ namespace IDFObjects
     public class IDFFile
     {
         public string name = "IDFFile_0";
-        public string WeatherLocation = "MUNICH_DEU";
 
         //IDF Objects as appear in Energy Plus File
         public Version version = new Version();
         public SimulationControl sControl = new SimulationControl();
         public Timestep tStep = new Timestep(6);
         public ConvergenceLimits cLimits = new ConvergenceLimits();
-        public SiteLocation sLocation = new SiteLocation("MUNICH_DEU");
+        public SiteLocation sLocation = new SiteLocation(Location.MUNICH_DEU);
         public List<SizingPeriodDesignDay> SDesignDay;
         public RunPeriod rPeriod = new RunPeriod();
-        public SiteGroundTemperature gTemperature = new SiteGroundTemperature("MUNICH_DEU");
+        public SiteGroundTemperature gTemperature = new SiteGroundTemperature(Location.MUNICH_DEU);
         public GlobalGeometryRules geomRules = new GlobalGeometryRules();
 
         //Building - contain schedules, material, constructions, zones, zoneLists, 
         public Building building = new Building();
         public Output output;
-        public IDFFile(string location) 
+        public IDFFile(Location location) 
         {
             sLocation = new SiteLocation(location);
             SDesignDay = Utility.CreateDesignDays(location);
@@ -145,7 +144,7 @@ namespace IDFObjects
 
             idfString.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ZONELIST ===========\r\n");
 
-            foreach (ZoneList zl in building.zoneLists)
+            foreach (ZoneList zl in building.ZoneLists)
             {
                 idfString.Add("ZoneList,");
                 idfString.Add(Utility.IDFLineFormatter(zl.Name, "Name"));
@@ -194,7 +193,7 @@ namespace IDFObjects
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: PEOPLE ===========\r\n");
-            foreach (ZoneList zList in building.zoneLists)
+            foreach (ZoneList zList in building.ZoneLists)
             {
                 info.AddRange(zList.People.WriteInfo());
             }
@@ -204,7 +203,7 @@ namespace IDFObjects
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ZONEVENTILATION:DESIGNFLOWRATE ===========\r\n");
-            foreach (ZoneList zList in building.zoneLists)
+            foreach (ZoneList zList in building.ZoneLists)
             {
                 info.AddRange(zList.ZoneVentilation.WriteInfo());
             }
@@ -214,7 +213,7 @@ namespace IDFObjects
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: LIGHTS ===========\r\n");
-            foreach (ZoneList zList in building.zoneLists)
+            foreach (ZoneList zList in building.ZoneLists)
             {
                 info.AddRange(zList.Light.WriteInfo());
             }
@@ -224,7 +223,7 @@ namespace IDFObjects
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ELECTRICEQUIPMENT ===========\r\n");
-            foreach (ZoneList zList in building.zoneLists)
+            foreach (ZoneList zList in building.ZoneLists)
             {
                 info.AddRange(zList.ElectricEquipment.WriteInfo());
             }
@@ -235,7 +234,7 @@ namespace IDFObjects
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: HVACTEMPLATE:THERMOSTAT ===========\r\n");
 
-            foreach (Thermostat t in building.zoneLists.Select(z=>z.Thermostat))
+            foreach (Thermostat t in building.ZoneLists.Select(z=>z.Thermostat))
             {
                 info.Add("HVACTemplate:Thermostat,");
                 info.Add("\t" + t.name + ", \t\t\t\t!- Name");
@@ -284,7 +283,7 @@ namespace IDFObjects
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ZONEINFILTRATION:DESIGNFLOWRATE ===========\r\n");
 
-            foreach (ZoneList z in building.zoneLists)
+            foreach (ZoneList z in building.ZoneLists)
             {
                 info.AddRange(z.ZoneInfiltration.WriteInfo());
             }
