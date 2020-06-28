@@ -25,9 +25,7 @@ namespace IDFObjects
             Min = mean - variation;
             Range = Max - Min;
             Distribution = PDF.unif;
-        }
-        
-        
+        }     
         public ProbabilityDistributionFunction(double mean, double VariationOrSD, string Distribution)
         {
             switch (Distribution)
@@ -44,7 +42,7 @@ namespace IDFObjects
                     Max = Mean + this.VariationOrSD;
                     Min = Mean - this.VariationOrSD;
                     Range = Max - Min;
-                    this.Distribution = PDF.triang;
+                    this.Distribution = PDF.tria;
                     break;
                 case "unif":
                     Mean = mean;
@@ -55,42 +53,7 @@ namespace IDFObjects
                     this.Distribution = PDF.unif;
                     break;
             }
-        }
-        internal double[] GetLHSSamples(Random random, int samples)
-        {
-            double[] vals = new double[samples];
-            switch (Distribution) 
-            {
-                case PDF.unif:
-                    List<int> parts = Enumerable.Range(0, samples)
-                                    .Select(x => new { Number = random.Next(), Item = x })
-                                    .OrderBy(x => x.Number)
-                                    .Select(x => x.Item).ToList();
-                    double r = Range / samples;
-                    for (int n = 0; n < samples; n++)
-                    {
-                        vals[n] = Min + (parts[n] + random.NextDouble()) * r;
-                    } 
-                    break;
-            }
-            return vals;
-        }
-
-        public double[] GetMCSamples(Random random, int count)
-        {
-            double[] val = new double[count];          
-            switch (Distribution)
-            {
-                case PDF.unif:
-                default:
-                    for (int n = 0; n < count; n++)
-                    {
-                        val[n] = Min + random.NextDouble() * VariationOrSD;
-                    }
-                    break;
-            }
-            return val;
-        }
+        }        
         public override string ToString()
         {
             string val;
@@ -99,6 +62,7 @@ namespace IDFObjects
                 switch (Distribution)
                 {
                     case PDF.unif:
+                    case PDF.norm:
                     default:
                         val = string.Join(",", Mean, VariationOrSD, Distribution);
                         break;

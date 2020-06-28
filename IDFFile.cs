@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -71,7 +72,7 @@ namespace IDFObjects
             info.AddRange(writeHVACTemplate());
 
             info.AddRange(WritePVPanels());
-            building.zones.Where(z => z.NaturalVentiallation != null).ToList().ForEach(z => info.AddRange(z.NaturalVentiallation.WriteInfo()));
+            building.ZoneLists.Where(z => z.ZoneVentilationNatural != null).ToList().ForEach(z => info.AddRange(z.ZoneVentilationNatural.WriteInfo()));
 
             info.AddRange(output.writeInfo());
             return info;
@@ -249,36 +250,42 @@ namespace IDFObjects
         public List<String> writeHVACTemplate()
         {
             List<string> info = writeHVACThermostat();
-            try
+            switch (building.Parameters.Service.HVACSystem)
             {
-                try
-                {
+                case HVACSystem.BaseboardHeating:
+                    building.zones.ForEach(z => info.AddRange((z.ZoneBBH).writeInfo()));
+                    info.AddRange(building.hWaterLoop.writeInfo());
+                    info.AddRange(building.boiler.writeInfo());
+                    break;
+                case HVACSystem.FCU:
                     building.zones.ForEach(z => info.AddRange((z.ZoneFCU).writeInfo()));
-                }
-                catch { building.zones.ForEach(z => info.AddRange((z.ZoneVAV).writeInfo())); info.AddRange(building.vav.writeInfo()); }
-                info.AddRange(building.cWaterLoop.writeInfo());
-                info.AddRange(building.chiller.writeInfo());
-                info.AddRange(building.tower.writeInfo());
-                info.AddRange(building.hWaterLoop.writeInfo());
-                info.AddRange(building.boiler.writeInfo());
+                    info.AddRange(building.cWaterLoop.writeInfo());
+                    info.AddRange(building.chiller.writeInfo());
+                    info.AddRange(building.tower.writeInfo());
+                    info.AddRange(building.hWaterLoop.writeInfo());
+                    info.AddRange(building.boiler.writeInfo());
+                    break;
+                case HVACSystem.HeatPumpWBoiler:
+                    building.zones.ForEach(z => info.AddRange((z.ZoneHP).WriteInfo()));
+                    info.AddRange(building.mWaterLoop.WriteInfo());
+                    info.AddRange(building.tower.writeInfo());
+                    info.AddRange(building.boiler.writeInfo());
+                    break;
+                case HVACSystem.VAV:
+                    building.zones.ForEach(z => info.AddRange((z.ZoneVAV).writeInfo())); info.AddRange(building.vav.writeInfo());           
+                    info.AddRange(building.cWaterLoop.writeInfo());
+                    info.AddRange(building.chiller.writeInfo());
+                    info.AddRange(building.tower.writeInfo());
+                    info.AddRange(building.hWaterLoop.writeInfo());
+                    info.AddRange(building.boiler.writeInfo());
+                    break;
+                case HVACSystem.IdealLoad:
+                    building.zones.ForEach(z => info.AddRange((z.ZoneIL).writeInfo()));
+                    break;
             }
-            catch { }
-            try
-            {
-                building.zones.ForEach(z => info.AddRange((z.ZoneIL).writeInfo()));
-            }
-            catch { }
-            try
-            {
-                building.zones.ForEach(z => info.AddRange((z.ZoneBBH).writeInfo()));
-                info.AddRange(building.hWaterLoop.writeInfo());
-                info.AddRange(building.boiler.writeInfo());
-            }
-            catch { }
-
             return info;
         }
-        public List<String> writeZoneInfiltration()
+        public List<string> writeZoneInfiltration()
         {
             List<string> info = new List<string>();
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ZONEINFILTRATION:DESIGNFLOWRATE ===========\r\n");
@@ -328,34 +335,27 @@ namespace IDFObjects
 
             return info;
         }
-        public void GenerateOutput(bool heatFlow, string frequency)
+        public void GenerateOutput(string frequency)
         {
             Dictionary<string, string> outputvars = new Dictionary<string, string>();
-            outputvars.Add("Zone Air System Sensible Heating Energy", frequency);
-            outputvars.Add("Zone Air System Sensible Cooling Energy", frequency);
+            outputvars.Add("Zone Air System Sensible Heating Rate", frequency);
+            outputvars.Add("Zone Air System Sensible Cooling Rate", frequency);
+            outputvars.Add("Zone Lights Electric Power", frequency);
 
-            if (building.boiler != null)
-            {
-                if (building.boiler.fuelType.Contains("Electricity")) { outputvars.Add("Boiler Electric Energy", frequency); }
-                else { outputvars.Add("Boiler Gas Energy", frequency); }
-            }
+            outputvars.Add("Zone Water to Air Heat Pump Electric Energy", frequency);
+            outputvars.Add("Boiler Electric Energy", frequency);
+            outputvars.Add("Boiler Gas Energy", frequency);          
             outputvars.Add("Chiller Electric Energy", frequency);
             outputvars.Add("Cooling Tower Fan Electric Energy", frequency);
 
-            outputvars.Add("Zone Lights Electric Energy", frequency);
-            outputvars.Add("Zone Electric Equipment Electric Energy", frequency);
-
             outputvars.Add("Facility Total Purchased Electric Energy", frequency);
 
-            if (heatFlow)
-            {
-                outputvars.Add("Zone Infiltration Total Heat Loss Energy", frequency);
-                outputvars.Add("Zone Infiltration Total Heat Gain Energy", frequency);
-                outputvars.Add("Surface Window Net Heat Transfer Energy", frequency);
-                outputvars.Add("Surface Inside Face Conduction Heat Transfer Energy", frequency);
-                outputvars.Add("Surface Outside Face Incident Solar Radiation Rate per Area", frequency);
-            }
-
+            outputvars.Add("Zone Infiltration Total Heat Loss Energy", frequency);
+            outputvars.Add("Zone Infiltration Total Heat Gain Energy", frequency);
+            outputvars.Add("Surface Window Net Heat Transfer Rate", frequency);
+            outputvars.Add("Surface Inside Face Conduction Heat Transfer Rate", frequency);
+            outputvars.Add("Surface Outside Face Incident Solar Radiation Rate per Area", frequency);
+            
             output = new Output(outputvars);
         }
     }

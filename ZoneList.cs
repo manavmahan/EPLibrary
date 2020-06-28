@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml.Drawing;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,53 +17,40 @@ namespace IDFObjects
 
         public People People;
         public ZoneVentilation ZoneVentilation;
+        public ZoneVentilation ZoneVentilationNatural;
         public ZoneInfiltration ZoneInfiltration;
         public Light Light;
         public ElectricEquipment ElectricEquipment;
         public Thermostat Thermostat;
-        public List<ScheduleCompact> Schedules;
+        public List<ScheduleCompact> Schedules = new List<ScheduleCompact>();
         public string Name { get; set; }
         public ZoneList() { }
         public ZoneList(string name)
         {
             Name = name;
         }
-        void CreateZoneSchedules(Building building, double startTime, double endTime)
+        void CreateZoneSchedules()
         {
             Schedules = new List<ScheduleCompact>();
-            int hour1, hour2, minutes1, minutes2;
-            hour1 = (int)Math.Truncate(startTime);
-            hour2 = (int)Math.Truncate(endTime);
-
-            minutes1 = (int)Math.Round(Math.Round((startTime - hour1) * 6)) * 10;
-            minutes2 = (int)Math.Round(Math.Round((endTime - hour2) * 6)) * 10;
-
-            if (minutes1 == 60)
-            {
-                minutes1 = 0; hour1++;
-            }
-            if(minutes2 == 60)
-            {
-                minutes2 = 0; hour2++;
-            }
-
+            int[] vals= Operation.GetStartEndTime(13);
+            int hour1 = vals[0], minutes1 = vals[1], hour2 = vals[2], minutes2 = vals[3];
             double[] heatingSetPoints = new double[]
             {
-                building.Parameters.Environments[0].HeatingSetPoint,
-                building.Parameters.Environments[0].HeatingSetPoint -5 
+                Environment.HeatingSetPoint,
+                Environment.HeatingSetPoint - 5
             };
 
             double[] coolingSetPoints = new double[]
             {
-                building.Parameters.Environments[0].CoolingSetPoint,
-                building.Parameters.Environments[0].HeatingSetPoint + 5
+                Environment.CoolingSetPoint,
+                Environment.CoolingSetPoint + 5
             };
 
-            double heatingSetpoint1 = heatingSetPoints[0];//16;
-            double heatingSetpoint2 = heatingSetPoints[1];//20;
+            double heatingSetpoint1 = heatingSetPoints[0];
+            double heatingSetpoint2 = heatingSetPoints[1];
 
-            double coolingSetpoint1 = coolingSetPoints[0];//28;
-            double coolingSetpoint2 = coolingSetPoints[1];//25;
+            double coolingSetpoint1 = coolingSetPoints[0];
+            double coolingSetpoint2 = coolingSetPoints[1];
 
             //60 minutes earlier
             int hour1b = hour1 - 1;
@@ -79,32 +67,30 @@ namespace IDFObjects
             string days2 = "Weekends Holiday";
 
             Dictionary<string, double> heatSPV1 = new Dictionary<string, double>(), heatSPV2 = new Dictionary<string, double>();
-            heatSPV1.Add(hour1b + ":" + minutes1b, heatingSetpoint1);
-            heatSPV1.Add(hour2 + ":" + minutes2, heatingSetpoint2);
-            heatSPV1.Add("24:00", heatingSetpoint1);
+            heatSPV1.Add(hour1b + ":" + minutes1b, heatingSetpoint2);
+            heatSPV1.Add(hour2 + ":" + minutes2, heatingSetpoint1);
+            heatSPV1.Add("24:00", heatingSetpoint2);
             heatSP.Add(days1, heatSPV1);
-            heatSPV2.Add("24:00", heatingSetpoint1);
+            heatSPV2.Add("24:00", heatingSetpoint2);
             heatSP.Add(days2, heatSPV2);
             ScheduleCompact heatingSP = new ScheduleCompact()
             {
                 name = Name + "_Heating Set Point Schedule",
                 daysTimeValue = heatSP
             };
-            Schedules.Add(heatingSP);
 
             Dictionary<string, double> coolSPV1 = new Dictionary<string, double>(), coolSPV2 = new Dictionary<string, double>();
-            coolSPV1.Add(hour1b + ":" + minutes1b, coolingSetpoint1);
-            coolSPV1.Add(hour2 + ":" + minutes2, coolingSetpoint2);
-            coolSPV1.Add("24:00", coolingSetpoint1);
+            coolSPV1.Add(hour1b + ":" + minutes1b, coolingSetpoint2);
+            coolSPV1.Add(hour2 + ":" + minutes2, coolingSetpoint1);
+            coolSPV1.Add("24:00", coolingSetpoint2);
             coolSP.Add(days1, coolSPV1);
-            coolSPV2.Add("24:00", coolingSetpoint1);
+            coolSPV2.Add("24:00", coolingSetpoint2);
             coolSP.Add(days2, coolSPV2);
             ScheduleCompact coolingSP = new ScheduleCompact()
             {
                 name = Name + "_Cooling Set Point Schedule",
                 daysTimeValue = coolSP
             };
-            Schedules.Add(coolingSP);
 
             Dictionary<string, double> occupV1 = new Dictionary<string, double>(), occupV2 = new Dictionary<string, double>();
             occupV1.Add(hour1 + ":" + minutes1, 0);
@@ -118,7 +104,6 @@ namespace IDFObjects
                 name = Name + "_Occupancy Schedule",
                 daysTimeValue = occupancyS
             };
-            Schedules.Add(occupSchedule);
 
             Dictionary<string, double> ventilV1 = new Dictionary<string, double>(), ventilV2 = new Dictionary<string, double>();
             ventilV1.Add(hour1 + ":" + minutes1, 0);
@@ -132,8 +117,7 @@ namespace IDFObjects
                 name = Name + "_Ventilation Schedule",
                 daysTimeValue = ventilS
             };
-            Schedules.Add(ventilSchedule);
-
+            
             double equipOffsetFraction = .1;
             Dictionary<string, double> lehgV1 = new Dictionary<string, double>(), lehgV2 = new Dictionary<string, double>();
             lehgV1.Add(hour1 + ":" + minutes1, equipOffsetFraction);
@@ -147,21 +131,26 @@ namespace IDFObjects
                 name = Name + "_Lighting Schedule",
                 daysTimeValue = leHeatGain
             };
-            Schedules.Add(lSchedule);
 
             ScheduleCompact eSchedule = new ScheduleCompact()
             {
                 name = Name + "_Electric Equipment Schedule",
                 daysTimeValue = leHeatGain
             };
-            Schedules.Add(eSchedule);
-
+           
             ScheduleCompact activity = new ScheduleCompact()
             {
                 name = Name + "_People Activity Schedule",
                 daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
                     { "AllDays", new Dictionary<string, double>() {{"24:00", 125} } } }
             };
+
+            Schedules.Add(heatingSP);
+            Schedules.Add(coolingSP);
+            Schedules.Add(occupSchedule);
+            Schedules.Add(ventilSchedule);
+            Schedules.Add(lSchedule);
+            Schedules.Add(eSchedule);
             Schedules.Add(activity);
         }
         public void UpdateDayLightControlSchedule(Building building)
@@ -169,12 +158,28 @@ namespace IDFObjects
             List<Zone> zones = building.zones.Where(z => ZoneNames.Contains(z.Name)).ToList();
             zones.Where(z => z.DayLightControl != null).ToList().ForEach(z => z.DayLightControl.AvailabilitySchedule = Schedules.First(s=>s.name.Contains("Occupancy")).name);
         }
-        public void GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(Building building, double[] time, double areaPerPerson, double lHG, double eHG, double infil)
+        public void CreateVentialtionNatural(double coolingSP)
         {
-            double startTime = time[0], endTime = time[1];
-            CreateZoneSchedules(building, startTime, endTime);
+            ZoneVentilationNatural = new ZoneVentilation()
+            {
+                Name = "NaturalVentilation_" + Name,
+                ZoneName = Name,
+                VentilationType = "Natural",
+                airChangesHour = 2,
+                minIndoorTemp = 23,
+                maxIndoorTemp = coolingSP-.1,
+                scheduleName = Schedules.First(s => s.name.Contains("Ventilation")).name,
+            };
+        }
+        public void GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(Building building)
+        {
+            Operation = building.Parameters.Operations.First(o => o.Name == Name);
+            Occupant = building.Parameters.Occupants.First(o => o.Name == Name);
+            Environment = building.Parameters.Environments.First(o => o.Name == Name);
+
+            CreateZoneSchedules();
             
-            People = new People(areaPerPerson)
+            People = new People(Occupant.AreaPerPerson)
             {
                 Name = "People_" + Name,
                 ZoneName = Name,
@@ -188,14 +193,13 @@ namespace IDFObjects
                 scheduleName = Schedules.First(s => s.name.Contains("Ventilation")).name,
                 CalculationMethod = "Flow/Person"
             };
-
-            Light = new Light(lHG)
+            Light = new Light(Operation.LHG)
             {
                 Name = "Light_" + Name,
                 ZoneName = Name,
                 scheduleName = Schedules.First(s => s.name.Contains("Light")).name
             };
-            ElectricEquipment = new ElectricEquipment(eHG)
+            ElectricEquipment = new ElectricEquipment(Operation.EHG)
             {
                 Name = "Equipment_" + Name,
                 ZoneName = Name,
@@ -207,7 +211,7 @@ namespace IDFObjects
                 ScheduleHeating = Schedules.First(s => s.name.Contains("Heating")),
                 ScheduleCooling = Schedules.First(s => s.name.Contains("Cooling"))
             };
-            ZoneInfiltration = new ZoneInfiltration(infil)
+            ZoneInfiltration = new ZoneInfiltration(building.Parameters.Construction.Infiltration)
             {
                 Name = "Infiltration_" + Name,
                 ZoneName = Name

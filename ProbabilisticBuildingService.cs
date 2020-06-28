@@ -7,39 +7,25 @@ using System.Threading.Tasks;
 
 namespace IDFObjects
 {
+    [Serializable]
     public class ProbabilisticBuildingService
     {
         public ProbabilityDistributionFunction 
             BoilerEfficiency = new ProbabilityDistributionFunction(),
-            ChillerCOP = new ProbabilityDistributionFunction();
+            HeatingCOP = new ProbabilityDistributionFunction(),
+            CoolingCOP = new ProbabilityDistributionFunction();
         public ProbabilisticBuildingService() { }
         public string ToString(string sep)
         {
-            return string.Join(sep, BoilerEfficiency, ChillerCOP);
+            return string.Join(sep, BoilerEfficiency, HeatingCOP, CoolingCOP);
         }
         public BuildingService GetAverage()
         {
-            return new BuildingService(BoilerEfficiency.Mean, ChillerCOP.Mean);
+            return new BuildingService(BoilerEfficiency.Mean, HeatingCOP.Mean, CoolingCOP.Mean);
         }
         public string Header(string sep)
         {
             return GetAverage().Header(sep);
-        }
-        public List<BuildingService> GetSamples(Random random, int samples)
-        {
-            List<BuildingService> vals = new List<BuildingService>();
-
-            new List<ProbabilityDistributionFunction>()
-            {
-                BoilerEfficiency, ChillerCOP
-            }
-            .Select(p => p.GetLHSSamples(random, samples))
-            .ZipAll(v => vals.Add(new BuildingService()
-            {
-                BoilerEfficiency = v.ElementAt(0),
-                ChillerCOP = v.ElementAt(1),                
-            }));
-            return vals;
         }
     }
 }

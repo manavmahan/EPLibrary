@@ -10,8 +10,8 @@ namespace IDFObjects
     public class BuildingConstruction
     {
         //To store the values from samples
-        public double UWall, UGFloor, URoof, UIFloor, UIWall, UWindow, GWindow, HCSlab, Infiltration, InternalMass;
-        public double hcWall, hcRoof, hcGFloor, hcIFloor, hcIWall;
+        public double UWall, UGFloor, URoof, UIFloor, UIWall, UWindow, GWindow, HCSlab, Infiltration, InternalMass, UCWall;
+        public double hcWall, hcRoof, hcGFloor, hcIFloor, hcIWall, hcInternalMass;
         public BuildingConstruction() { }
         public  string ToString(string sep)
         {

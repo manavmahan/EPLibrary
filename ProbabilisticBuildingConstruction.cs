@@ -67,31 +67,5 @@ namespace IDFObjects
             return string.Join(sep, UWall, UGFloor, URoof, UIFloor, UIWall, UWindow, GWindow, 
                 HCSlab, Infiltration, InternalMass);
         }
-
-        public List<BuildingConstruction> GetSamples(Random random, int samples)
-        {
-            List<BuildingConstruction> vals = new List<BuildingConstruction>();
-
-            new List<ProbabilityDistributionFunction>()
-            {
-                UWall, UGFloor, URoof, UIFloor, UIWall, UWindow, GWindow,
-                HCSlab, Infiltration, InternalMass
-            }
-            .Select(p => p.GetLHSSamples(random, samples))
-            .ZipAll(v => vals.Add(new BuildingConstruction()
-            {
-                UWall = v.ElementAt(0),
-                UGFloor = v.ElementAt(1),
-                URoof = v.ElementAt(2),
-                UIFloor = v.ElementAt(3),
-                UIWall = v.ElementAt(4),
-                UWindow = v.ElementAt(5),
-                GWindow = v.ElementAt(6),
-                HCSlab = v.ElementAt(7),
-                Infiltration = v.ElementAt(8),
-                InternalMass = (int)v.ElementAt(9)
-            }));
-            return vals;
-        }
     }
 }

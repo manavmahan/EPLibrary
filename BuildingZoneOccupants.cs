@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace IDFObjects
 {
+    [Serializable]
     public class BuildingZoneOccupant
     {
         public double AreaPerPerson;

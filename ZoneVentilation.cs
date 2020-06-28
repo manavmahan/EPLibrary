@@ -38,19 +38,6 @@ namespace IDFObjects
         {
 
         }
-
-        public ZoneVentilation(Zone zone, bool natural)
-        {
-            if (natural)
-            {
-                Name = zone.Name + "-Natural Ventilation";
-                ZoneName = zone.Name;
-                VentilationType = "Natural";
-                minIndoorTemp = 22;
-                maxIndoorTemp = 26;
-            }
-        }
-
         public List<string> WriteInfo()
         {
             return new List<string>()

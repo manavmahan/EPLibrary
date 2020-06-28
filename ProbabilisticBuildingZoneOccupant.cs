@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace IDFObjects
 {
+    [Serializable]
     public class ProbabilisticBuildingZoneOccupant
     {
         public ProbabilityDistributionFunction AreaPerPerson;
@@ -33,21 +34,6 @@ namespace IDFObjects
         {
             return GetAverage().Header(sep);
         }
-        public List<BuildingZoneOccupant> GetSamples(Random random, int samples)
-        {
-            List<BuildingZoneOccupant> vals = new List<BuildingZoneOccupant>();
-
-            new List<ProbabilityDistributionFunction>()
-            {
-                 AreaPerPerson
-            }
-            .Select(p => p.GetLHSSamples(random, samples))
-            .ZipAll(v => vals.Add(new BuildingZoneOccupant()
-            {
-                Name = Name,
-                AreaPerPerson = v.ElementAt(0)
-            }));
-            return vals;
-        }
+        
     }
 }

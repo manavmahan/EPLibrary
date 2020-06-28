@@ -79,6 +79,14 @@ namespace IDFObjects
             xyzs.ForEach(xyz => info.Add(string.Join(",", xyz.X, xyz.Y, xyz.Z) + ", !- X Y Z of Point"));
             return info.ReplaceLastComma();
         }
+        public string ToCSVString()
+        {
+            return string.Join(",", xyzs.Select(xyz => xyz.ToString()));
+        }
+        public string To2DPointString()
+        {
+            return string.Join(",", xyzs.Select(p=>p.To2DPointString()));
+        }
         public List<Surface> CreateZoneWallExternal(Zone zone, double height)
         {
             List<Surface> walls = new List<Surface>();
@@ -113,15 +121,18 @@ namespace IDFObjects
                 XYZList vList = new XYZList(new List<XYZ>() { v4, v3, v2, v1 });
                 double area = v1.DistanceTo(v2) * height;
                 Surface wall = new Surface(zone, vList, area, SurfaceType.Wall);
+                
                 if (exposures[i] == "Adiabatic")
                 {
                     wall.OutsideCondition = "Adiabatic";
                     wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind";
                 }
-                if (constructions[i] == "Internal Wall")
-                {
-                    wall.ConstructionName = "InternalWall";
-                }
+                if (constructions[i] == "")
+                    wall.ConstructionName = "ExWall";
+                else
+                    wall.ConstructionName = constructions[i];
+
+
             }
         }
         public List<Surface> CreateZoneWallExternal(Zone z, double height, double basementDepth)

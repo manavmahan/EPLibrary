@@ -17,13 +17,18 @@ namespace IDFObjects
 
         public XYZ Transform(double angle)
         {
-            double x1 = X * Math.Cos(angle) - Y * Math.Sin(angle);
-            double y1 = X * Math.Sin(angle) + Y * Math.Cos(angle);
+            double angleRad = angle * Math.PI/180;
+            double x1 = Math.Round(X * Math.Cos(angleRad) - Y * Math.Sin(angleRad), 5);
+            double y1 = Math.Round(X * Math.Sin(angleRad) + Y * Math.Cos(angleRad), 5);
             return new XYZ(x1, y1, Z);
         }
         public bool Equals(XYZ point1)
         {
             return (X == point1.X && Y == point1.Y && Z == point1.Z);
+        }
+        public bool IsAlmostEqual(XYZ point1)
+        {
+            return (Math.Round(X-point1.X,3) ==0 && Math.Round(Y-point1.Y,3)==0 && Math.Round(Z-point1.Z,3)==0);
         }
         public override int GetHashCode()
         {
@@ -78,6 +83,12 @@ namespace IDFObjects
 
             return new XYZ((p1.X + p2.X) * .5, (p1.Y + p2.Y) * .5, (p1.Z + p2.Z) * .5);
         }
+
+        public string To2DPointString()
+        {
+            return string.Join(",", X, Y);
+        }
+
         public XYZ Add(XYZ xYZ)
         {
             return new XYZ(X + xYZ.X, Y + xYZ.Y, Z + xYZ.Z);

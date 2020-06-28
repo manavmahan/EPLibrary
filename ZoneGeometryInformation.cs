@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace IDFObjects
 {
+    [Serializable]
     public class ZoneGeometryInformation
     {
         public string Name;

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
@@ -21,6 +22,18 @@ namespace IDFObjects
 
         public List<BuildingDesignParameters> AllSamples;
         public ProbabilisticBuildingDesignParameters() { }
+        public List<ProbabilityDistributionFunction> GetValidPDFs()
+        {
+            List<ProbabilityDistributionFunction> v = new List<ProbabilityDistributionFunction>();
+            v.AddRange(pGeometry.GetValidPDFs());
+            v.AddRange(pConstruction.GetValidPDFs());
+            v.AddRange(pWWR.GetValidPDFs());
+            v.AddRange(pService.GetValidPDFs());
+            v.AddRange(zOperations.SelectMany(z => z.GetValidPDFs()));
+            v.AddRange(zOccupants.SelectMany(z => z.GetValidPDFs()));
+            v.AddRange(zEnvironments.SelectMany(z => z.GetValidPDFs()));
+            return v;
+        }
         public BuildingDesignParameters GetAverage()
         {
             return new BuildingDesignParameters()
@@ -34,36 +47,55 @@ namespace IDFObjects
                 Environments = zEnvironments.Select(z => z.GetAverage()).ToList()
             };
         }
-        public void GetSamples(Random random, int samples)
+        public void GetSamples(List<double[]> sequence)
         {
             AllSamples = new List<BuildingDesignParameters>();
-            List<BuildingGeometry> geometryL = pGeometry.GetSamples(random, samples);
-            List<BuildingConstruction> constructionL = pConstruction.GetSamples(random, samples);
-            List<BuildingWWR> wwrL = pWWR.GetSamples(random, samples);
-            List<BuildingService> serviceL = pService.GetSamples(random, samples);
-            List<List<BuildingZoneOperation>> operationsL =
-                zOperations.Select(z => z.GetSamples(random, samples)).ToList();
-            List<List<BuildingZoneOccupant>> occupantsL =
-                zOccupants.Select(z => z.GetSamples(random, samples)).ToList();
-            List<List<BuildingZoneEnvironment>> environmentsL =
-                zEnvironments.Select(z => z.GetSamples(random, samples)).ToList();
-
-            for (int i = 0; i < samples; i++)
+            foreach (double[] sampleS in sequence)
             {
-                BuildingDesignParameters sample = new BuildingDesignParameters();
-                sample.Geometry = geometryL[i];
-                sample.Construction = constructionL[i];
-                sample.WWR = wwrL[i];
-                sample.Service = serviceL[i];
+                int nG = pGeometry.GetValidPDFs().Count(),
+                    nC = pConstruction.GetValidPDFs().Count(),
+                    nW = pWWR.GetValidPDFs().Count(),
+                    nS = pService.GetValidPDFs().Count();
+                BuildingDesignParameters sample = new BuildingDesignParameters()
+                {
+                    Geometry = pGeometry.GetSobolSample<ProbabilisticBuildingGeometry, BuildingGeometry>(sampleS.Skip(0).Take(nG).ToArray()),
+                    Construction = pConstruction.GetSobolSample<ProbabilisticBuildingConstruction, BuildingConstruction>(sampleS.Skip(nG).Take(nC).ToArray()),
+                    WWR = pWWR.GetSobolSample<ProbabilisticBuildingWWR, BuildingWWR>(sampleS.Skip(nG + nC).Take(nW).ToArray()),
+                    Service = pService.GetSobolSample<ProbabilisticBuildingService, BuildingService>(sampleS.Skip(nG + nC + nW).Take(nS).ToArray()),
+                    Operations = new List<BuildingZoneOperation>(),
+                    Occupants = new List<BuildingZoneOccupant>(),
+                    Environments = new List<BuildingZoneEnvironment>()
+                };
+                int n = nG + nC + nW + nS;
 
-                operationsL.ForEach(os => sample.Operations.Add(os[i]));
-                occupantsL.ForEach(os => sample.Occupants.Add(os[i]));
-                environmentsL.ForEach(os => sample.Environments.Add(os[i]));
-
+                foreach (ProbabilisticBuildingZoneOperation op in zOperations)
+                {
+                    int n1 = op.GetValidPDFs().Count();
+                    BuildingZoneOperation o = op.GetSobolSample<ProbabilisticBuildingZoneOperation, BuildingZoneOperation>(sampleS.Skip(n).Take(n1).ToArray());
+                    o.Name = op.Name;
+                    sample.Operations.Add(o);
+                    n += n1;
+                }
+                foreach (ProbabilisticBuildingZoneOccupant oc in zOccupants)
+                {
+                    int n1 = oc.GetValidPDFs().Count();
+                    BuildingZoneOccupant o = oc.GetSobolSample<ProbabilisticBuildingZoneOccupant, BuildingZoneOccupant>(sampleS.Skip(n).Take(n1).ToArray());
+                    o.Name = oc.Name; 
+                    sample.Occupants.Add(o);
+                    n += n1;
+                }
+                foreach (ProbabilisticBuildingZoneEnvironment zE in zEnvironments)
+                {
+                    int n1 = zE.GetValidPDFs().Count();
+                    BuildingZoneEnvironment o = zE.GetSobolSample<ProbabilisticBuildingZoneEnvironment, BuildingZoneEnvironment>(sampleS.Skip(n).Take(n1).ToArray());
+                    o.Name = zE.Name;
+                    sample.Environments.Add(o);
+                    n += n1;
+                }
                 AllSamples.Add(sample);
             }
-        } 
-        public List<string> ToString()
+        }     
+        public List<string> ToCSVString()
         {
             List<string[]> rValues = new List<string[]>();
             foreach (var line in pGeometry.Header("\n").Split('\n').Zip(pGeometry.ToString("\n").Split('\n'), (head, data) => new { Head = head, Data = data }))

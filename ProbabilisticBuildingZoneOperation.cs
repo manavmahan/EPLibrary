@@ -42,24 +42,6 @@ namespace IDFObjects
         {
             return GetAverage().Header(sep);
         }
-        public List<BuildingZoneOperation> GetSamples(Random random, int samples)
-        {
-            List<BuildingZoneOperation> vals = new List<BuildingZoneOperation>();
-
-            new List<ProbabilityDistributionFunction>()
-            {
-                 StartTime, OperatingHours, LHG, EHG
-            }
-            .Select(p => p.GetLHSSamples(random, samples))
-            .ZipAll(v => vals.Add(new BuildingZoneOperation()
-            {
-                Name = Name,
-                StartTime = v.ElementAt(0),
-                OperatingHours = v.ElementAt(1),
-                LHG = v.ElementAt(2),
-                EHG = v.ElementAt(3)
-            })); 
-            return vals;
-        }
+       
     }
 }

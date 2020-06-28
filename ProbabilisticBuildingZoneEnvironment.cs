@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace IDFObjects
 {
+    [Serializable]
     public class ProbabilisticBuildingZoneEnvironment
     {
         public string Name = "Building";
@@ -30,22 +31,6 @@ namespace IDFObjects
         {
             return string.Join(sep, HeatingSetPoint, CoolingSetPoint);
         }
-        public List<BuildingZoneEnvironment> GetSamples(Random random, int samples)
-        {
-            List<BuildingZoneEnvironment> vals = new List<BuildingZoneEnvironment>();
-
-            new List<ProbabilityDistributionFunction>()
-            {
-                 HeatingSetPoint, CoolingSetPoint
-            }
-            .Select(p => p.GetLHSSamples(random, samples))
-            .ZipAll(v => vals.Add(new BuildingZoneEnvironment()
-            {
-                Name = Name,
-                HeatingSetPoint = v.ElementAt(0),
-                CoolingSetPoint = v.ElementAt(1),
-            }));
-            return vals;
-        }
+        
     }
 }

@@ -38,21 +38,6 @@ namespace IDFObjects
         {
             return string.Join(sep, North, East, West, South);
         }
-        public List<BuildingWWR> GetSamples(Random random, int samples)
-        {
-            List<BuildingWWR> vals = new List<BuildingWWR>();
-
-            new List<ProbabilityDistributionFunction>()
-            {
-                North, East, West, South
-            }
-            .Select(p => p.GetLHSSamples(random, samples))
-            .ZipAll (v => vals.Add(new BuildingWWR(
-                v.ElementAt(0), 
-                v.ElementAt(1), 
-                v.ElementAt(2), 
-                v.ElementAt(3))));
-            return vals;
-        }
+       
     }
 }
