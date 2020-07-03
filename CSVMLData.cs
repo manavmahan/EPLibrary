@@ -37,7 +37,7 @@ namespace IDFObjects
                 "u Internal Wall", "u Internal Floor",
                 "Total Heat Capacity",
                 "Opening Time", "Operating Hours",
-                "Heating Set Point", "Cooling Set Point", "Boiler Efficiency", "Chiller COP", "WWR_North", "WWR_East", "WWR_West", "WWR_South"
+                "Heating Set Point", "Cooling Set Point", new BuildingService().Header(","), new BuildingWWR().Header(",")
         };
 
         public string 
@@ -106,7 +106,7 @@ namespace IDFObjects
                 spH = zList.Environment.HeatingSetPoint,
                 spC = zList.Environment.CoolingSetPoint,
                 infiltration = zList.ZoneInfiltration.airChangesHour;
-
+            
             BuildingConstruction buiCons = building.Parameters.Construction;
             return new object[] {
                 building.zones.Select(z=>z.Area).Sum(), building.Parameters.Geometry.Height, building.zones.Select(z=>z.Volume).Sum(),
@@ -117,7 +117,7 @@ namespace IDFObjects
                 buiCons.UIWall, buiCons.UIFloor,
                 building.zones.Select(z=>z.TotalHeatCapacityDeDuplicatingIntSurfaces).Sum(),
                 opT, hours,
-                spH, spC, building.Parameters.Service.BoilerEfficiency, building.Parameters.Service.CoolingCOP, building.Parameters.WWR.ToString(",")
+                spH, spC, building.Parameters.Service.ToString(","), building.Parameters.WWR.ToString(",")
             };
 
         }

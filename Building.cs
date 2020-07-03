@@ -109,7 +109,7 @@ namespace IDFObjects
             GeneratePeopleLightEquipmentInfiltrationVentilationThermostat();
             ZoneLists.ForEach(zl=>zl.UpdateDayLightControlSchedule(this));
             GenerateHVAC();
-            UpdateZoneInfo(); 
+            UpdateZoneInfo();
         } 
         public void UpdateFenestrations()
         {            
@@ -267,7 +267,7 @@ namespace IDFObjects
             Material iwall_insulation = new Material("iwall_insulation", "Rough", 0.025, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
 
             //gFloor & iFloor layers
-            Material pInsulation = new Material("pInsulation", "Smooth", 0.12, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
+            Material pInsulation = new Material("pInsulation", "Smooth", 0.05, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
             Material floor_structure = new Material("floor_structure", "Smooth", 0.2, 2.3, 2300, hcSlab, 0.9, 0.7, 0.7);
             Material gfloor_insulation = new Material("gfloor_insulation", "Smooth", 0.053, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
             Material floor_cementscreed = new Material("floor_cementscreed", "Smooth", 0.08, 1.4, 2000, 1000, 0.9, 0.7, 0.7);
