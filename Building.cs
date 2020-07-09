@@ -543,9 +543,11 @@ namespace IDFObjects
         }
         private void GenerateWaterLoopsAndSystem() 
         {
+            Parameters.Service.BoilerEfficiency = Math.Min(0.98, Parameters.Service.BoilerEfficiency);
             if (Parameters.Service.HVACSystem == HVACSystem.HeatPumpWBoiler) 
             {
                 mWaterLoop = new MixedWaterLoop();
+                 
                 boiler = new Boiler(Parameters.Service.BoilerEfficiency, "Electricity");
                 tower = new Tower();
             }

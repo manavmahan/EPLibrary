@@ -58,10 +58,10 @@ namespace IDFObjects
                     nS = pService.GetValidPDFs().Count();
                 BuildingDesignParameters sample = new BuildingDesignParameters()
                 {
-                    Geometry = pGeometry.GetSobolSample<ProbabilisticBuildingGeometry, BuildingGeometry>(sampleS.Skip(0).Take(nG).ToArray()),
-                    Construction = pConstruction.GetSobolSample<ProbabilisticBuildingConstruction, BuildingConstruction>(sampleS.Skip(nG).Take(nC).ToArray()),
-                    WWR = pWWR.GetSobolSample<ProbabilisticBuildingWWR, BuildingWWR>(sampleS.Skip(nG + nC).Take(nW).ToArray()),
-                    Service = pService.GetSobolSample<ProbabilisticBuildingService, BuildingService>(sampleS.Skip(nG + nC + nW).Take(nS).ToArray()),
+                    Geometry = pGeometry.GetSample<ProbabilisticBuildingGeometry, BuildingGeometry>(sampleS.Skip(0).Take(nG).ToArray()),
+                    Construction = pConstruction.GetSample<ProbabilisticBuildingConstruction, BuildingConstruction>(sampleS.Skip(nG).Take(nC).ToArray()),
+                    WWR = pWWR.GetSample<ProbabilisticBuildingWWR, BuildingWWR>(sampleS.Skip(nG + nC).Take(nW).ToArray()),
+                    Service = pService.GetSample<ProbabilisticBuildingService, BuildingService>(sampleS.Skip(nG + nC + nW).Take(nS).ToArray()),
                     Operations = new List<BuildingZoneOperation>(),
                     Occupants = new List<BuildingZoneOccupant>(),
                     Environments = new List<BuildingZoneEnvironment>()
@@ -71,7 +71,7 @@ namespace IDFObjects
                 foreach (ProbabilisticBuildingZoneOperation op in zOperations)
                 {
                     int n1 = op.GetValidPDFs().Count();
-                    BuildingZoneOperation o = op.GetSobolSample<ProbabilisticBuildingZoneOperation, BuildingZoneOperation>(sampleS.Skip(n).Take(n1).ToArray());
+                    BuildingZoneOperation o = op.GetSample<ProbabilisticBuildingZoneOperation, BuildingZoneOperation>(sampleS.Skip(n).Take(n1).ToArray());
                     o.Name = op.Name;
                     sample.Operations.Add(o);
                     n += n1;
@@ -79,7 +79,7 @@ namespace IDFObjects
                 foreach (ProbabilisticBuildingZoneOccupant oc in zOccupants)
                 {
                     int n1 = oc.GetValidPDFs().Count();
-                    BuildingZoneOccupant o = oc.GetSobolSample<ProbabilisticBuildingZoneOccupant, BuildingZoneOccupant>(sampleS.Skip(n).Take(n1).ToArray());
+                    BuildingZoneOccupant o = oc.GetSample<ProbabilisticBuildingZoneOccupant, BuildingZoneOccupant>(sampleS.Skip(n).Take(n1).ToArray());
                     o.Name = oc.Name; 
                     sample.Occupants.Add(o);
                     n += n1;
@@ -87,7 +87,7 @@ namespace IDFObjects
                 foreach (ProbabilisticBuildingZoneEnvironment zE in zEnvironments)
                 {
                     int n1 = zE.GetValidPDFs().Count();
-                    BuildingZoneEnvironment o = zE.GetSobolSample<ProbabilisticBuildingZoneEnvironment, BuildingZoneEnvironment>(sampleS.Skip(n).Take(n1).ToArray());
+                    BuildingZoneEnvironment o = zE.GetSample<ProbabilisticBuildingZoneEnvironment, BuildingZoneEnvironment>(sampleS.Skip(n).Take(n1).ToArray());
                     o.Name = zE.Name;
                     sample.Environments.Add(o);
                     n += n1;

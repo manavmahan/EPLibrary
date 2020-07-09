@@ -47,7 +47,7 @@ namespace IDFObjects
                 case "unif":
                     Mean = mean;
                     this.VariationOrSD = VariationOrSD;
-                    Max = Mean + this.VariationOrSD;
+                    Max = Mean + this.VariationOrSD; 
                     Min = Mean - this.VariationOrSD;
                     Range = Max - Min;
                     this.Distribution = PDF.unif;

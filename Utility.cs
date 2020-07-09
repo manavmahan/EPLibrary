@@ -478,7 +478,7 @@ namespace IDFObjects
             return returnData;
         }
         public static ProbabilityDistributionFunction GetPDF(string[] data)
-        {
+        { 
             return new ProbabilityDistributionFunction(double.Parse(data[0]), double.Parse(data[1]), data[2]);
         } 
         public static ProbabilityDistributionFunction GetProbabilisticParameter(this Dictionary<string, string[]> DataDictionary, string Parameter)
@@ -759,12 +759,12 @@ namespace IDFObjects
             }
             return array;
         }
-        public static T2 GetSobolSample<T, T2>(this T pars, double[] sample) where T2 : new()
+        public static T2 GetSample<T, T2>(this T pars, double[] sample) where T2 : new()
         {
             int i = 0;
             T2 r = new T2();
             foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
-            && (x.GetValue(pars) as ProbabilityDistributionFunction).Range > 0))
+            && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD > 0))
             {
                 ProbabilityDistributionFunction v = fi.GetValue(pars) as ProbabilityDistributionFunction;
                 double val = 0;
@@ -785,7 +785,7 @@ namespace IDFObjects
                 i++;
             };
             foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
-            && (x.GetValue(pars) as ProbabilityDistributionFunction).Range == 0))
+            && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD == 0))
             {
                 ProbabilityDistributionFunction v = fi.GetValue(pars) as ProbabilityDistributionFunction;
                 double val = v.Mean;
