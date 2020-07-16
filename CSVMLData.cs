@@ -132,10 +132,11 @@ namespace IDFObjects
                 object[] spaChr = GetSpaceChr(building, z);
                 foreach (Surface s in z.Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors"))
                 {
+                    double fenFlow = s.Fenestrations==null? 0:s.Fenestrations.Select(f => f.HeatFlow).Sum();
                     WallWindowData.Add(string.Join(",", idfFile, z.Name, s.Name, s.GrossArea,
                     s.Orientation, s.WWR, buildingConstruction.UWall, buildingConstruction.UWindow,
                     buildingConstruction.GWindow, s.SolarRadiation,
-                    s.HeatFlow + s.Fenestrations.Select(f => f.HeatFlow).Sum()));
+                    s.HeatFlow + fenFlow));
                 }
                 z.Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList().ForEach(
                     s => GFloorData.Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.UGFloor, buildingConstruction.hcGFloor,
