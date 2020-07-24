@@ -11,20 +11,19 @@ namespace IDFObjects
     {
         public double X = 0, Y = 0, Z = 0;
         public XYZ() { }
-        public XYZ(double x, double y, double z) { X = x; Y = y; Z = z; }
+        public XYZ(double x, double y, double z) { X = Math.Round(x,3); Y = Math.Round(y,3); Z = Math.Round(z,3); }
         public XYZ(double[] point) { X = point[0]; Y = point[1]; Z = point[2]; }
         public XYZ Subtract(XYZ newXYZ) { return new XYZ(X - newXYZ.X, Y - newXYZ.Y, Z - newXYZ.Z); }
-
         public XYZ Transform(double angle)
         {
             double angleRad = angle * Math.PI/180;
-            double x1 = Math.Round(X * Math.Cos(angleRad) - Y * Math.Sin(angleRad), 5);
-            double y1 = Math.Round(X * Math.Sin(angleRad) + Y * Math.Cos(angleRad), 5);
+            double x1 = X * Math.Cos(angleRad) - Y * Math.Sin(angleRad);
+            double y1 = X * Math.Sin(angleRad) + Y * Math.Cos(angleRad);
             return new XYZ(x1, y1, Z);
         }
         public bool Equals(XYZ point1)
         {
-            return (X == point1.X && Y == point1.Y && Z == point1.Z);
+            return X==point1.X && Y == point1.Y && Z == point1.Z;
         }
         public bool IsAlmostEqual(XYZ point1)
         {
@@ -88,7 +87,10 @@ namespace IDFObjects
         {
             return string.Join(",", X, Y);
         }
-
+        public XYZ ChangeZValue(double z)
+        {
+            return new XYZ(X, Y, z);
+        }
         public XYZ Add(XYZ xYZ)
         {
             return new XYZ(X + xYZ.X, Y + xYZ.Y, Z + xYZ.Z);

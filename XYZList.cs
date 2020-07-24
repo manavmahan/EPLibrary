@@ -65,12 +65,12 @@ namespace IDFObjects
             double Area = 0;
             for (int i = 0; i < xyzs.Count(); i++)
             {
-                IDFObjects.XYZ point = xyzs[i], nextPoint;
+                XYZ point = xyzs[i], nextPoint;
                 try { nextPoint = xyzs[i + 1]; } catch { nextPoint = xyzs.First(); }
-                Area += ((point.X * nextPoint.Y) - (point.Y * nextPoint.X));
+                Area += (point.X * nextPoint.Y) - (point.Y * nextPoint.X);
             }
             Area = Math.Abs(Area / 2);
-            return Area;
+            return Math.Round(Area,3);
         }
         public List<string> WriteInfo()
         {

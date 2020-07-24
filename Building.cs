@@ -77,19 +77,15 @@ namespace IDFObjects
 
         public void CreateZoneLists()
         {
-            IEnumerable<string> zoneListNames = Parameters.Operations.Select(o => o.Name);
+            IEnumerable<string> zoneListNames = Parameters.ZConditions.Select(o => o.Name);
             foreach(string zoneListName in zoneListNames)
             {
-                BuildingZoneOperation op = Parameters.Operations.First(o => o.Name == zoneListName);
-                BuildingZoneOccupant oc = Parameters.Occupants.First(o => o.Name == zoneListName);
-                BuildingZoneEnvironment ev = Parameters.Environments.First(o => o.Name == zoneListName);
-
+                ZoneConditions con = Parameters.ZConditions.First(o => o.Name == zoneListName);
+                
                 AddZoneList(new ZoneList()
                 {
                     Name = zoneListName,
-                    Operation = op,
-                    Occupant = oc,
-                    Environment = ev
+                    Conditions = con                 
                 }) ;
             }
         }
@@ -496,15 +492,13 @@ namespace IDFObjects
         {
             foreach (ZoneList zList in ZoneLists)
             {
-                BuildingZoneOperation operation = Parameters.Operations.First(o => o.Name == zList.Name);
-                BuildingZoneOccupant occupant = Parameters.Occupants.First(o => o.Name == zList.Name);
                 zList.GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(this);
                 schedulescomp.AddRange(zList.Schedules);
             }
         }
         public void GenerateHVAC()
         {
-            ZoneLists.ForEach(z => z.CreateVentialtionNatural(Parameters.Environments.First().CoolingSetPoint));
+            ZoneLists.ForEach(z => z.CreateVentialtionNatural(Parameters.ZConditions.First().CoolingSetpoint));
             zones.ForEach(z => z.ThermostatName = ZoneLists.First(zl => zl.ZoneNames.Contains(z.Name)).Thermostat.name);
             zones.ForEach(z => z.OccupancyScheduleName = ZoneLists.First(zl => zl.ZoneNames.Contains(z.Name)).
             Schedules.First(s=>s.name.Contains("Occupancy")).name);
@@ -777,38 +771,34 @@ namespace IDFObjects
         {
             Parameters = parameters;
             CreateZoneLists();
-
-            for (int i = 0; i < parameters.Geometry.NFloors; i++)
+            foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
             {
-                foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
+                Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name, zoneInfo.Level);
+                XYZList floorPoints = zoneInfo.FloorPoints;                 
+                if (zoneInfo.Level == 0)
                 {
-                    Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name + ":" + i, i);
-                    XYZList floorPoints = zoneInfo.FloorPoints.ChangeZValue(i * zoneInfo.Height);                 
-                    if (i == 0)
-                    {
-                        new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor);
-                    }
-                    else
-                    {
-                        new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
-                        {
-                            ConstructionName = "General_Floor_Ceiling",
-                            OutsideCondition = "Zone",
-                            OutsideObject = zoneInfo.Name + ":" + (i - 1)
-                        };
-                    }
-                    Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, floorPoints.xyzs.First().Z);
-                    if (i == parameters.Geometry.NFloors - 1)
-                    {
-                        XYZList rfPoints = floorPoints.OffsetHeight(zoneInfo.Height);
-                        new Surface(zone, rfPoints, rfPoints.CalculateArea(), SurfaceType.Roof);
-                    }
-                    zone.CreateDaylighting(500);
-                    AddZone(zone);
-                    try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
-                    catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
+                    new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor);
                 }
-            }
+                else
+                {
+                    new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
+                    {
+                        ConstructionName = "General_Floor_Ceiling",
+                        OutsideCondition = "Zone",
+                        OutsideObject = zoneInfo.Name.Remove(zoneInfo.Name.LastIndexOf(':')+1) + (zoneInfo.Level - 1)
+                    };
+                }
+                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, zoneInfo.CeilingPoints);
+                if (zoneInfo.Level == zonesInformation.Select(z=>z.Level).Max())
+                {
+                    zoneInfo.CeilingPoints.ForEach(ro=>
+                    new Surface(zone, ro, ro.CalculateArea(), SurfaceType.Roof));
+                }
+                zone.CreateDaylighting(500);
+                AddZone(zone);
+                try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
+                catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
+            }          
             UpdateBuildingConstructionWWROperations();
         }
 
@@ -831,7 +821,7 @@ namespace IDFObjects
                         OutsideCondition = "Adiabatic"
                     };
                 
-                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, floorPoints.xyzs.First().Z);
+                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, zoneInfo.CeilingPoints);
                 if (zoneInfo.Level == parameters.Geometry.NFloors - 1)
                     new Surface(zone, floorPoints.OffsetHeight(zoneInfo.Height), floorPoints.CalculateArea(), SurfaceType.Roof);
                 else

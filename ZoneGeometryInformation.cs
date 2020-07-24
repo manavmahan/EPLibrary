@@ -13,6 +13,7 @@ namespace IDFObjects
         public string Name;
         public double Height;
         public XYZList FloorPoints;
+        public List<XYZList> CeilingPoints;
         public int Level;
         public Dictionary<XYZ[], string> WallCreationData = new Dictionary<XYZ[], string>();
         public ZoneGeometryInformation() { }

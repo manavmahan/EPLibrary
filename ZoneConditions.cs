@@ -7,19 +7,23 @@ using System.Threading.Tasks;
 namespace IDFObjects
 {
     [Serializable]
-    public class BuildingZoneOperation
+    public class ZoneConditions
     {
         public string Name = "Building";
 
-        public double StartTime, OperatingHours, LHG, EHG; 
-        public BuildingZoneOperation() { }
+        public double StartTime, OperatingHours, LHG, EHG, AreaPerPerson, HeatingSetpoint, CoolingSetpoint; 
+        public ZoneConditions() { }
 
-        public BuildingZoneOperation(double StartTime, double OperatingHours, double LHG, double EHG)
+        public ZoneConditions(double StartTime, double OperatingHours, double LHG, double EHG, double AreaPerPerson,
+            double HeatingSP, double CoolingSP)
         {
             this.StartTime = StartTime;
             this.OperatingHours = OperatingHours; 
             this.LHG = LHG; 
             this.EHG = EHG;
+            this.AreaPerPerson = AreaPerPerson;
+            this.HeatingSetpoint = HeatingSP;
+            this.CoolingSetpoint = CoolingSP;
         }
         public int[] GetStartEndTime(double midHour)
         {
@@ -62,7 +66,7 @@ namespace IDFObjects
 
         public string ToString(string sep)
         {
-            return string.Join(sep, StartTime, OperatingHours, LHG, EHG);
+            return string.Join(sep, StartTime, OperatingHours, LHG, EHG, AreaPerPerson, HeatingSetpoint, CoolingSetpoint);
         }
         public string Header(string sep)
         {
@@ -70,7 +74,10 @@ namespace IDFObjects
                 "{0}Start Time{1}" +
                 "{0}Operating Hours{1}" +
                 "{0}Light Heat Gain{1}" +
-                "{0}Equipment Heat Gain",
+                "{0}Equipment Heat Gain{1}" +
+                "{0}Area Per Person{1}" +
+                "{0}Heating Setpoint{1}"+
+                "{0}CoolingSetpoint",
                 Name+":", sep);
         }
     }

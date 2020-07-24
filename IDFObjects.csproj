@@ -92,17 +92,13 @@
     <Compile Include="EPBuilding.cs" />
     <Compile Include="BuildingGeometry.cs" />
     <Compile Include="BuildingDesignParameters.cs" />
-    <Compile Include="BuildingZoneEnvironment.cs" />
-    <Compile Include="BuildingZoneOccupants.cs" />
-    <Compile Include="BuildingZoneOperation.cs" />
+    <Compile Include="ZoneConditions.cs" />
     <Compile Include="BuildingService.cs" />
     <Compile Include="CSVMLData.cs" />
     <Compile Include="MixedWaterLoop.cs" />
     <Compile Include="ProbabilisticBuildingDesignParameters.cs" />
     <Compile Include="ProbabilisticBuildingGeometry.cs" />
     <Compile Include="ProbabilisticBuildingService.cs" />
-    <Compile Include="ProbabilisticBuildingZoneEnvironment.cs" />
-    <Compile Include="ProbabilisticBuildingZoneOccupant.cs" />
     <Compile Include="ShapeData.cs" />
     <Compile Include="Surface.cs" />
     <Compile Include="ChilledWaterLoop.cs" />
@@ -132,7 +128,7 @@
     <Compile Include="OverhangProjection.cs" />
     <Compile Include="People.cs" />
     <Compile Include="PhotovoltaicPerformanceSimple.cs" />
-    <Compile Include="ProbabilisticBuildingZoneOperation.cs" />
+    <Compile Include="ProbabilisticZoneConditions.cs" />
     <Compile Include="ProbabilisticBuildingConstruction.cs" />
     <Compile Include="ProbabilisticEmbeddedEnergyParameters.cs" />
     <Compile Include="ProbabilisticBuildingWWR.cs" />

@@ -31,7 +31,11 @@ namespace IDFObjects
     {
         Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
     }
-    public enum PDF { unif, tria, norm }
+    public enum PDF {
+        [Description("unif")] unif,
+        [Description("tria")] tria, 
+        [Description("norm")] norm
+    }
     public enum SurfaceType { Floor, Ceiling, Wall, Roof };
     public enum HVACSystem { HeatPumpWBoiler, FCU, BaseboardHeating, VAV, IdealLoad };
     public enum Direction { North, East, South, West };
@@ -100,17 +104,6 @@ namespace IDFObjects
                     e.Dispose();
             }
         }
-        public static ZoneGeometryInformation GetZoneGeometryInformation(
-            List<XYZ> groundPoints, double heightFl, string zoneName)
-        {
-            List<XYZ[]> externalEdgesIDF = GetExternalEdges(groundPoints);
-            ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
-            zInfo.Name = zoneName;
-            zInfo.Height = heightFl;
-            zInfo.FloorPoints = new XYZList(groundPoints);
-            externalEdgesIDF.ForEach(w => zInfo.WallCreationData.Add(w, "Outdoors"));
-            return zInfo;
-        }
         public static List<XYZ> GetOffset(List<XYZ> Loop, double offsetDist)
         {
             List<XYZ[]> offsetLines = new List<XYZ[]>();
@@ -170,52 +163,83 @@ namespace IDFObjects
                 return null;
             }
         }
+        public static Dictionary<ZoneGeometryInformation, List<XYZ[]>> ExpandRoomSegmentForEachFloor(Dictionary<string, List<XYZ[]>> rooms,
+            List<ZoneGeometryInformation> zones)
+        {
+            Dictionary<ZoneGeometryInformation, List<XYZ[]>> allRoomSegment = new Dictionary<ZoneGeometryInformation, List<XYZ[]>>();
+            foreach (KeyValuePair<string, List<XYZ[]>> room in rooms)
+            {
+                List<ZoneGeometryInformation> cZones = zones.Where(z => z.Name.Contains(room.Key)).ToList();
+                foreach (ZoneGeometryInformation zone in cZones)
+                {
+                    double baseZ = zone.FloorPoints.xyzs.First().Z;
+                    allRoomSegment.Add(zone, room.Value.Select(c => c.Select(p => p.ChangeZValue(baseZ)).ToArray()).ToList());
+                }
+            }
+            return allRoomSegment;
+        }
         public static List<ZoneGeometryInformation> GetZoneGeometryInformation(
-            Dictionary<string, List<XYZ[]>> allRoomSegmentsIDF,
-            List<XYZ[]> externalEdgesIDF, double heightFl)
+            Dictionary<string, List<XYZ[]>> allRooms, List<XYZList> floors, List<XYZList> roofs)
         {
             List<ZoneGeometryInformation> zoneInfoList = new List<ZoneGeometryInformation>();
-            List<string> zNames = allRoomSegmentsIDF.Select(x => x.Key).ToList();
-            foreach (string zName in zNames)
+            List<string> zNames = allRooms.Select(x => x.Key).ToList();
+            List<XYZ[]> externalEdgesIDF = GetExternalEdges(floors[0].xyzs);
+            for (int f = 0; f < floors.Count; f++)
             {
-                ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
-                zInfo.Name = zName;
-                zInfo.Height = heightFl;
-
-                List<XYZ[]> thisRoomSegments = allRoomSegmentsIDF[zName];
-                List<XYZ> floorPoints = thisRoomSegments.Select(x => x[0]).ToList();
-                XYZList flPointList = new XYZList(floorPoints);
-                flPointList.RemoveCollinearPoints();
-                zInfo.FloorPoints = flPointList;
-                zoneInfoList.Add(zInfo);
-            }
-
-            foreach (ZoneGeometryInformation zone in zoneInfoList)
-            {
-                Dictionary<string, List<XYZ[]>> allRoomSegmentsNotThisRoom = new Dictionary<string, List<XYZ[]>>();
-                List<XYZ[]> thisRoomSegments = allRoomSegmentsIDF[zone.Name];
-                foreach (KeyValuePair<string, List<XYZ[]>> exRoomSegment in allRoomSegmentsIDF.Where(x => x.Key != zone.Name))
+                foreach (string zName in zNames) 
                 {
-                    allRoomSegmentsNotThisRoom.Add(exRoomSegment.Key, exRoomSegment.Value);
-                }
-
-                foreach (XYZ[] c in thisRoomSegments)
-                {
+                    ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
+                    zInfo.Name = zName+':'+f;
+                    List<XYZ[]> thisRoomSegments = allRooms[zName];
+                    List<XYZ> floorPoints = thisRoomSegments.Select(x => x[0]).ToList();
+                    XYZList flPointList = new XYZList(floorPoints);
+                    flPointList.RemoveCollinearPoints();
+                    zInfo.FloorPoints = flPointList.ChangeZValue(floors[f].xyzs.First().Z);
+                    List<XYZList> ceilings = new List<XYZList>();
                     try
                     {
-                        KeyValuePair<string, List<XYZ[]>> matchingCurve = allRoomSegmentsNotThisRoom
-                            .First(x => x.Value.Any(y => CompareCurves(c, y)));
-                        zone.WallCreationData.Add(c, matchingCurve.Key);
-
-                        List<XYZ[]> matchingZoneSegments = allRoomSegmentsIDF[matchingCurve.Key];
-                        matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
+                        ceilings = new List<XYZList>() { floors[f + 1] };                        
                     }
                     catch
                     {
-                        if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
-                        { zone.WallCreationData.Add(c, "Outdoors"); }
-                        else { zone.WallCreationData.Add(c, "Adiabatic"); }
+                        ceilings = roofs;
                     }
+                    zInfo.CeilingPoints = ceilings.Select(c=>
+                        new XYZList(flPointList.xyzs.Select(p => p.GetVerticalProjection(c)).ToList())).ToList();
+                    zInfo.Level = f;
+                    zInfo.Height = zInfo.CeilingPoints.SelectMany(ro => ro.xyzs.Select(p => p.Z)).Average() - zInfo.FloorPoints.xyzs.First().Z;
+                    zoneInfoList.Add(zInfo);
+                }
+            }
+            Dictionary<ZoneGeometryInformation, List<XYZ[]>> allRoomSegments = ExpandRoomSegmentForEachFloor(allRooms, zoneInfoList);
+            foreach (ZoneGeometryInformation zone in zoneInfoList)
+            {
+                Dictionary<ZoneGeometryInformation, List<XYZ[]>> roomSegmentsFloors = allRoomSegments.Where(z=>z.Key.Level==zone.Level)
+                    .ToDictionary(x => x.Key, x => x.Value);
+                Dictionary<ZoneGeometryInformation, List<XYZ[]>> allRoomSegmentsNotThisRoom =
+                    roomSegmentsFloors.Where(x => x.Key.Name !=zone.Name).ToDictionary(x => x.Key, x => x.Value);
+                List<XYZ[]> thisRoomSegments = roomSegmentsFloors[zone];
+                
+                foreach (XYZ[] c in thisRoomSegments)
+                {
+                    string con = "Adiabatic";
+                    ZoneGeometryInformation exZ = null;
+                    try
+                    {
+                        exZ = allRoomSegmentsNotThisRoom.First(x => x.Value.Any(y => CompareCurves(c, y))).Key;
+                    }
+                    catch { }
+                    if (exZ!=null)
+                    {                      
+                        con = exZ.Name;
+                        allRoomSegments[exZ].Remove(allRoomSegments[exZ].First(x => CompareCurves(c, x)));
+                    }
+                    else
+                    {
+                        if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
+                            con = "Outdoors";
+                    }
+                    zone.WallCreationData.Add(c.Select(p => p.ChangeZValue(zone.FloorPoints.xyzs.First().Z)).ToArray(), con);
                 }
             }
             return zoneInfoList;
@@ -270,15 +294,15 @@ namespace IDFObjects
             }
             return zoneInfoList;
         }
-        public static bool CompareCurves(IDFObjects.XYZ[] c1, IDFObjects.XYZ[] c2)
+        public static bool CompareCurves(XYZ[] c1, XYZ[] c2)
         {
             return (c2[0].Equals(c1[0]) && c2[1].Equals(c1[1])) || (c2[1].Equals(c1[0]) && c2[0].Equals(c1[1]));
-        }
-        public static bool IsCollinear(IDFObjects.XYZ[] c1, IDFObjects.XYZ[] c2)
+        }       
+        public static bool IsCollinear(XYZ[] c1, XYZ[] c2)
         {
-            IDFObjects.XYZ p1 = c1[0], p2 = c1[1], p3 = c2[0], p4 = c2[1];
-            return Math.Round(new IDFObjects.XYZList(new List<IDFObjects.XYZ>() { p1, p2, p3 }).CalculateArea(), 4) == 0 &&
-            Math.Round(new IDFObjects.XYZList(new List<IDFObjects.XYZ>() { p1, p2, p4 }).CalculateArea(), 4) == 0;
+            XYZ p1 = c1[0], p2 = c1[1], p3 = c2[0], p4 = c2[1];
+            return new XYZList(new List<XYZ>() { p1, p2, p3 }).CalculateArea() == 0 &&
+                new XYZList(new List<XYZ>() { p1, p2, p4 }).CalculateArea() == 0;
         }
         public static XYZ GetDirection(IDFObjects.XYZ[] Line)
         {
@@ -323,14 +347,11 @@ namespace IDFObjects
             double d = p2.Subtract(p1).CrossProduct(p1.Subtract(p3)).AbsoluteValue() / p2.DistanceTo(p1);
             return d;
         }
-        public static IDFObjects.XYZ CentroidOfTriangle(List<IDFObjects.XYZ> points)
+        public static XYZ CentroidOfTriangle(List<IDFObjects.XYZ> points)
         {
-            return new IDFObjects.XYZ()
-            {
-                X = Math.Round(points.Select(p => p.X).Average(),2),
-                Y = Math.Round(points.Select(p => p.Y).Average(),2),
-                Z = Math.Round(points.Select(p => p.Z).Average(),2),
-            };
+            return new XYZ(points.Select(p => p.X).Average(),
+                points.Select(p => p.Y).Average(),
+                points.Select(p => p.Z).Average());
         }
         public static List<IDFObjects.XYZ[]> GetExternalEdges(List<IDFObjects.XYZ> groundPoints)
         {
@@ -410,13 +431,22 @@ namespace IDFObjects
         {
             return (Math.Round(value / 0.092903, 4));
         }
-        public static void CreateZoneWalls(Zone z, Dictionary<XYZ[], string> wallsData, double baseZ)
+        public static XYZ GetVerticalProjection(this XYZ point, List<XYZList> faces)
+        {
+            return point.GetVerticalProjection(faces.First());
+        }
+        public static XYZ GetVerticalProjection(this XYZ point, XYZList face)
+        {
+            return point.ChangeZValue(face.xyzs.First().Z);
+        }
+        public static void CreateZoneWalls(Zone z, Dictionary<XYZ[], string> wallsData, List<XYZList> ceilings)
         {
             foreach (KeyValuePair<XYZ[], string> wallData in wallsData)
             {
-                XYZ p1 = wallData.Key[0].OffsetHeight(baseZ), p2 = wallData.Key[1].OffsetHeight(baseZ), p3 = p2.OffsetHeight(z.Height), p4 = p1.OffsetHeight(z.Height);
+                XYZ p1 = wallData.Key[0], p2 = wallData.Key[1],
+                    p3 = p2.GetVerticalProjection(ceilings), p4 = p1.GetVerticalProjection(ceilings);
                 XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
-                double area = p1.DistanceTo(p2) * z.Height;
+                double area = p1.DistanceTo(p2) * p1.DistanceTo(p3);
                 Surface wall = new Surface(z, wallPoints, area, SurfaceType.Wall);
                 if (wallData.Value != "Outdoors")
                 {
@@ -426,7 +456,7 @@ namespace IDFObjects
                     }
                     else
                     {
-                        wall.OutsideCondition = "Zone"; wall.OutsideObject = wallData.Value + ":" + z.Level;
+                        wall.OutsideCondition = "Zone"; wall.OutsideObject = wallData.Value;
                     }
                     wall.ConstructionName = "InternalWall";
                     wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind"; wall.Fenestrations = new List<Fenestration>();
@@ -555,25 +585,17 @@ namespace IDFObjects
 
             foreach (string zlN in zoneListNames)
             {
-                value.zOperations.Add(new ProbabilisticBuildingZoneOperation()
+                value.zConditions.Add(new ProbabilisticZoneConditions()
                 {
                     Name = zlN,
                     LHG = dataDict.GetProbabilisticParameter(zlN + ":Light Heat Gain"),
                     EHG = dataDict.GetProbabilisticParameter(zlN + ":Equipment Heat Gain"),
                     StartTime = dataDict.GetProbabilisticParameter(zlN + ":Start Time"),
-                    OperatingHours = dataDict.GetProbabilisticParameter(zlN + ":Operating Hours")
-                });
-                value.zOccupants.Add(new ProbabilisticBuildingZoneOccupant()
-                {
-                    Name = zlN,
-                    AreaPerPerson = dataDict.GetProbabilisticParameter(zlN + ":Area Per Person")
-                });
-                value.zEnvironments.Add(new ProbabilisticBuildingZoneEnvironment()
-                {
-                    Name = zlN,
-                    HeatingSetPoint = dataDict.GetProbabilisticParameter(zlN + ":Heating Setpoint"),
-                    CoolingSetPoint = dataDict.GetProbabilisticParameter(zlN + ":Cooling Setpoint")
-                });
+                    OperatingHours = dataDict.GetProbabilisticParameter(zlN + ":Operating Hours"),
+                    AreaPerPerson = dataDict.GetProbabilisticParameter(zlN + ":Area Per Person"),
+                    HeatingSetpoint = dataDict.GetProbabilisticParameter(zlN + ":Heating Setpoint"),
+                    CoolingSetpoint = dataDict.GetProbabilisticParameter(zlN + ":Cooling Setpoint")
+                });               
             }
             return value;
         }
@@ -644,25 +666,17 @@ namespace IDFObjects
 
                 foreach (string zlN in zoneListNames)
                 {
-                    value.Operations.Add(new BuildingZoneOperation()
+                    value.ZConditions.Add(new ZoneConditions()
                     {
                         Name = zlN,
                         LHG = samples.GetSamplesValues(zlN + ":Light Heat Gain", s),
                         EHG = samples.GetSamplesValues(zlN + ":Equipment Heat Gain", s),
                         StartTime = samples.GetSamplesValues(zlN + ":Start Time", s),
                         OperatingHours = samples.GetSamplesValues(zlN + ":Operating Hours", s),
-                    });
-                    value.Occupants.Add(new BuildingZoneOccupant()
-                    {
-                        Name = zlN,
-                        AreaPerPerson = samples.GetSamplesValues(zlN + ":Area Per Person", s)
-                    });
-                    value.Environments.Add(new BuildingZoneEnvironment()
-                    {
-                        Name = zlN,
-                        HeatingSetPoint = samples.GetSamplesValues(zlN + ":Heating Setpoint", s),
-                        CoolingSetPoint = samples.GetSamplesValues(zlN + ":Cooling Setpoint", s)
-                    });
+                        AreaPerPerson = samples.GetSamplesValues(zlN + ":Area Per Person", s),
+                        HeatingSetpoint = samples.GetSamplesValues(zlN + ":Heating Setpoint", s),
+                        CoolingSetpoint = samples.GetSamplesValues(zlN + ":Cooling Setpoint", s)
+                    });                   
                 }
                 values.Add(value);
             }

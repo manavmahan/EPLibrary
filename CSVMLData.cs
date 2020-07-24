@@ -73,11 +73,11 @@ namespace IDFObjects
             ZoneList zList = building.ZoneLists.First(zL => zL.ZoneNames.Contains(z.Name));
             double light = zList.Light.wattsPerArea,
                 equipment = zList.ElectricEquipment.wattsPerArea,
-                occupancy = zList.Occupant.AreaPerPerson,
-                opT = zList.Operation.StartTime,
-                hours = zList.Operation.OperatingHours,
-                spH = zList.Environment.HeatingSetPoint,
-                spC = zList.Environment.CoolingSetPoint,
+                occupancy = zList.Conditions.AreaPerPerson,
+                opT = zList.Conditions.StartTime,
+                hours = zList.Conditions.OperatingHours,
+                spH = zList.Conditions.HeatingSetpoint,
+                spC = zList.Conditions.CoolingSetpoint,
                 infiltration = zList.ZoneInfiltration.airChangesHour;
 
             BuildingConstruction buiCons = building.Parameters.Construction;
@@ -100,11 +100,11 @@ namespace IDFObjects
             ZoneList zList = building.ZoneLists.First();
             double light = zList.Light.wattsPerArea,
                 equipment = zList.ElectricEquipment.wattsPerArea,
-                occupancy = zList.Occupant.AreaPerPerson,
-                opT = zList.Operation.StartTime,
-                hours = zList.Operation.OperatingHours,
-                spH = zList.Environment.HeatingSetPoint,
-                spC = zList.Environment.CoolingSetPoint,
+                occupancy = zList.Conditions.AreaPerPerson,
+                opT = zList.Conditions.StartTime,
+                hours = zList.Conditions.OperatingHours,
+                spH = zList.Conditions.HeatingSetpoint,
+                spC = zList.Conditions.CoolingSetpoint,
                 infiltration = zList.ZoneInfiltration.airChangesHour;
             
             BuildingConstruction buiCons = building.Parameters.Construction;

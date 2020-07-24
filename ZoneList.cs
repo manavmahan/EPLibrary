@@ -11,9 +11,7 @@ namespace IDFObjects
     public class ZoneList
     {
         public List<string> ZoneNames = new List<string>();
-        public BuildingZoneEnvironment Environment;
-        public BuildingZoneOccupant Occupant;
-        public BuildingZoneOperation Operation;
+        public ZoneConditions Conditions;
 
         public People People;
         public ZoneVentilation ZoneVentilation;
@@ -32,18 +30,18 @@ namespace IDFObjects
         void CreateZoneSchedules()
         {
             Schedules = new List<ScheduleCompact>();
-            int[] vals= Operation.GetStartEndTime(13);
+            int[] vals= Conditions.GetStartEndTime(13);
             int hour1 = vals[0], minutes1 = vals[1], hour2 = vals[2], minutes2 = vals[3];
             double[] heatingSetPoints = new double[]
             {
-                Environment.HeatingSetPoint,
-                Environment.HeatingSetPoint - 5
+                Conditions.HeatingSetpoint,
+                Conditions.HeatingSetpoint - 5
             };
 
             double[] coolingSetPoints = new double[]
             {
-                Environment.CoolingSetPoint,
-                Environment.CoolingSetPoint + 5
+                Conditions.CoolingSetpoint,
+                Conditions.CoolingSetpoint + 5
             };
 
             double heatingSetpoint1 = heatingSetPoints[0];
@@ -173,13 +171,11 @@ namespace IDFObjects
         }
         public void GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(Building building)
         {
-            Operation = building.Parameters.Operations.First(o => o.Name == Name);
-            Occupant = building.Parameters.Occupants.First(o => o.Name == Name);
-            Environment = building.Parameters.Environments.First(o => o.Name == Name);
+            Conditions = building.Parameters.ZConditions.First(o => o.Name == Name);
 
             CreateZoneSchedules();
             
-            People = new People(Occupant.AreaPerPerson)
+            People = new People(Conditions.AreaPerPerson)
             {
                 Name = "People_" + Name,
                 ZoneName = Name,
@@ -193,13 +189,13 @@ namespace IDFObjects
                 scheduleName = Schedules.First(s => s.name.Contains("Ventilation")).name,
                 CalculationMethod = "Flow/Person"
             };
-            Light = new Light(Operation.LHG)
+            Light = new Light(Conditions.LHG)
             {
                 Name = "Light_" + Name,
                 ZoneName = Name,
                 scheduleName = Schedules.First(s => s.name.Contains("Light")).name
             };
-            ElectricEquipment = new ElectricEquipment(Operation.EHG)
+            ElectricEquipment = new ElectricEquipment(Conditions.EHG)
             {
                 Name = "Equipment_" + Name,
                 ZoneName = Name,

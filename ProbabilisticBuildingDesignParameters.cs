@@ -16,10 +16,8 @@ namespace IDFObjects
         public ProbabilisticBuildingConstruction pConstruction;
         public ProbabilisticBuildingWWR pWWR;
         public ProbabilisticBuildingService pService;
-        public List<ProbabilisticBuildingZoneOperation> zOperations = new List<ProbabilisticBuildingZoneOperation>();
-        public List<ProbabilisticBuildingZoneOccupant> zOccupants = new List<ProbabilisticBuildingZoneOccupant>();
-        public List<ProbabilisticBuildingZoneEnvironment> zEnvironments = new List<ProbabilisticBuildingZoneEnvironment>();
-
+        public List<ProbabilisticZoneConditions> zConditions = new List<ProbabilisticZoneConditions>();
+        
         public List<BuildingDesignParameters> AllSamples;
         public ProbabilisticBuildingDesignParameters() { }
         public List<ProbabilityDistributionFunction> GetValidPDFs()
@@ -29,9 +27,7 @@ namespace IDFObjects
             v.AddRange(pConstruction.GetValidPDFs());
             v.AddRange(pWWR.GetValidPDFs());
             v.AddRange(pService.GetValidPDFs());
-            v.AddRange(zOperations.SelectMany(z => z.GetValidPDFs()));
-            v.AddRange(zOccupants.SelectMany(z => z.GetValidPDFs()));
-            v.AddRange(zEnvironments.SelectMany(z => z.GetValidPDFs()));
+            v.AddRange(zConditions.SelectMany(z => z.GetValidPDFs()));
             return v;
         }
         public BuildingDesignParameters GetAverage()
@@ -42,9 +38,7 @@ namespace IDFObjects
                 Construction = pConstruction.GetAverage(),
                 WWR = pWWR.GetAverage(),
                 Service = pService.GetAverage(),
-                Operations = zOperations.Select(z => z.GetAverage()).ToList(),
-                Occupants = zOccupants.Select(z => z.GetAverage()).ToList(),
-                Environments = zEnvironments.Select(z => z.GetAverage()).ToList()
+                ZConditions = zConditions.Select(z => z.GetAverage()).ToList()
             };
         }
         public void GetSamples(List<double[]> sequence)
@@ -62,36 +56,19 @@ namespace IDFObjects
                     Construction = pConstruction.GetSample<ProbabilisticBuildingConstruction, BuildingConstruction>(sampleS.Skip(nG).Take(nC).ToArray()),
                     WWR = pWWR.GetSample<ProbabilisticBuildingWWR, BuildingWWR>(sampleS.Skip(nG + nC).Take(nW).ToArray()),
                     Service = pService.GetSample<ProbabilisticBuildingService, BuildingService>(sampleS.Skip(nG + nC + nW).Take(nS).ToArray()),
-                    Operations = new List<BuildingZoneOperation>(),
-                    Occupants = new List<BuildingZoneOccupant>(),
-                    Environments = new List<BuildingZoneEnvironment>()
+                    ZConditions = new List<ZoneConditions>(),
                 };
                 int n = nG + nC + nW + nS;
 
-                foreach (ProbabilisticBuildingZoneOperation op in zOperations)
+                foreach (ProbabilisticZoneConditions op in zConditions)
                 {
                     int n1 = op.GetValidPDFs().Count();
-                    BuildingZoneOperation o = op.GetSample<ProbabilisticBuildingZoneOperation, BuildingZoneOperation>(sampleS.Skip(n).Take(n1).ToArray());
+                    ZoneConditions o = op.GetSample<ProbabilisticZoneConditions, ZoneConditions>(sampleS.Skip(n).Take(n1).ToArray());
                     o.Name = op.Name;
-                    sample.Operations.Add(o);
+                    sample.ZConditions.Add(o);
                     n += n1;
                 }
-                foreach (ProbabilisticBuildingZoneOccupant oc in zOccupants)
-                {
-                    int n1 = oc.GetValidPDFs().Count();
-                    BuildingZoneOccupant o = oc.GetSample<ProbabilisticBuildingZoneOccupant, BuildingZoneOccupant>(sampleS.Skip(n).Take(n1).ToArray());
-                    o.Name = oc.Name; 
-                    sample.Occupants.Add(o);
-                    n += n1;
-                }
-                foreach (ProbabilisticBuildingZoneEnvironment zE in zEnvironments)
-                {
-                    int n1 = zE.GetValidPDFs().Count();
-                    BuildingZoneEnvironment o = zE.GetSample<ProbabilisticBuildingZoneEnvironment, BuildingZoneEnvironment>(sampleS.Skip(n).Take(n1).ToArray());
-                    o.Name = zE.Name;
-                    sample.Environments.Add(o);
-                    n += n1;
-                }
+                
                 AllSamples.Add(sample);
             }
         }     
@@ -118,29 +95,9 @@ namespace IDFObjects
                 rValues.Add(new string[] { line.Head, line.Data });
             }
 
-            foreach (ProbabilisticBuildingZoneOperation zOperation in zOperations)
+            foreach (ProbabilisticZoneConditions zOperation in zConditions)
             {
                 foreach (var line in zOperation.Header("\n").Split('\n').Zip(zOperation.ToString("\n").Split('\n'), (head, data) => new { Head = head, Data = data }))
-                {
-                    rValues.Add(new string[] { line.Head, line.Data });
-                }
-            }
-
-            foreach (ProbabilisticBuildingZoneOccupant zOccupant in zOccupants)
-            {
-                foreach (var line in zOccupant.Header("\n").Split('\n')
-                    .Zip(zOccupant.ToString("\n").Split('\n'), (head, data) => 
-                    new { Head = head, Data = data }))
-                {
-                    rValues.Add(new string[] { line.Head, line.Data });
-                }
-            }
-
-            foreach (ProbabilisticBuildingZoneEnvironment zEnvironment in zEnvironments)
-            {
-                foreach (var line in zEnvironment.Header("\n").Split('\n')
-                    .Zip(zEnvironment.ToString("\n").Split('\n'), (head, data) => 
-                    new { Head = head, Data = data }))
                 {
                     rValues.Add(new string[] { line.Head, line.Data });
                 }
@@ -161,9 +118,7 @@ namespace IDFObjects
                 pConstruction.Header(sep),
                 pWWR.Header(sep),
                 pService.Header(sep),
-                string.Join(sep, zOperations.Select(o => o.Header(sep))),
-                string.Join(sep, zOccupants.Select(o => o.Header(sep))),
-                string.Join(sep, zEnvironments.Select(o => o.Header(sep))));
+                string.Join(sep, zConditions.Select(o => o.Header(sep))));
         }
         public List<string> AllSamplesToString()
         {

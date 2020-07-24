@@ -14,31 +14,23 @@ namespace IDFObjects
         public BuildingWWR WWR;          
         public BuildingService Service;
 
-        public List<BuildingZoneOperation> Operations = new List<BuildingZoneOperation>();
-        public List<BuildingZoneOccupant> Occupants = new List<BuildingZoneOccupant>();
-        public List<BuildingZoneEnvironment> Environments = new List<BuildingZoneEnvironment>();       
+        public List<ZoneConditions> ZConditions = new List<ZoneConditions>();     
         public BuildingDesignParameters() { }
-        public string Header(string sep)
-        {
-            return string.Join(sep,
+        public string Header(string sep) =>
+            string.Join(sep,
                 Geometry.Header(sep),
                 Construction.Header(sep),
                 WWR.Header(sep),
                 Service.Header(sep),
-                string.Join(sep, Operations.Select(o => o.Header(sep))),
-                string.Join(sep, Occupants.Select(o => o.Header(sep))),
-                string.Join(sep, Environments.Select(o => o.Header(sep))));
-        }
-        public string ToString(string sep)
-        {
-            return string.Join(sep,
+                string.Join(sep, ZConditions.Select(o => o.Header(sep))));
+
+        public string ToString(string sep) =>
+            string.Join(sep,
                 Geometry.ToString(sep),
                 Construction.ToString(sep),
                 WWR.ToString(sep),
                 Service.ToString(sep),
-                string.Join(sep, Operations.Select(o => o.ToString(sep))),
-                string.Join(sep, Occupants.Select(o => o.ToString(sep))),
-                string.Join(sep, Environments.Select(o => o.ToString(sep))));
-        }
+                string.Join(sep, ZConditions.Select(o => o.ToString(sep))));
+        
     }
 }
