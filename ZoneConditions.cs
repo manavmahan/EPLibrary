@@ -77,7 +77,7 @@ namespace IDFObjects
                 "{0}Equipment Heat Gain{1}" +
                 "{0}Area Per Person{1}" +
                 "{0}Heating Setpoint{1}"+
-                "{0}CoolingSetpoint",
+                "{0}Cooling Setpoint",
                 Name+":", sep);
         }
     }

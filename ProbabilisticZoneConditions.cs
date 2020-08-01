@@ -12,13 +12,13 @@ namespace IDFObjects
         public string Name = "Building";
 
         public ProbabilityDistributionFunction
-            StartTime = new ProbabilityDistributionFunction(),
-            OperatingHours = new ProbabilityDistributionFunction(),
-            LHG = new ProbabilityDistributionFunction(),
-            EHG = new ProbabilityDistributionFunction(),
-            AreaPerPerson = new ProbabilityDistributionFunction(),
-            HeatingSetpoint = new ProbabilityDistributionFunction(),
-            CoolingSetpoint = new ProbabilityDistributionFunction();
+            StartTime = new ProbabilityDistributionFunction() { Mean = 8, VariationOrSD = 0, Distribution = PDF.unif },
+            OperatingHours = new ProbabilityDistributionFunction() { Mean = 8, VariationOrSD = 0, Distribution = PDF.unif },
+            LHG = new ProbabilityDistributionFunction() { Mean = 6, VariationOrSD = 0, Distribution = PDF.unif },
+            EHG = new ProbabilityDistributionFunction() { Mean = 12, VariationOrSD = 0, Distribution = PDF.unif },
+            AreaPerPerson = new ProbabilityDistributionFunction() { Mean = 24, VariationOrSD = 0, Distribution = PDF.unif },
+            HeatingSetpoint = new ProbabilityDistributionFunction() { Mean = 20, VariationOrSD = 0, Distribution = PDF.unif },
+            CoolingSetpoint = new ProbabilityDistributionFunction() { Mean = 25, VariationOrSD = 0, Distribution = PDF.unif };
 
         public ProbabilisticZoneConditions() { }
 

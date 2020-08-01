@@ -773,9 +773,8 @@ namespace IDFObjects
             }
             return array;
         }
-        public static T2 GetSample<T, T2>(this T pars, double[] sample) where T2 : new()
+        public static T2 GetSample<T, T2>(this T pars, Dictionary<string, double[]> sample, int n) where T2 : new()
         {
-            int i = 0;
             T2 r = new T2();
             foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
             && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD > 0))
@@ -785,10 +784,10 @@ namespace IDFObjects
                 switch (v.Distribution)
                 {
                     case PDF.unif:
-                        val = v.Min + v.Range * sample[i];
+                        val = v.Min + v.Range * sample[fi.Name][n];
                         break;
                     case PDF.norm:
-                        val = v.Mean + v.VariationOrSD * sample[i];
+                        val = v.Mean + v.VariationOrSD * sample[fi.Name][n];
                         break;
                 }
                 FieldInfo f = typeof(T2).GetFields().First(x => x.Name == fi.Name);
@@ -796,7 +795,6 @@ namespace IDFObjects
                     f.SetValue(r, (int) Math.Floor(val));
                 else
                     f.SetValue(r, val);
-                i++;
             };
             foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
             && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD == 0))
@@ -812,12 +810,12 @@ namespace IDFObjects
             return r;
         }
         
-        internal static List<ProbabilityDistributionFunction> GetValidPDFs<T>(this T pars)
-        {
-            return typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
-             && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD > 0).
-             Select(x=>x.GetValue(pars) as ProbabilityDistributionFunction).ToList();
-        }
+        //internal static Dictionary<string, ProbabilityDistributionFunction> GetValidPDFs<T>(this T pars)
+        //{
+        //    return typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
+        //     && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD > 0).
+        //     ToDictionary(x=> x.Name, x=>x.GetValue(pars) as ProbabilityDistributionFunction);
+        //}
         public static List<string> ReplaceLastComma(this List<string> info)
         {
             string lastLine = info.Last();
