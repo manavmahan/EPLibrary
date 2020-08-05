@@ -37,7 +37,11 @@ namespace IDFObjects
         [Description("norm")] norm
     }
     public enum SurfaceType { Floor, Ceiling, Wall, Roof };
-    public enum HVACSystem { HeatPumpWBoiler, FCU, BaseboardHeating, VAV, IdealLoad };
+    public enum HVACSystem {[Description("Heat Pump with Boiler")] HeatPumpWBoiler, 
+                            [Description("Fan coil unit")] FCU, 
+                            [Description("Baseboard Heating")] BaseboardHeating, 
+                            [Description("Variable-Air-Volume")] VAV,
+                            [Description("Ideal Air Load System")] IdealLoad };
     public enum Direction { North, East, South, West };
     public enum ControlType { none, Continuous, Stepped, ContinuousOff }
     public static class Utility
@@ -167,15 +171,12 @@ namespace IDFObjects
             List<ZoneGeometryInformation> zones)
         {
             Dictionary<ZoneGeometryInformation, List<XYZ[]>> allRoomSegment = new Dictionary<ZoneGeometryInformation, List<XYZ[]>>();
-            foreach (KeyValuePair<string, List<XYZ[]>> room in rooms)
+            foreach (ZoneGeometryInformation zone in zones)
             {
-                List<ZoneGeometryInformation> cZones = zones.Where(z => z.Name.Contains(room.Key)).ToList();
-                foreach (ZoneGeometryInformation zone in cZones)
-                {
-                    double baseZ = zone.FloorPoints.xyzs.First().Z;
-                    allRoomSegment.Add(zone, room.Value.Select(c => c.Select(p => p.ChangeZValue(baseZ)).ToArray()).ToList());
-                }
-            }
+                double baseZ = zone.FloorPoints.xyzs.First().Z;
+                string cRoom = zone.Name.Remove(zone.Name.LastIndexOf(":"));
+                allRoomSegment.Add(zone, rooms.First(ro => ro.Key==cRoom).Value.Select(c => c.Select(p => p.ChangeZValue(baseZ)).ToArray()).ToList());
+            }           
             return allRoomSegment;
         }
         public static List<ZoneGeometryInformation> GetZoneGeometryInformation(
