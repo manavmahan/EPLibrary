@@ -73,7 +73,7 @@ namespace IDFObjects
             heatSP.Add(days2, heatSPV2);
             ScheduleCompact heatingSP = new ScheduleCompact()
             {
-                name = Name + "_Heating Set Point Schedule",
+                name = Name + "_HeatingSetPointSchedule",
                 daysTimeValue = heatSP
             };
 
@@ -86,7 +86,7 @@ namespace IDFObjects
             coolSP.Add(days2, coolSPV2);
             ScheduleCompact coolingSP = new ScheduleCompact()
             {
-                name = Name + "_Cooling Set Point Schedule",
+                name = Name + "_CoolingSetPointSchedule",
                 daysTimeValue = coolSP
             };
 
@@ -99,7 +99,7 @@ namespace IDFObjects
             occupancyS.Add(days2, occupV2);
             ScheduleCompact occupSchedule = new ScheduleCompact()
             {
-                name = Name + "_Occupancy Schedule",
+                name = Name + "_OccupancySchedule",
                 daysTimeValue = occupancyS
             };
 
@@ -112,7 +112,7 @@ namespace IDFObjects
             ventilS.Add(days2, ventilV2);
             ScheduleCompact ventilSchedule = new ScheduleCompact()
             {
-                name = Name + "_Ventilation Schedule",
+                name = Name + "_VentilationSchedule",
                 daysTimeValue = ventilS
             };
             
@@ -126,19 +126,19 @@ namespace IDFObjects
             leHeatGain.Add(days2, lehgV2);
             ScheduleCompact lSchedule = new ScheduleCompact()
             {
-                name = Name + "_Lighting Schedule",
+                name = Name + "_LightSchedule",
                 daysTimeValue = leHeatGain
             };
 
             ScheduleCompact eSchedule = new ScheduleCompact()
             {
-                name = Name + "_Electric Equipment Schedule",
+                name = Name + "_EquipmentSchedule",
                 daysTimeValue = leHeatGain
             };
            
             ScheduleCompact activity = new ScheduleCompact()
             {
-                name = Name + "_People Activity Schedule",
+                name = Name + "_ActivitySchedule",
                 daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
                     { "AllDays", new Dictionary<string, double>() {{"24:00", 125} } } }
             };

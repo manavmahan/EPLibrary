@@ -9,6 +9,7 @@ namespace IDFObjects
     [Serializable]
     public class BuildingWWR
     {
+        public bool EachWallSeparately;
         public double North;
         public double East;
         public double West;

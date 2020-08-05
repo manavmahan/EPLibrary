@@ -96,9 +96,12 @@ namespace IDFObjects
         //PV Panel on Roof
         public ElectricLoadCenterDistribution electricLoadCenterDistribution;
 
-        public void UpdateBuildingConstructionWWROperations()
+        public void UpdateBuildingConstructionWWROperations(Location location)
         {
-            GenerateConstructionMunich();
+            if (location == Location.BRUSSELS_BEL)
+                GenerateConstructionBelgium();
+            else
+                GenerateConstructionMunich();
             CreateInternalMass();
             UpdateFenestrations();
             CreateSchedules();
@@ -108,16 +111,21 @@ namespace IDFObjects
             UpdateZoneInfo();
         } 
         public void UpdateFenestrations()
-        {            
-            foreach (Zone zone in zones)
+        {
+            if (Parameters.WWR.EachWallSeparately)
+                AdjustWindows();
+            else
             {
-                foreach (Surface toupdate in zone.Surfaces.Where(s => s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors"))
+                foreach (Zone zone in zones)
                 {
-                    toupdate.CreateWindowsShadingControlShadingOverhang(zone, Parameters.WWR, shadingLength);
-                }
-                if (!zone.Surfaces.Any(s => s.Fenestrations!=null)) 
-                {
-                    zone.DayLightControl = null; 
+                    foreach (Surface toupdate in zone.Surfaces.Where(s => s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors"))
+                    {
+                        toupdate.CreateWindowsShadingControlShadingOverhang(zone, Parameters.WWR, shadingLength);
+                    }
+                    if (!zone.Surfaces.Any(s => s.Fenestrations != null))
+                    {
+                        zone.DayLightControl = null;
+                    }
                 }
             }
         }
@@ -277,10 +285,10 @@ namespace IDFObjects
 
             List<Material> layerListRoof = new List<Material>() { pInsulation, roof_insulation, roof_structure, roof_plaster };
             Parameters.Construction.hcRoof = layerListRoof.Select(l => l.thickness * l.sHC * l.density).Sum();
-            Construction construction_Roof = new Construction("Up Roof Concrete", layerListRoof);
+            Construction construction_Roof = new Construction("Roof", layerListRoof);
 
             List<Material> layerListWall = new List<Material>() { wall_plasterlayer, wall_insulation, wall_structure, wall_plasterlayer };
-            Construction construction_Wall = new Construction("Wall ConcreteBlock", layerListWall);
+            Construction construction_Wall = new Construction("ExternalWall", layerListWall);
             Parameters.Construction.hcWall = layerListWall.Select(l => l.thickness * l.sHC * l.density).Sum();
             
             List<Material> layerListInternallWall = new List<Material>() { plasterboard, iwall_insulation, plasterboard };
@@ -288,11 +296,11 @@ namespace IDFObjects
             Parameters.Construction.hcIWall = layerListInternallWall.Select(l => l.thickness * l.sHC * l.density).Sum();
 
             List<Material> layerListGfloor = new List<Material>() { pInsulation, floor_structure, gfloor_insulation, floor_cementscreed };
-            Construction construction_gFloor = new Construction("Slab_Floor", layerListGfloor);
+            Construction construction_gFloor = new Construction("GroundFloor", layerListGfloor);
             Parameters.Construction.hcGFloor = layerListGfloor.Select(l => l.thickness * l.sHC * l.density).Sum();
 
             List<Material> layerListIFloor = new List<Material>() { floor_structure, ifloor_insulation, floor_cementscreed };
-            Construction construction_ifloor = new Construction("General_Floor_Ceiling", layerListIFloor);
+            Construction construction_ifloor = new Construction("Floor_Ceiling", layerListIFloor);
             Parameters.Construction.hcIFloor = layerListIFloor.Select(l => l.thickness * l.sHC * l.density).Sum();
 
             Material InternalMaterial = new Material(name: "InternalMaterial", rough: "Smooth", th: 0.12, conduct: 2.3, dense: 500, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
@@ -441,26 +449,26 @@ namespace IDFObjects
             Material MWool_ExWall = new Material(name: "MWool_ExWall", rough: "Smooth", th: 0.05, conduct: 0.05, dense: 100, sH: 1030, tAbsorp: 0.9, sAbsorp: 0.7, vAbsorp: 0.7);
             Material Brickwork1 = new Material(name: "Brickwork1", rough: "Smooth", th: 0.14, conduct: 0.32, dense: 840, sH: 1300, tAbsorp: 0.88, sAbsorp: 0.55, vAbsorp: 0.7);
             Material Gypsum2 = new Material(name: "Gypsum2", rough: "Smooth", th: 0.02, conduct: 0.4, dense: 800, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.4, vAbsorp: 0.7);
-            Construction ExWall = new Construction("ExWall", new List<Material>(){
+            Construction ExWall = new Construction("ExternalWall", new List<Material>(){
                 Brick, Cavity, MWool_ExWall, Brickwork1, Gypsum2});
 
             //InWall
             Material MWool_InWall = new Material(name: "MWool_InWall", rough: "Smooth", th: 0.05, conduct: 0.05, dense: 100, sH: 1030, tAbsorp: 0.9, sAbsorp: 0.7, vAbsorp: 0.7);
             Material Brickwork2 = new Material(name: "Brickwork2", rough: "Smooth", th: 0.14, conduct: 0.27, dense: 850, sH: 840, tAbsorp: 0.85, sAbsorp: 0.55, vAbsorp: 0.7);
-            Construction InWall = new Construction("InWall", new List<Material>(){
+            Construction InWall = new Construction("InternalWall", new List<Material>(){
                  Gypsum1, MWool_InWall, Brickwork2, Gypsum1 });
 
             //GFloor
             Material FloorTiles = new Material(name: "FloorTiles", rough: "Smooth", th: 0.04, conduct: 0.44, dense: 1500, sH: 733, tAbsorp: 0.85, sAbsorp: 0.55, vAbsorp: 0.6);
             Material PUR_GFloor = new Material(name: "PUR_GFloor", rough: "Smooth", th: 0.06, conduct: 0.026, dense: 35, sH: 1400, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
             Material RConcrete2 = new Material(name: "RConcrete2", rough: "Smooth", th: 0.15, conduct: 2.3, dense: 2300, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
-            Construction GFloor = new Construction("GFloor", new List<Material>(){
+            Construction GFloor = new Construction("GroundFloor", new List<Material>(){
                  FloorTiles, Screed, PUR_GFloor, RConcrete2 });
 
 
             //Ceiling
             Material PUR_Ceiling = new Material(name: "PUR_Ceiling", rough: "Smooth", th: 0.06, conduct: 0.026, dense: 35, sH: 1400, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
-            Construction Ceiling = new Construction("Ceiling", new List<Material>(){
+            Construction Ceiling = new Construction("Floor_Ceiling", new List<Material>(){
                  FloorTiles, Screed, PUR_Ceiling, RConcrete1, Gypsum1 });
 
             //CommonWall
@@ -767,7 +775,7 @@ namespace IDFObjects
         }
        
         public void InitialiseBuilding_SameFloorPlan(List<ZoneGeometryInformation> zonesInformation,
-            BuildingDesignParameters parameters)
+            BuildingDesignParameters parameters, Location location)
         {
             Parameters = parameters;
             CreateZoneLists();
@@ -783,7 +791,7 @@ namespace IDFObjects
                 {
                     new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
                     {
-                        ConstructionName = "General_Floor_Ceiling",
+                        ConstructionName = "Floor_Ceiling",
                         OutsideCondition = "Zone",
                         OutsideObject = zoneInfo.Name.Remove(zoneInfo.Name.LastIndexOf(':')+1) + (zoneInfo.Level - 1)
                     };
@@ -799,11 +807,81 @@ namespace IDFObjects
                 try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
                 catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
             }          
-            UpdateBuildingConstructionWWROperations();
+            UpdateBuildingConstructionWWROperations(location);
         }
+        public void AdjustWindows()
+        {
+            if (Parameters.WWR.EachWallSeparately)
+            {
+                List<Surface> allExWalls = zones.SelectMany(z => z.Surfaces).Where(s =>
+                 s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors").ToList();
 
+                if (DialogResult.Yes == MessageBox.Show(string.Format(
+                    "A total of {0} external walls found.\n" +
+                    "Would you like to define for each level separately?", allExWalls.Count),
+                    "Window-to-Wall Ratio", MessageBoxButtons.YesNo))
+                {
+                    foreach (Zone zone in zones)
+                    {
+                        List<IDFObjects.Surface> exZoneWalls = allExWalls.Where(s => s.ZoneName == zone.Name).ToList();
+                        WWR_Input wWR = new WWR_Input(zone.Name, exZoneWalls);
+                        wWR.ShowDialog();
+                        foreach (IDFObjects.Surface toupdate in exZoneWalls)
+                        {
+                            toupdate.CreateWindows(zone);
+                        }
+                        if (!zone.Surfaces.Any(s => s.Fenestrations != null))
+                        {
+                            zone.DayLightControl = null;
+                        }
+                    }
+                }
+                else
+                {
+                    List<string> allZoneNames = zones.Select(z => z.Name).ToList();
+                    List<string> zoneNameLevel = zones.Select(z => z.Name.Remove(z.Name.IndexOf(':'))).Distinct().ToList();
+                    foreach (string zoneName in zoneNameLevel)
+                    {
+                        List<string> zoneNamesWLevelMatching = allZoneNames.Where(s => s.Contains(zoneName)).ToList();
+                        string zoneNameWLevel = zoneNamesWLevelMatching.First();
+
+                        List<IDFObjects.Surface> exZoneWalls = allExWalls.Where(s => s.ZoneName == zoneNameWLevel).ToList();
+                        WWR_Input wWR = new WWR_Input(zoneName, exZoneWalls);
+                        wWR.ShowDialog();
+
+                        foreach (string zoneNameWLevelMatching in zoneNamesWLevelMatching)
+                        {
+                            exZoneWalls = allExWalls.Where(s => s.ZoneName == zoneNameWLevelMatching).ToList();
+                            wWR.AssociateWithCorrespondingWalls(exZoneWalls);
+                            IDFObjects.Zone zone = zones.First(z => z.Name == zoneNameWLevelMatching);
+                            foreach (IDFObjects.Surface toupdate in exZoneWalls)
+                            {
+                                toupdate.CreateWindows(zone);
+                            }
+                            if (!zone.Surfaces.Any(s => s.Fenestrations != null))
+                            {
+                                zone.DayLightControl = null;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        public void AdjustScheduleFromFile(List<ScheduleCompact> schedules)
+        {
+            foreach(ScheduleCompact s in schedules)
+            {
+                try
+                {
+                    schedulescomp.Remove(schedulescomp.First(sc => sc.name == s.name));
+                    schedulescomp.Add(s);
+                }
+                catch { }                
+            }
+            
+        }
         public void InitialiseBuilding(List<ZoneGeometryInformation> zonesInformation,
-           BuildingDesignParameters parameters)
+           BuildingDesignParameters parameters, Location location)
         {
             Parameters = parameters;
             CreateZoneLists();
@@ -817,7 +895,7 @@ namespace IDFObjects
                 else
                     new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
                     {
-                        ConstructionName = "General_Floor_Ceiling",
+                        ConstructionName = "Floor_Ceiling",
                         OutsideCondition = "Adiabatic"
                     };
                 
@@ -827,7 +905,7 @@ namespace IDFObjects
                 else
                     new Surface(zone, floorPoints.OffsetHeight(zoneInfo.Height), floorPoints.CalculateArea(), SurfaceType.Floor)
                     {
-                        ConstructionName = "General_Floor_Ceiling",
+                        ConstructionName = "Floor_Ceiling",
                         OutsideCondition = "Adiabatic"
                     };
                 zone.CreateDaylighting(500);
@@ -835,7 +913,7 @@ namespace IDFObjects
                 try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
                 catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
             }          
-            UpdateBuildingConstructionWWROperations();
+            UpdateBuildingConstructionWWROperations(location);
         }
     }    
 }

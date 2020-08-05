@@ -100,7 +100,7 @@ namespace IDFObjects
             switch (this.surfaceType)
             {
                 case (SurfaceType.Floor):
-                    ConstructionName = "Slab_Floor";
+                    ConstructionName = "GroundFloor";
                     OutsideCondition = "Ground";
                     OutsideObject = "";
                     SunExposed = "NoSun";
@@ -111,17 +111,17 @@ namespace IDFObjects
                     OutsideCondition = "Outdoors";
                     SunExposed = "SunExposed";
                     WindExposed = "WindExposed";
-                    ConstructionName = "Wall ConcreteBlock";
+                    ConstructionName = "ExternalWall";
                     Orientation = verticesList.GetWallOrientation(out Direction);                    
                     break;
                 case (SurfaceType.Ceiling):
-                    ConstructionName = "General_Floor_Ceiling";
+                    ConstructionName = "Floor_Ceiling";
                     OutsideCondition = "Zone";
                     SunExposed = "NoSun";
                     WindExposed = "NoWind";
                     break;
                 case (SurfaceType.Roof):
-                    ConstructionName = "Up Roof Concrete";
+                    ConstructionName = "Roof";
                     OutsideObject = "";
                     OutsideCondition = "Outdoors";
                     SunExposed = "SunExposed";

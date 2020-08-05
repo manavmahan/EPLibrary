@@ -10,6 +10,7 @@ namespace IDFObjects
     [Serializable]
     public class ProbabilisticBuildingService
     {
+        public HVACSystem HVACSystem;
         public ProbabilityDistributionFunction 
             BoilerEfficiency = new ProbabilityDistributionFunction(),
             HeatingCOP = new ProbabilityDistributionFunction(),
@@ -21,7 +22,7 @@ namespace IDFObjects
         }
         public BuildingService GetAverage()
         {
-            return new BuildingService(BoilerEfficiency.Mean, HeatingCOP.Mean, CoolingCOP.Mean);
+            return new BuildingService(BoilerEfficiency.Mean, HeatingCOP.Mean, CoolingCOP.Mean) { HVACSystem = HVACSystem };
         }
         public string Header(string sep)
         {

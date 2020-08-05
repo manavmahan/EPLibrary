@@ -11,6 +11,7 @@ namespace IDFObjects
     [Serializable]
     public class ProbabilisticBuildingWWR
     {
+        public bool EachWallSeparately;
         public BuildingWWR Average;
         public ProbabilityDistributionFunction 
             North = new ProbabilityDistributionFunction(),
@@ -28,7 +29,7 @@ namespace IDFObjects
         }
         public BuildingWWR GetAverage()
         {
-            return new BuildingWWR(North.Mean, East.Mean, West.Mean, South.Mean); 
+            return new BuildingWWR(North.Mean, East.Mean, West.Mean, South.Mean) { EachWallSeparately = EachWallSeparately }; 
         }
         public string Header(string sep) 
         {
@@ -37,7 +38,6 @@ namespace IDFObjects
         public string ToString(string sep)
         {
             return string.Join(sep, North, East, West, South);
-        }
-       
+        }     
     }
 }

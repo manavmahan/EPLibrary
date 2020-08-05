@@ -599,6 +599,33 @@ namespace IDFObjects
             }
             return value;
         }
+        public static List<ScheduleCompact> GetSchedulesFromFolder(string folder)
+        {
+            string zoneListName = new DirectoryInfo(folder).Name;
+            List<ScheduleCompact> schedules = new List<ScheduleCompact>();
+            foreach(string f in Directory.EnumerateFiles(folder, "*.csv"))
+            {
+                try
+                {
+                    schedules.Add(new ScheduleCompact(string.Format("{0}_{1}Schedule", zoneListName, new FileInfo(f).Name.Split('.')[0]), File.ReadAllLines(f).ToList()));                    
+                }
+                catch
+                {
+
+                }
+            }
+            return schedules;
+        }
+        public static List<ScheduleCompact> GetSchedulesFromFolderWithZoneNames(string folder)
+        { 
+            string[] zoneListName = Directory.EnumerateDirectories(folder).ToArray();
+            List<ScheduleCompact> schedules = new List<ScheduleCompact>();
+            foreach (string f in zoneListName)
+            {
+                schedules.AddRange(GetSchedulesFromFolder(f));
+            }
+            return schedules;
+        }
         public static double GetSamplesValues(this Dictionary<string, double[]> DataDictionary, string Parameter, int Number)
         {
             if (DataDictionary.ContainsKey(Parameter))
