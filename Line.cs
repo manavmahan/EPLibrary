@@ -52,5 +52,9 @@ namespace IDFObjects
             double mod = d.AbsoluteValue();
             return d.Multiply(1 / mod);
         }
+        public Line Reverse()
+        {
+            return new Line(P1, P0);
+        }
     }
 }

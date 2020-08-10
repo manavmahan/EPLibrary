@@ -179,8 +179,8 @@ namespace IDFObjects
         }
         public static Line GetOffset(Line line, Line prevLine, Line nextLine, double offsetDistance)
         {
-            XYZ p0 = line.P1.MovePoint(RotateToNormal(line, 0),  offsetDistance),
-            p1 = line.P0.MovePoint(RotateToNormal(line, 1), (-1) * offsetDistance);
+            XYZ p0 = line.P0.MovePoint(RotateToNormal(line, 1), (-1) * offsetDistance),
+            p1 = line.P1.MovePoint(RotateToNormal(line, 0), offsetDistance);
 
             XYZ dir1 = new Line(p0, p1).Direction();
 
@@ -392,7 +392,7 @@ namespace IDFObjects
                         new List<Line>(){
                         perimeterLines[i],
                         cardinalLines[0],
-                        offsetLines[i],
+                        offsetLines[i].Reverse(),
                         cardinalLines[1]
                         });
                 }
@@ -405,8 +405,8 @@ namespace IDFObjects
         {
             return new Line[]
             {
-                new Line(perimeterLine.P1, coreLine.P0),
-                new Line( coreLine.P1, perimeterLine.P0)
+                new Line(perimeterLine.P1, coreLine.P1),
+                new Line( coreLine.P0, perimeterLine.P0)
             };
         }
         public static bool PointInsideLoopExceptZ(List<Line> WallEdges, XYZ point)
