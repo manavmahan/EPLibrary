@@ -11,9 +11,12 @@ namespace IDFObjects
     {
         public XYZ P0, P1;
         public Line() { }
-        public Line(XYZ P1, XYZ P2)
+        public Line(XYZ P0, XYZ P1)
         {
-            this.P0 = P1; this.P1 = P2;
+            if (!P0.IsAlmostEqual( P1))
+            {
+                this.P0 = P0; this.P1 = P1;
+            }
         }
         public Line(XYZ[] Points)
         {
@@ -45,7 +48,7 @@ namespace IDFObjects
         public Line ChangeZValue(double baseZ)=> new Line(P0.ChangeZValue(baseZ), P1.ChangeZValue(baseZ));
         public XYZ Direction()
         {
-            XYZ d = P0.Subtract(P1);
+            XYZ d = P1.Subtract(P0);
             double mod = d.AbsoluteValue();
             return d.Multiply(1 / mod);
         }

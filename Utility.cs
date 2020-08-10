@@ -165,7 +165,7 @@ namespace IDFObjects
         public static XYZ RotateToNormal(Line line, int corner)
         {
             XYZ point = line.GetCorner(corner);
-            XYZ centerPoint = corner == 1 ? line.GetCorner(0) : line.GetCorner(1);
+            XYZ centerPoint = corner == 0 ? line.GetCorner(1) : line.GetCorner(0);
             XYZ translatePoint = point.Subtract(centerPoint);
             XYZ rotatedTranslatePoint = new XYZ(translatePoint.X * Math.Cos(Math.PI / 2) - translatePoint.Y * Math.Sin(Math.PI / 2),
                                                 translatePoint.X * Math.Sin(Math.PI / 2) + translatePoint.Y * Math.Cos(Math.PI / 2),
@@ -175,21 +175,22 @@ namespace IDFObjects
         
         public static double GetAngle(Line c1, Line c2)
         {
-            return c1.Direction().AngleOnPlaneTo(c2.Direction(), new XYZ(0, 0, -1));
+            return c1.Direction().AngleOnPlaneTo(c2.Direction(), new XYZ(0, 0, -1))*(Math.PI/180);
         }
         public static Line GetOffset(Line line, Line prevLine, Line nextLine, double offsetDistance)
         {
-            XYZ p1 = line.P0.MovePoint(RotateToNormal(line, 1), offsetDistance),
-            p2 = line.P1.MovePoint(RotateToNormal(line, 0), (-1) * offsetDistance);
+            XYZ p0 = line.P1.MovePoint(RotateToNormal(line, 0),  offsetDistance),
+            p1 = line.P0.MovePoint(RotateToNormal(line, 1), (-1) * offsetDistance);
 
-            XYZ dir1 = new Line(p1, p2).Direction();
+            XYZ dir1 = new Line(p0, p1).Direction();
 
-            p1 = p1.MovePoint( p2, Math.Sin(GetAngle(prevLine, line)) * (-1) * offsetDistance);
-            p2 = p2.MovePoint( p1, Math.Sin(GetAngle(line, nextLine)) * (-1) * offsetDistance);
+            p0 = p0.MovePoint( p1, Math.Sin(GetAngle(prevLine, line)) * offsetDistance);
+            p1 = p1.MovePoint( p0, Math.Sin(GetAngle(line, nextLine)) * offsetDistance);
 
             try
             {
-                Line l1 = new Line (p1, p2 );
+                Line l1 = new Line (p0, p1);
+                XYZ x = l1.Direction();
                 return l1.Direction().IsAlmostEqual(dir1) ? l1 : null;
             }
             catch
@@ -351,7 +352,7 @@ namespace IDFObjects
                 List<Line> WallEdges = GetExternalEdges(floorPoints);
                 List<XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
                 DLList = new XYZList(CentersOfMass.Where(p => PointInsideLoopExceptZ(WallEdges, p) &&
-                CheckMinimumDistance(ExWallEdges, p, 0.2)).ToList());
+                CheckMinimumDistance(ExWallEdges, p, 0.2)).Distinct().ToList());
             }
             else
             {
@@ -361,7 +362,7 @@ namespace IDFObjects
                     List<Line> WallEdges = GetExternalEdges(floorPoints);
                     List<XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
                     DLList = new XYZList(CentersOfMass.Where(p => PointInsideLoopExceptZ(WallEdges, p) &&
-                    CheckMinimumDistance(ExWallEdges, p, 0.2)).ToList());
+                    CheckMinimumDistance(ExWallEdges, p, 0.2)).Distinct().ToList());
                 }
             }
             return DLList;
@@ -380,25 +381,15 @@ namespace IDFObjects
                 List<Line> perimeterLines = GetExternalEdges(groundPoints);
                 List<Line> offsetLines = GetOffset(perimeterLines, offsetDistance);
 
-                for (int i = 0; i < perimeterLines.Count(); i++)
+                if (offsetLines.Count != perimeterLines.Count)
                 {
-                    Line c = perimeterLines[i], c1, c2;
-
-                    try { c2 = perimeterLines.ElementAt(i + 1); }
-                    catch { c2 = perimeterLines.First(); }
-
-                    try { c1 = perimeterLines.ElementAt(i - 1); }
-                    catch { c1 = perimeterLines.Last(); }
-
-                    Line offsetLine = GetOffset(c, c1, c2, offsetDistance);
-                    if (offsetLine != null) { offsetLines.Add(offsetLine); }
+                    MessageBox.Show("Error creating detailed zone model");
                 }
-                
                 for (int i = 0; i < perimeterLines.Count; i++)
                 {
                     Line[] cardinalLines = CreateDiagonalLines(perimeterLines[i], offsetLines[i]);
                     roomSegments.Add(string.Format("{0}:{1}", zoneName, i + 1),
-                        new List<IDFObjects.Line>(){
+                        new List<Line>(){
                         perimeterLines[i],
                         cardinalLines[0],
                         offsetLines[i],
@@ -414,8 +405,8 @@ namespace IDFObjects
         {
             return new Line[]
             {
-                new Line(perimeterLine.P1, coreLine.P1),
-                new Line(coreLine.P0, perimeterLine.P0)
+                new Line(perimeterLine.P1, coreLine.P0),
+                new Line( coreLine.P1, perimeterLine.P0)
             };
         }
         public static bool PointInsideLoopExceptZ(List<Line> WallEdges, XYZ point)

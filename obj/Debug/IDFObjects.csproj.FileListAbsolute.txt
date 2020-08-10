@@ -99,8 +99,6 @@ C:\Users\u0115868a\Documents\GitHub\IDFObjects\bin\Debug\System.IO.Packaging.xml
 C:\Users\u0115868a\Documents\GitHub\IDFObjects\bin\Debug\System.Text.Encodings.Web.xml
 C:\Users\u0115868a\Documents\GitHub\IDFObjects\bin\Debug\System.Threading.Tasks.Extensions.xml
 C:\Users\u0115868a\Documents\GitHub\IDFObjects\bin\Debug\System.ValueTuple.xml
-C:\Users\u0115868a\Documents\GitHub\IDFObjects\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
-C:\Users\u0115868a\Documents\GitHub\IDFObjects\bin\Debug\System.Numerics.Vectors.xml
 C:\Users\u0115868a\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyReference.cache
 C:\Users\u0115868a\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.WWRInput.resources
 C:\Users\u0115868a\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csproj.GenerateResource.cache

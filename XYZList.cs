@@ -22,7 +22,7 @@ namespace IDFObjects
             {
                 Line lastLine = Loop.Last();
                 Line currentLine = Edges[0];
-                if (Utility.GetDirection(lastLine).Equals(Utility.GetDirection(currentLine)))
+                if (lastLine.Direction().IsAlmostEqual(currentLine.Direction()))
                 {
                     lastLine.P1 = currentLine.P1;
                     Loop[Loop.Count - 1] = lastLine;
@@ -33,7 +33,7 @@ namespace IDFObjects
                 }
                 Edges.RemoveAt(0);
             }
-            if (Utility.GetDirection(Loop.Last()).Equals(Utility.GetDirection(Loop.First())))
+            if (Loop.Last().Direction().IsAlmostEqual(Loop.First().Direction()))
             {
                 Loop[0].P0 = Loop.Last().P0;
                 Loop.RemoveAt(Loop.Count - 1);

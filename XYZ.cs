@@ -31,7 +31,7 @@ namespace IDFObjects
         }
         public bool IsAlmostEqual(XYZ point1)
         {
-            return (Math.Round(X-point1.X,3) ==0 && Math.Round(Y-point1.Y,3)==0 && Math.Round(Z-point1.Z,3)==0);
+            return (Math.Round(X-point1.X,1) ==0 && Math.Round(Y-point1.Y,1)==0 && Math.Round(Z-point1.Z,1)==0);
         }
         public override int GetHashCode()
         {
