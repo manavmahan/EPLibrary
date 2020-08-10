@@ -93,7 +93,10 @@
     <Compile Include="EPBuilding.cs" />
     <Compile Include="BuildingGeometry.cs" />
     <Compile Include="BuildingDesignParameters.cs" />
-    <Compile Include="WWRInput.cs" />
+    <Compile Include="Line.cs" />
+    <Compile Include="WWRInput.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="WWRInput.Designer.cs">
       <DependentUpon>WWRInput.cs</DependentUpon>
     </Compile>

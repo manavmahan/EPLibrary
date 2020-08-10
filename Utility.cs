@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Bibliography;
 using DocumentFormat.OpenXml.Drawing.Charts;
+using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.JScript;
 using Newtonsoft.Json;
 using Formatting = Newtonsoft.Json.Formatting;
@@ -21,6 +22,11 @@ namespace IDFObjects
     public enum LevelExposure
     {
         Ground, Intermediate, Top
+    }
+    public enum Zoning
+    {
+        [Description("One Zone Per Floor")] OneZonePerFloor = 0,
+        [Description("Core and Perimeter Zone")] CoreAndPerimeterZones = 1
     }
     public enum Location
     {
@@ -46,6 +52,36 @@ namespace IDFObjects
     public enum ControlType { none, Continuous, Stepped, ContinuousOff }
     public static class Utility
     {
+        public static List<XYZList> FindTopRoof(List<XYZList> allRoofs)
+        {
+            double topRoofBase = 0;
+            foreach (XYZList roof in allRoofs)
+            {
+                double mi = roof.xyzs.Select(p => p.Z).Min();
+                if (mi > topRoofBase)
+                    topRoofBase = mi;
+            }
+            return allRoofs.Where(r => r.xyzs.Select(ro => ro.Z).Any(Z=>Z == topRoofBase)).ToList();
+        }
+        public static List<XYZ> GetIntersections(this XYZList firstLoop, XYZList secondLoop)
+        {
+            List<XYZ> intersections = new List<XYZ>();
+            foreach (Line l in GetExternalEdges(firstLoop.xyzs))
+            {
+                foreach(Line sl in GetExternalEdges(secondLoop.xyzs))
+                {
+                    try
+                    { intersections.Add(l.GetIntersection(sl)); }
+                    catch { }
+                }               
+            }
+            return intersections;
+        }
+        public static bool IsFLoopInsideSLoop(this XYZList FLoop, XYZList SLoop) 
+        {
+            List<Line> edges = GetExternalEdges(SLoop.xyzs);
+            return FLoop.xyzs.All(p=>PointInsideLoopExceptZ(edges,p)); 
+        }
         public static FieldInfo GetMonthlyFieldInfo<T>(FieldInfo fieldInfo)
         {
             return typeof(T).GetFields().First(x => x.Name == fieldInfo.Name + "Monthly");
@@ -108,13 +144,12 @@ namespace IDFObjects
                     e.Dispose();
             }
         }
-        public static List<XYZ> GetOffset(List<XYZ> Loop, double offsetDist)
+        public static List<Line> GetOffset(List<Line> perimeterLines, double offsetDist)
         {
-            List<XYZ[]> offsetLines = new List<XYZ[]>();
-            List<XYZ[]> perimeterLines = GetExternalEdges(Loop);
-            for (int i = 0; i < Loop.Count(); i++)
+            List<Line> offsetLines = new List<Line>();
+            for (int i = 0; i < perimeterLines.Count(); i++)
             {
-                XYZ[] c = perimeterLines[i], c1, c2;
+                Line c = perimeterLines[i], c1, c2;
 
                 try { c2 = perimeterLines.ElementAt(i + 1); }
                 catch { c2 = perimeterLines.First(); }
@@ -122,44 +157,39 @@ namespace IDFObjects
                 try { c1 = perimeterLines.ElementAt(i - 1); }
                 catch { c1 = perimeterLines.Last(); }
 
-                XYZ[] offsetLine = GetOffset(c, c1, c2, offsetDist);
+                Line offsetLine = GetOffset(c, c1, c2, offsetDist);
                 if (offsetLine != null) { offsetLines.Add(offsetLine); }
             }
-            return offsetLines.Select(p => p[0]).ToList();
+            return offsetLines;
         }      
-        public static XYZ RotateToNormal(XYZ[] line, int corner)
+        public static XYZ RotateToNormal(Line line, int corner)
         {
-            XYZ point = line[corner];
-            XYZ centerPoint = corner == 1 ? line[0] : line[1];
+            XYZ point = line.GetCorner(corner);
+            XYZ centerPoint = corner == 1 ? line.GetCorner(0) : line.GetCorner(1);
             XYZ translatePoint = point.Subtract(centerPoint);
             XYZ rotatedTranslatePoint = new XYZ(translatePoint.X * Math.Cos(Math.PI / 2) - translatePoint.Y * Math.Sin(Math.PI / 2),
                                                 translatePoint.X * Math.Sin(Math.PI / 2) + translatePoint.Y * Math.Cos(Math.PI / 2),
                                                 translatePoint.Z);
             return rotatedTranslatePoint.Add(centerPoint);
         }
-        public static XYZ Direction(this XYZ[] line)
-        {
-            XYZ d = line[1].Subtract(line[0]);
-            double mod = d.AbsoluteValue();
-            return d.Multiply(1 / mod);
-        }
-        public static double GetAngle(XYZ[] c1, XYZ[] c2)
+        
+        public static double GetAngle(Line c1, Line c2)
         {
             return c1.Direction().AngleOnPlaneTo(c2.Direction(), new XYZ(0, 0, -1));
         }
-        public static XYZ[] GetOffset(XYZ[] line, XYZ[] prevLine, XYZ[] nextLine, double offsetDistance)
+        public static Line GetOffset(Line line, Line prevLine, Line nextLine, double offsetDistance)
         {
-            XYZ p1 = line[0].MovePoint(RotateToNormal(line, 1), offsetDistance),
-            p2 = line[1].MovePoint(RotateToNormal(line, 0), (-1) * offsetDistance);
+            XYZ p1 = line.P0.MovePoint(RotateToNormal(line, 1), offsetDistance),
+            p2 = line.P1.MovePoint(RotateToNormal(line, 0), (-1) * offsetDistance);
 
-            XYZ dir1 = new XYZ[] { p1, p2}.Direction();
+            XYZ dir1 = new Line(p1, p2).Direction();
 
             p1 = p1.MovePoint( p2, Math.Sin(GetAngle(prevLine, line)) * (-1) * offsetDistance);
             p2 = p2.MovePoint( p1, Math.Sin(GetAngle(line, nextLine)) * (-1) * offsetDistance);
 
             try
             {
-                XYZ[] l1 = new XYZ[] { p1, p2 };
+                Line l1 = new Line (p1, p2 );
                 return l1.Direction().IsAlmostEqual(dir1) ? l1 : null;
             }
             catch
@@ -167,32 +197,33 @@ namespace IDFObjects
                 return null;
             }
         }
-        public static Dictionary<ZoneGeometryInformation, List<XYZ[]>> ExpandRoomSegmentForEachFloor(Dictionary<string, List<XYZ[]>> rooms,
+        public static Dictionary<ZoneGeometryInformation, List<Line>> ExpandRoomSegmentForEachFloor(Dictionary<string, List<Line>> rooms,
             List<ZoneGeometryInformation> zones)
         {
-            Dictionary<ZoneGeometryInformation, List<XYZ[]>> allRoomSegment = new Dictionary<ZoneGeometryInformation, List<XYZ[]>>();
+            Dictionary<ZoneGeometryInformation, List<Line>> allRoomSegment = new Dictionary<ZoneGeometryInformation, List<Line>>();
             foreach (ZoneGeometryInformation zone in zones)
             {
                 double baseZ = zone.FloorPoints.xyzs.First().Z;
                 string cRoom = zone.Name.Remove(zone.Name.LastIndexOf(":"));
-                allRoomSegment.Add(zone, rooms.First(ro => ro.Key==cRoom).Value.Select(c => c.Select(p => p.ChangeZValue(baseZ)).ToArray()).ToList());
+                List<Line> walls = rooms.First(ro => ro.Key == cRoom).Value;
+                allRoomSegment.Add(zone, walls.Select(l=>l.ChangeZValue(baseZ)).ToList());
             }           
             return allRoomSegment;
         }
         public static List<ZoneGeometryInformation> GetZoneGeometryInformation(
-            Dictionary<string, List<XYZ[]>> allRooms, List<XYZList> floors, List<XYZList> roofs)
+            Dictionary<string, List<Line>> allRooms, List<XYZList> floors, List<XYZList> roofs)
         {
             List<ZoneGeometryInformation> zoneInfoList = new List<ZoneGeometryInformation>();
             List<string> zNames = allRooms.Select(x => x.Key).ToList();
-            List<XYZ[]> externalEdgesIDF = GetExternalEdges(floors[0].xyzs);
+            List<Line> externalEdgesIDF = GetExternalEdges(floors[0].xyzs);
             for (int f = 0; f < floors.Count; f++)
             {
                 foreach (string zName in zNames) 
                 {
                     ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
                     zInfo.Name = zName+':'+f;
-                    List<XYZ[]> thisRoomSegments = allRooms[zName];
-                    List<XYZ> floorPoints = thisRoomSegments.Select(x => x[0]).ToList();
+                    List<Line> thisRoomSegments = allRooms[zName];
+                    List<XYZ> floorPoints = thisRoomSegments.Select(x => x.P0).ToList();
                     XYZList flPointList = new XYZList(floorPoints);
                     flPointList.RemoveCollinearPoints();
                     zInfo.FloorPoints = flPointList.ChangeZValue(floors[f].xyzs.First().Z);
@@ -212,16 +243,16 @@ namespace IDFObjects
                     zoneInfoList.Add(zInfo);
                 }
             }
-            Dictionary<ZoneGeometryInformation, List<XYZ[]>> allRoomSegments = ExpandRoomSegmentForEachFloor(allRooms, zoneInfoList);
+            Dictionary<ZoneGeometryInformation, List<Line>> allRoomSegments = ExpandRoomSegmentForEachFloor(allRooms, zoneInfoList);
             foreach (ZoneGeometryInformation zone in zoneInfoList)
             {
-                Dictionary<ZoneGeometryInformation, List<XYZ[]>> roomSegmentsFloors = allRoomSegments.Where(z=>z.Key.Level==zone.Level)
+                Dictionary<ZoneGeometryInformation, List<Line>> roomSegmentsFloors = allRoomSegments.Where(z=>z.Key.Level==zone.Level)
                     .ToDictionary(x => x.Key, x => x.Value);
-                Dictionary<ZoneGeometryInformation, List<XYZ[]>> allRoomSegmentsNotThisRoom =
+                Dictionary<ZoneGeometryInformation, List<Line>> allRoomSegmentsNotThisRoom =
                     roomSegmentsFloors.Where(x => x.Key.Name !=zone.Name).ToDictionary(x => x.Key, x => x.Value);
-                List<XYZ[]> thisRoomSegments = roomSegmentsFloors[zone];
+                List<Line> thisRoomSegments = roomSegmentsFloors[zone];
                 
-                foreach (XYZ[] c in thisRoomSegments)
+                foreach (Line c in thisRoomSegments)
                 {
                     string con = "Adiabatic";
                     ZoneGeometryInformation exZ = null;
@@ -240,13 +271,13 @@ namespace IDFObjects
                         if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
                             con = "Outdoors";
                     }
-                    zone.WallCreationData.Add(c.Select(p => p.ChangeZValue(zone.FloorPoints.xyzs.First().Z)).ToArray(), con);
+                    zone.WallCreationData.Add(c.ChangeZValue(zone.FloorPoints.xyzs.First().Z), con);
                 }
             }
             return zoneInfoList;
         }
         public static List<ZoneGeometryInformation> GetZoneGeometryInformation(Dictionary<string, int> zoneLevels,
-            Dictionary<string, List<XYZ[]>> allRoomSegmentsIDF, List<XYZ[]> externalEdgesIDF, double heightFl)
+            Dictionary<string, List<Line>> allRoomSegmentsIDF, List<Line> externalEdgesIDF, double heightFl)
         {
             List<ZoneGeometryInformation> zoneInfoList = new List<ZoneGeometryInformation>();
             List<string> zNames = allRoomSegmentsIDF.Select(x => x.Key).ToList();
@@ -257,8 +288,8 @@ namespace IDFObjects
                 zInfo.Height = heightFl;
                 zInfo.Level = zoneLevels[zName];
 
-                List<XYZ[]> thisRoomSegments = allRoomSegmentsIDF[zName];
-                List<XYZ> floorPoints = thisRoomSegments.Select(x => x[0]).ToList();
+                List<Line> thisRoomSegments = allRoomSegmentsIDF[zName];
+                List<XYZ> floorPoints = thisRoomSegments.Select(x => x.P0).ToList();
                 XYZList flPointList = new XYZList(floorPoints);
                 flPointList.RemoveCollinearPoints();
                 zInfo.FloorPoints = flPointList;
@@ -267,22 +298,22 @@ namespace IDFObjects
 
             foreach (ZoneGeometryInformation zone in zoneInfoList)
             {
-                Dictionary<string, List<XYZ[]>> allRoomSegmentsNotThisRoom = new Dictionary<string, List<XYZ[]>>();
-                List<XYZ[]> thisRoomSegments = allRoomSegmentsIDF[zone.Name];
-                foreach (KeyValuePair<string, List<XYZ[]>> exRoomSegment in allRoomSegmentsIDF.Where(x => x.Key != zone.Name))
+                Dictionary<string, List<Line>> allRoomSegmentsNotThisRoom = new Dictionary<string, List<Line>>();
+                List<Line> thisRoomSegments = allRoomSegmentsIDF[zone.Name];
+                foreach (KeyValuePair<string, List<Line>> exRoomSegment in allRoomSegmentsIDF.Where(x => x.Key != zone.Name))
                 {
                     allRoomSegmentsNotThisRoom.Add(exRoomSegment.Key, exRoomSegment.Value);
                 }
 
-                foreach (XYZ[] c in thisRoomSegments)
+                foreach (Line c in thisRoomSegments)
                 {
                     try
                     {
-                        KeyValuePair<string, List<XYZ[]>> matchingCurve = allRoomSegmentsNotThisRoom
+                        KeyValuePair<string, List<Line>> matchingCurve = allRoomSegmentsNotThisRoom
                             .First(x => x.Value.Any(y => CompareCurves(c, y)));
                         zone.WallCreationData.Add(c, matchingCurve.Key);
 
-                        List<XYZ[]> matchingZoneSegments = allRoomSegmentsIDF[matchingCurve.Key];
+                        List<Line> matchingZoneSegments = allRoomSegmentsIDF[matchingCurve.Key];
                         matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
                     }
                     catch
@@ -295,40 +326,107 @@ namespace IDFObjects
             }
             return zoneInfoList;
         }
-        public static bool CompareCurves(XYZ[] c1, XYZ[] c2)
+        public static bool CompareCurves(Line c1, Line c2)
         {
-            return (c2[0].Equals(c1[0]) && c2[1].Equals(c1[1])) || (c2[1].Equals(c1[0]) && c2[0].Equals(c1[1]));
+            return (c2.P0.Equals(c1.P0) && c2.P1.Equals(c1.P1)) || (c2.P1.Equals(c1.P0) && c2.P0.Equals(c1.P1));
         }       
-        public static bool IsCollinear(XYZ[] c1, XYZ[] c2)
+        public static bool IsCollinear(Line c1, Line c2)
         {
-            XYZ p1 = c1[0], p2 = c1[1], p3 = c2[0], p4 = c2[1];
+            XYZ p1 = c1.P0, p2 = c1.P1, p3 = c2.P0, p4 = c2.P1;
             return new XYZList(new List<XYZ>() { p1, p2, p3 }).CalculateArea() == 0 &&
                 new XYZList(new List<XYZ>() { p1, p2, p4 }).CalculateArea() == 0;
         }
-        public static XYZ GetDirection(IDFObjects.XYZ[] Line)
+        public static XYZ GetDirection(Line Line)
         {
-            double x = Line[1].X - Line[0].X, y = Line[1].Y - Line[0].Y, z = Line[1].Z - Line[0].Z;
+            double x = Line.P1.X - Line.P0.X, y = Line.P1.Y - Line.P0.Y, z = Line.P1.Z - Line.P0.Z;
             double dist = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2) + Math.Pow(z, 2));
             return new XYZ(x / dist, y / dist, z / dist);
         }
-        public static IDFObjects.XYZList GetDayLightPointsXYZList(IDFObjects.XYZList FloorFacePoints, List<IDFObjects.XYZ[]> ExWallEdges)
+        public static XYZList GetDayLightPointsXYZList(List<XYZList> FloorFacePoints, List<XYZ[]> ExWallEdges)
         {
-            List<IDFObjects.XYZ> floorPoints = FloorFacePoints.xyzs;
-            List<IDFObjects.XYZ[]> WallEdges = GetExternalEdges(floorPoints);
-            List<IDFObjects.XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
-            IDFObjects.XYZList DLList = new IDFObjects.XYZList(CentersOfMass.Where(p => RayCastToCheckIfIsInside(WallEdges, p) &&
-            CheckMinimumDistance(ExWallEdges, p, 0.2)).ToList());
+            XYZList DLList = new XYZList();
+            if (FloorFacePoints.Count == 1)
+            {
+                List<XYZ> floorPoints = FloorFacePoints[0].xyzs;
+                List<Line> WallEdges = GetExternalEdges(floorPoints);
+                List<XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
+                DLList = new XYZList(CentersOfMass.Where(p => PointInsideLoopExceptZ(WallEdges, p) &&
+                CheckMinimumDistance(ExWallEdges, p, 0.2)).ToList());
+            }
+            else
+            {
+                foreach (XYZList f in FloorFacePoints)
+                {
+                    List<XYZ> floorPoints = f.xyzs;
+                    List<Line> WallEdges = GetExternalEdges(floorPoints);
+                    List<XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
+                    DLList = new XYZList(CentersOfMass.Where(p => PointInsideLoopExceptZ(WallEdges, p) &&
+                    CheckMinimumDistance(ExWallEdges, p, 0.2)).ToList());
+                }
+            }
             return DLList;
         }
-        public static bool RayCastToCheckIfIsInside(List<IDFObjects.XYZ[]> WallEdges, IDFObjects.XYZ point)
+        public static Dictionary<string, List<Line>> GetAllRooms(List<XYZ> groundPoints,
+            double offsetDistance, string zoneName)
+        {
+            Dictionary<string, List<Line>> roomSegments = new Dictionary<string, List<Line>>();
+            if (offsetDistance == 0)
+            {
+                roomSegments.Add(zoneName, GetExternalEdges(groundPoints));
+                return roomSegments;
+            }
+            else
+            {
+                List<Line> perimeterLines = GetExternalEdges(groundPoints);
+                List<Line> offsetLines = GetOffset(perimeterLines, offsetDistance);
+
+                for (int i = 0; i < perimeterLines.Count(); i++)
+                {
+                    Line c = perimeterLines[i], c1, c2;
+
+                    try { c2 = perimeterLines.ElementAt(i + 1); }
+                    catch { c2 = perimeterLines.First(); }
+
+                    try { c1 = perimeterLines.ElementAt(i - 1); }
+                    catch { c1 = perimeterLines.Last(); }
+
+                    Line offsetLine = GetOffset(c, c1, c2, offsetDistance);
+                    if (offsetLine != null) { offsetLines.Add(offsetLine); }
+                }
+                
+                for (int i = 0; i < perimeterLines.Count; i++)
+                {
+                    Line[] cardinalLines = CreateDiagonalLines(perimeterLines[i], offsetLines[i]);
+                    roomSegments.Add(string.Format("{0}:{1}", zoneName, i + 1),
+                        new List<IDFObjects.Line>(){
+                        perimeterLines[i],
+                        cardinalLines[0],
+                        offsetLines[i],
+                        cardinalLines[1]
+                        });
+                }
+                roomSegments.Add(string.Format("{0}:{1}", zoneName, perimeterLines.Count + 1),
+                    offsetLines);
+                return roomSegments;
+            }
+        }
+        private static Line[] CreateDiagonalLines(Line perimeterLine, Line coreLine)
+        {
+            return new Line[]
+            {
+                new Line(perimeterLine.P1, coreLine.P1),
+                new Line(coreLine.P0, perimeterLine.P0)
+            };
+        }
+        public static bool PointInsideLoopExceptZ(List<Line> WallEdges, XYZ point)
         {
             int intersections = 0;
-            foreach (IDFObjects.XYZ[] WallEdge in WallEdges)
+            foreach (Line edge in WallEdges)
             {
-                double r = (point.Y - WallEdge[1].Y) / (WallEdge[0].Y - WallEdge[1].Y);
+                double r = (point.Y - edge.P1.Y) / (edge.P0.Y - edge.P1.Y);
                 if (r >= 0 && r < 1)
                 {
-                    double Xvalue = r * (WallEdge[0].X - WallEdge[1].X) + WallEdge[1].X;
+                    double Xvalue = r * (edge.P0.X - edge.P1.X) + edge.P1.X;
                     if (point.X < Xvalue)
                     {
                         intersections++;
@@ -354,18 +452,18 @@ namespace IDFObjects
                 points.Select(p => p.Y).Average(),
                 points.Select(p => p.Z).Average());
         }
-        public static List<IDFObjects.XYZ[]> GetExternalEdges(List<IDFObjects.XYZ> groundPoints)
+        public static List<Line> GetExternalEdges(List<IDFObjects.XYZ> groundPoints)
         {
-            List<IDFObjects.XYZ[]> wallEdges = new List<IDFObjects.XYZ[]>();
+            List<Line> wallEdges = new List<Line>();
             for (int i = 0; i < groundPoints.Count; i++)
             {
                 try
                 {
-                    wallEdges.Add(new IDFObjects.XYZ[] { groundPoints[i], groundPoints[i + 1] });
+                    wallEdges.Add(new Line( groundPoints[i], groundPoints[i + 1] ));
                 }
                 catch
                 {
-                    wallEdges.Add(new IDFObjects.XYZ[] { groundPoints[i], groundPoints[0] });
+                    wallEdges.Add(new Line(groundPoints[i], groundPoints[0] ));
                 }
             }
             return wallEdges;
@@ -440,11 +538,11 @@ namespace IDFObjects
         {
             return point.ChangeZValue(face.xyzs.First().Z);
         }
-        public static void CreateZoneWalls(Zone z, Dictionary<XYZ[], string> wallsData, List<XYZList> ceilings)
+        public static void CreateZoneWalls(Zone z, Dictionary<Line, string> wallsData, List<XYZList> ceilings)
         {
-            foreach (KeyValuePair<XYZ[], string> wallData in wallsData)
+            foreach (KeyValuePair<Line, string> wallData in wallsData)
             {
-                XYZ p1 = wallData.Key[0], p2 = wallData.Key[1],
+                XYZ p1 = wallData.Key.P0, p2 = wallData.Key.P1,
                     p3 = p2.GetVerticalProjection(ceilings), p4 = p1.GetVerticalProjection(ceilings);
                 XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
                 double area = p1.DistanceTo(p2) * p1.DistanceTo(p3);

@@ -14,9 +14,9 @@ namespace IDFObjects
         public string scheduleName = "Ventilation Schedule";
         public string CalculationMethod = "AirChanges/Hour";
         public double DesignFlowRate = 0;
-        public double FlowRateZoneArea = 0;
+        public double FlowRateZoneArea = 0.001;
         public double FlowRatePerson = 0.00944;
-        public double airChangesHour = 1;
+        public double airChangesHour = 0;
         public string VentilationType = "Balanced";
         public double FanPressure = 1;
         public double FanEfficiency = 1;

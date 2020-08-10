@@ -15,16 +15,16 @@ namespace IDFObjects
         
         public void RemoveCollinearPoints()
         {
-            List<IDFObjects.XYZ[]> Edges = Utility.GetExternalEdges(xyzs);
-            List<IDFObjects.XYZ[]> Loop = new List<IDFObjects.XYZ[]> { Edges[0] };
+            List<Line> Edges = Utility.GetExternalEdges(xyzs);
+            List<Line> Loop = new List<Line> { Edges[0] };
             Edges.RemoveAt(0);
             while (Edges.Count() > 0)
             {
-                IDFObjects.XYZ[] lastLine = Loop.Last();
-                IDFObjects.XYZ[] currentLine = Edges[0];
+                Line lastLine = Loop.Last();
+                Line currentLine = Edges[0];
                 if (Utility.GetDirection(lastLine).Equals(Utility.GetDirection(currentLine)))
                 {
-                    lastLine[1] = currentLine[1];
+                    lastLine.P1 = currentLine.P1;
                     Loop[Loop.Count - 1] = lastLine;
                 }
                 else
@@ -35,10 +35,10 @@ namespace IDFObjects
             }
             if (Utility.GetDirection(Loop.Last()).Equals(Utility.GetDirection(Loop.First())))
             {
-                Loop[0][0] = Loop.Last()[0];
+                Loop[0].P0 = Loop.Last().P0;
                 Loop.RemoveAt(Loop.Count - 1);
             }
-            xyzs = Loop.Select(l => l[0]).ToList();
+            xyzs = Loop.Select(l => l.P0).ToList();
         }
         public XYZList OffsetHeight(double height)
         {

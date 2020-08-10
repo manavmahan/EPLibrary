@@ -40,8 +40,6 @@ C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.Runtime.CompilerServ
 C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.Text.Encodings.Web.dll
 C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.Threading.Tasks.Extensions.dll
 C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.ValueTuple.dll
-C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.Numerics.Vectors.xml
-C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
 C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.Text.Encodings.Web.xml
 C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.Threading.Tasks.Extensions.xml
 C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\System.ValueTuple.xml

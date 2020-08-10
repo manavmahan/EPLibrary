@@ -40,7 +40,8 @@ namespace IDFObjects
         {
             List<XYZ[]> exWallPoints = Surfaces.Where(s => s.surfaceType == SurfaceType.Wall &&
                        s.OutsideCondition == "Outdoors").Select(w => w.VerticesList.xyzs.Take(2).ToArray()).ToList();
-            XYZList floorPoints = Surfaces.First(s => s.surfaceType == SurfaceType.Floor).VerticesList;
+            List<XYZList> floorPoints = Surfaces.Where(s => s.surfaceType == SurfaceType.Floor).
+                Select(f=>f.VerticesList).ToList();
             if (exWallPoints != null && exWallPoints.Count > 0)
             {
                 XYZList dlPoint = Utility.GetDayLightPointsXYZList(floorPoints, exWallPoints);

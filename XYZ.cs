@@ -25,6 +25,10 @@ namespace IDFObjects
         {
             return X==point1.X && Y == point1.Y && Z == point1.Z;
         }
+        public bool EqualsExceptZ(XYZ point1)
+        {
+            return X == point1.X && Y == point1.Y;
+        }
         public bool IsAlmostEqual(XYZ point1)
         {
             return (Math.Round(X-point1.X,3) ==0 && Math.Round(Y-point1.Y,3)==0 && Math.Round(Z-point1.Z,3)==0);
