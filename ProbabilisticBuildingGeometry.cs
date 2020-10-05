@@ -11,30 +11,19 @@ namespace IDFObjects
     public class ProbabilisticBuildingGeometry
     {
         public ProbabilityDistributionFunction 
-            Length = new ProbabilityDistributionFunction(),
-            Width = new ProbabilityDistributionFunction(), 
-            Height = new ProbabilityDistributionFunction(), 
-            rLenA = new ProbabilityDistributionFunction(), 
-            rWidA = new ProbabilityDistributionFunction(), 
-            BasementDepth = new ProbabilityDistributionFunction(), 
-            Orientation = new ProbabilityDistributionFunction(), 
-            FloorArea = new ProbabilityDistributionFunction(), 
-            ARatio = new ProbabilityDistributionFunction(), 
-            Shape = new ProbabilityDistributionFunction(), 
-            NFloors = new ProbabilityDistributionFunction();
+            Length = new ProbabilityDistributionFunction("Length", "metres"),
+            Width = new ProbabilityDistributionFunction("Width", "metres"), 
+            Height = new ProbabilityDistributionFunction("Height", "metres"), 
+            rLenA = new ProbabilityDistributionFunction("rLenA",""), 
+            rWidA = new ProbabilityDistributionFunction("rWidA",""), 
+            BasementDepth = new ProbabilityDistributionFunction("Basement Depth", "metres"), 
+            Orientation = new ProbabilityDistributionFunction("Orientation","degrees"), 
+            FloorArea = new ProbabilityDistributionFunction("Floor Area", "sq. metres"), 
+            ARatio = new ProbabilityDistributionFunction("Aspect Ratio",""), 
+            Shape = new ProbabilityDistributionFunction("Shape",""), 
+            NFloors = new ProbabilityDistributionFunction("Number of Floors","");
 
         public ProbabilisticBuildingGeometry() { }
-        public ProbabilisticBuildingGeometry(ProbabilityDistributionFunction Length,
-            ProbabilityDistributionFunction Width, ProbabilityDistributionFunction Height,
-            ProbabilityDistributionFunction rLenA, ProbabilityDistributionFunction rWidA,
-            ProbabilityDistributionFunction BasementDepth, ProbabilityDistributionFunction Orientation,
-            ProbabilityDistributionFunction FloorArea, ProbabilityDistributionFunction ARatio,
-            ProbabilityDistributionFunction Shape, ProbabilityDistributionFunction NFloors)
-        { 
-            this.Length = Length; this.Width = Width; this.Height = Height; this.rLenA = rLenA; this.rWidA = rWidA;
-            this.BasementDepth = BasementDepth; this.Orientation = Orientation; this.FloorArea = FloorArea; this.ARatio = ARatio;
-            this.Shape = Shape; this.NFloors = NFloors;
-        }
         public BuildingGeometry GetAverage()
         {
             return new BuildingGeometry()

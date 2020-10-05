@@ -12,13 +12,13 @@ namespace IDFObjects
         public string Name = "Building";
 
         public ProbabilityDistributionFunction
-            StartTime = new ProbabilityDistributionFunction() { Mean = 8, VariationOrSD = 0, Distribution = PDF.unif },
-            OperatingHours = new ProbabilityDistributionFunction() { Mean = 8, VariationOrSD = 0, Distribution = PDF.unif },
-            LHG = new ProbabilityDistributionFunction() { Mean = 6, VariationOrSD = 0, Distribution = PDF.unif },
-            EHG = new ProbabilityDistributionFunction() { Mean = 12, VariationOrSD = 0, Distribution = PDF.unif },
-            AreaPerPerson = new ProbabilityDistributionFunction() { Mean = 24, VariationOrSD = 0, Distribution = PDF.unif },
-            HeatingSetpoint = new ProbabilityDistributionFunction() { Mean = 20, VariationOrSD = 0, Distribution = PDF.unif },
-            CoolingSetpoint = new ProbabilityDistributionFunction() { Mean = 25, VariationOrSD = 0, Distribution = PDF.unif };
+            StartTime = new ProbabilityDistributionFunction("Start Time", "") { Mean = 8, VariationOrSD = 0, Distribution = PDF.unif },
+            OperatingHours = new ProbabilityDistributionFunction("Operating Hours", "Hours") { Mean = 8, VariationOrSD = 0, Distribution = PDF.unif },
+            LHG = new ProbabilityDistributionFunction("Light Heat Gain","W/m\u00b2") { Mean = 6, VariationOrSD = 0, Distribution = PDF.unif },
+            EHG = new ProbabilityDistributionFunction("Equipment Heat Gain", "W/m\u00b2") { Mean = 12, VariationOrSD = 0, Distribution = PDF.unif },
+            AreaPerPerson = new ProbabilityDistributionFunction("Occupancy", "m\u00b2/Person") { Mean = 24, VariationOrSD = 0, Distribution = PDF.unif },
+            HeatingSetpoint = new ProbabilityDistributionFunction("Heating Set Point","\u00b0") { Mean = 20, VariationOrSD = 0, Distribution = PDF.unif },
+            CoolingSetpoint = new ProbabilityDistributionFunction("Cooling Set Point", "\u00b0") { Mean = 25, VariationOrSD = 0, Distribution = PDF.unif };
 
         public ProbabilisticZoneConditions() { }
 

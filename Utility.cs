@@ -19,37 +19,59 @@ using Formatting = Newtonsoft.Json.Formatting;
 
 namespace IDFObjects
 {
+    public enum LevelOfDevelopment
+    {
+        [Description("Level 1")] LOD1 = 1,
+        [Description("Level 2")] LOD2 = 2,
+        [Description("Level 3")] LOD3 = 3,
+    }
     public enum LevelExposure
     {
         Ground, Intermediate, Top
     }
-    public enum Zoning
-    {
-        [Description("One Zone Per Floor")] OneZonePerFloor = 0,
-        [Description("Core and Perimeter Zone")] CoreAndPerimeterZones = 1
-    }
     public enum Location
     {
-        [Description("Brussels, Belgium")] BRUSSELS_BEL,
-        [Description("Munich, Germany")] MUNICH_DEU,
+        [Description("Brussels, Belgium")] BRUSSELS_BEL = 0,
+        [Description("Munich, Germany")] MUNICH_DEU = 1,
     }
     public enum Month
     {
         Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
     }
     public enum PDF {
-        [Description("unif")] unif,
-        [Description("tria")] tria, 
-        [Description("norm")] norm
+        [Description("unif")] unif = 0,
+        [Description("tria")] tria = 1, 
+        [Description("norm")] norm = 2
     }
     public enum SurfaceType { Floor, Ceiling, Wall, Roof };
-    public enum HVACSystem {[Description("Heat Pump with Boiler")] HeatPumpWBoiler, 
-                            [Description("Fan coil unit")] FCU, 
-                            [Description("Baseboard Heating")] BaseboardHeating, 
-                            [Description("Variable-Air-Volume")] VAV,
-                            [Description("Ideal Air Load System")] IdealLoad };
+    public enum HVACSystem {[Description("Heat Pump with Boiler")] HeatPumpWBoiler = 1,
+                            [Description("Fan coil unit")] FCU =2, 
+                            [Description("Baseboard Heating")] BaseboardHeating=3, 
+                            [Description("Variable-Air-Volume")] VAV=4,
+                            [Description("Ideal Air Load System")] IdealLoad = 0};
     public enum Direction { North, East, South, West };
     public enum ControlType { none, Continuous, Stepped, ContinuousOff }
+    public enum SamplingScheme
+    {
+        [Description("Latin Hypercube Sampling")] LHS,
+        [Description("Monte Carlo Sampling")] MonteCarlo,
+        [Description("Sobol Sampling")] Sobol,
+        [Description("Senstivity Analysis (Sobol)")] SobolSens,
+    }
+    public enum AnalysisMode
+    { 
+        [Description("Generate Data for ML")] MLDataGeneration,
+        [Description("Compare Options")] CompareOptions,
+        [Description("Generate Options")] GenerateSeveralOptions,
+        [Description("Analyse Option")] AnalyseOption,
+        [Description("Sensitivity Analysis")] SensAna,
+        [Description("Null")] Null
+    }
+    public enum SimulationTool
+    {
+        [Description("EnegryPlus Simulation")] EnergyPlus,
+        [Description("Machine Learning Model")] MLModel,
+    }
     public static class Utility
     {
         public static List<XYZList> FindTopRoof(List<XYZList> allRoofs)
@@ -161,7 +183,11 @@ namespace IDFObjects
                 if (offsetLine != null) { offsetLines.Add(offsetLine); }
             }
             return offsetLines;
-        }      
+        }
+        public static List<XYZ> GetOffset(List<XYZ> perimeterPoints, double offsetDist)
+        {
+            return GetOffset(GetExternalEdges(perimeterPoints), offsetDist).Select(l => l.P0).ToList();          
+        }
         public static XYZ RotateToNormal(Line line, int corner)
         {
             XYZ point = line.GetCorner(corner);
@@ -278,30 +304,44 @@ namespace IDFObjects
             return zoneInfoList;
         }
         public static List<ZoneGeometryInformation> GetZoneGeometryInformation(Dictionary<string, int> zoneLevels,
-            Dictionary<string, List<Line>> allRoomSegmentsIDF, List<Line> externalEdgesIDF, double heightFl)
+            Dictionary<string, List<Line>> allRoomSegmentsIDF, List<Line> externalEdgesIDF, List<XYZList> massFloors, List<XYZList> roofs)
         {
             List<ZoneGeometryInformation> zoneInfoList = new List<ZoneGeometryInformation>();
             List<string> zNames = allRoomSegmentsIDF.Select(x => x.Key).ToList();
+
+            Dictionary<string, List<Line>> newAllRoomSegmentsIDF = new Dictionary<string, List<Line>>();
             foreach (string zName in zNames)
             {
                 ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
-                zInfo.Name = zName;
-                zInfo.Height = heightFl;
-                zInfo.Level = zoneLevels[zName];
+                int level =  zoneLevels[zName];
+                zInfo.Name = zName + ":" + level;
+                zInfo.Level = level;
+                XYZList zMassFloor = massFloors[level];
+                XYZList ceiling = new XYZList();
+                
+                try { ceiling = massFloors[level + 1];  } catch { ceiling = roofs.First(); }
 
                 List<Line> thisRoomSegments = allRoomSegmentsIDF[zName];
                 List<XYZ> floorPoints = thisRoomSegments.Select(x => x.P0).ToList();
                 XYZList flPointList = new XYZList(floorPoints);
                 flPointList.RemoveCollinearPoints();
                 zInfo.FloorPoints = flPointList;
+
+                double heightFl = ceiling.xyzs.First().Z - floorPoints.First().Z;
+                zInfo.Height = heightFl;
+                            
+                zInfo.CeilingPoints = new List<XYZList>();
+                zInfo.CeilingPoints.Add(flPointList.OffsetHeight(heightFl));
                 zoneInfoList.Add(zInfo);
+                newAllRoomSegmentsIDF.Add(zInfo.Name, thisRoomSegments);
             }
 
+            
             foreach (ZoneGeometryInformation zone in zoneInfoList)
             {
                 Dictionary<string, List<Line>> allRoomSegmentsNotThisRoom = new Dictionary<string, List<Line>>();
-                List<Line> thisRoomSegments = allRoomSegmentsIDF[zone.Name];
-                foreach (KeyValuePair<string, List<Line>> exRoomSegment in allRoomSegmentsIDF.Where(x => x.Key != zone.Name))
+                List<Line> thisRoomSegments = newAllRoomSegmentsIDF[zone.Name];
+                foreach (KeyValuePair<string, List<Line>> exRoomSegment in newAllRoomSegmentsIDF.Where(x => x.Key != zone.Name))
                 {
                     allRoomSegmentsNotThisRoom.Add(exRoomSegment.Key, exRoomSegment.Value);
                 }
@@ -314,7 +354,7 @@ namespace IDFObjects
                             .First(x => x.Value.Any(y => CompareCurves(c, y)));
                         zone.WallCreationData.Add(c, matchingCurve.Key);
 
-                        List<Line> matchingZoneSegments = allRoomSegmentsIDF[matchingCurve.Key];
+                        List<Line> matchingZoneSegments = newAllRoomSegmentsIDF[matchingCurve.Key];
                         matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
                     }
                     catch
@@ -536,7 +576,7 @@ namespace IDFObjects
                 XYZ p1 = wallData.Key.P0, p2 = wallData.Key.P1,
                     p3 = p2.GetVerticalProjection(ceilings), p4 = p1.GetVerticalProjection(ceilings);
                 XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
-                double area = p1.DistanceTo(p2) * p1.DistanceTo(p3);
+                double area = p1.DistanceTo(p2) * p2.DistanceTo(p3);
                 Surface wall = new Surface(z, wallPoints, area, SurfaceType.Wall);
                 if (wallData.Value != "Outdoors")
                 {
@@ -597,11 +637,11 @@ namespace IDFObjects
             }
             return returnData;
         }
-        public static ProbabilityDistributionFunction GetPDF(string[] data)
+        public static PDFValues GetPDF(string[] data)
         { 
-            return new ProbabilityDistributionFunction(double.Parse(data[0]), double.Parse(data[1]), data[2]);
+            return new PDFValues(double.Parse(data[0]), double.Parse(data[1]), GetValue<PDF>( data[2]));
         } 
-        public static ProbabilityDistributionFunction GetProbabilisticParameter(this Dictionary<string, string[]> DataDictionary, string Parameter)
+        public static PDFValues GetProbabilisticParameter(this Dictionary<string, string[]> DataDictionary, string Parameter)
         {
             if (DataDictionary.ContainsKey(Parameter))
             {
@@ -609,8 +649,16 @@ namespace IDFObjects
             }
             else
             {
-                return new ProbabilityDistributionFunction();
+                return new PDFValues();
             }
+        }
+        public static double GetSensitivityValueForParameter(this Dictionary<string, double[]> DataDictionary, string Parameter)
+        {
+            if (DataDictionary.ContainsKey(Parameter))
+                return DataDictionary[Parameter][0];
+            else
+                return 0;
+            
         }
         public static ProbabilisticBuildingDesignParameters ReadProbabilisticBuildingDesignParameters(string dataFile)
         {
@@ -632,63 +680,57 @@ namespace IDFObjects
             List<string> zoneListNames = parameters.Where(p => p.Contains(':'))
                 .Select(p => p.Split(':')[0]).Distinct().ToList();
 
-            ProbabilisticBuildingDesignParameters value = new ProbabilisticBuildingDesignParameters()
-            {
-                pGeometry = new ProbabilisticBuildingGeometry()
-                {
-                    Length = dataDict.GetProbabilisticParameter("Length"),
-                    Width = dataDict.GetProbabilisticParameter("Width"),
-                    Height = dataDict.GetProbabilisticParameter("Height"),
-                    FloorArea = dataDict.GetProbabilisticParameter("Floor Area"),
-                    NFloors = dataDict.GetProbabilisticParameter("NFloors"),
-                    Shape = dataDict.GetProbabilisticParameter("Shape"),
-                    ARatio = dataDict.GetProbabilisticParameter("L/W Ratio"),
-                    Orientation = dataDict.GetProbabilisticParameter("Orientation"),
-                },
-                pConstruction = new ProbabilisticBuildingConstruction()
-                {
-                    InternalMass = dataDict.GetProbabilisticParameter("Internal Mass"),
-                    UWall = dataDict.GetProbabilisticParameter("u_Wall"),
-                    UGFloor = dataDict.GetProbabilisticParameter("u_GFloor"),
-                    URoof = dataDict.GetProbabilisticParameter("u_Roof"),
-                    UWindow = dataDict.GetProbabilisticParameter("u_Window"),
-                    GWindow = dataDict.GetProbabilisticParameter("g_Window"),
-                    Infiltration = dataDict.GetProbabilisticParameter("Infiltration"),
-                    UIFloor = dataDict.GetProbabilisticParameter("u_IFloor"),
-                    UIWall = dataDict.GetProbabilisticParameter("u_IWall"),
-                    HCSlab = dataDict.GetProbabilisticParameter("hc_Slab")
-                },
-                pWWR = new ProbabilisticBuildingWWR()
-                {
-                    North = dataDict.GetProbabilisticParameter("WWR_North"),
-                    East = dataDict.GetProbabilisticParameter("WWR_East"),
-                    West = dataDict.GetProbabilisticParameter("WWR_West"),
-                    South = dataDict.GetProbabilisticParameter("WWR_South")
-                },
-                pService = new ProbabilisticBuildingService()
-                {
-                    BoilerEfficiency = dataDict.GetProbabilisticParameter("Boiler Efficiency"),
-                    HeatingCOP = dataDict.GetProbabilisticParameter("Heating COP"),
-                    CoolingCOP = dataDict.GetProbabilisticParameter("Cooling COP")
-                }
-            };
+            ProbabilisticBuildingDesignParameters value = new ProbabilisticBuildingDesignParameters();
+            value.pGeometry = new ProbabilisticBuildingGeometry();
+            value.pGeometry.Length.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Length"));
+            value.pGeometry.Width.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Width"));
+            value.pGeometry.Height.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Height"));
+            value.pGeometry.FloorArea.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Floor Area"));
+            value.pGeometry.NFloors.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("NFloors"));
+            value.pGeometry.Shape.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Shape"));
+            value.pGeometry.ARatio.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("L/W Ratio"));
+            value.pGeometry.Orientation.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Orientation"));
+
+            value.pConstruction = new ProbabilisticBuildingConstruction();
+            value.pConstruction.InternalMass.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Internal Mass"));
+            value.pConstruction.UWall.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("u_Wall"));
+            value.pConstruction.UGFloor.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("u_GFloor"));
+            value.pConstruction.URoof.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("u_Roof"));
+            value.pConstruction.UWindow.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("u_Window"));
+            value.pConstruction.GWindow.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("g_Window"));
+            value.pConstruction.Infiltration.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Infiltration"));
+            value.pConstruction.Permeability.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Air Permeability"));
+            value.pConstruction.UIFloor.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("u_IFloor"));
+            value.pConstruction.UIWall.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("u_IWall"));
+            value.pConstruction.HCSlab.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("hc_Slab"));
+
+            value.pWWR = new ProbabilisticBuildingWWR();
+            value.pWWR.North.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("WWR_North"));
+            value.pWWR.East.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("WWR_East"));
+            value.pWWR.West.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("WWR_West"));
+            value.pWWR.South.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("WWR_South"));
+
+            value.pService = new ProbabilisticBuildingService();               
+            value.pService.BoilerEfficiency.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Boiler Efficiency"));
+            value.pService.HeatingCOP.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Heating COP"));
+            value.pService.CoolingCOP.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter("Cooling COP"));
 
             foreach (string zlN in zoneListNames)
-            {
-                value.zConditions.Add(new ProbabilisticZoneConditions()
-                {
-                    Name = zlN,
-                    LHG = dataDict.GetProbabilisticParameter(zlN + ":Light Heat Gain"),
-                    EHG = dataDict.GetProbabilisticParameter(zlN + ":Equipment Heat Gain"),
-                    StartTime = dataDict.GetProbabilisticParameter(zlN + ":Start Time"),
-                    OperatingHours = dataDict.GetProbabilisticParameter(zlN + ":Operating Hours"),
-                    AreaPerPerson = dataDict.GetProbabilisticParameter(zlN + ":Area Per Person"),
-                    HeatingSetpoint = dataDict.GetProbabilisticParameter(zlN + ":Heating Setpoint"),
-                    CoolingSetpoint = dataDict.GetProbabilisticParameter(zlN + ":Cooling Setpoint")
-                });               
+            {                
+                ProbabilisticZoneConditions zc = new ProbabilisticZoneConditions();
+                zc.Name = zlN;
+                zc.LHG.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter(zlN + ":Light Heat Gain"));
+                zc.EHG.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter(zlN + ":Equipment Heat Gain"));
+                zc.StartTime.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter(zlN + ":Start Time"));
+                zc.OperatingHours.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter(zlN + ":Operating Hours"));
+                zc.AreaPerPerson.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter(zlN + ":Area Per Person"));
+                zc.HeatingSetpoint.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter(zlN + ":Heating Setpoint"));
+                zc.CoolingSetpoint.UpdateProbabilityDistributionFunction(dataDict.GetProbabilisticParameter(zlN + ":Cooling Setpoint"));
+                value.zConditions.Add(zc);
             }
             return value;
         }
+        
         public static List<ScheduleCompact> GetSchedulesFromFolder(string folder)
         {
             string zoneListName = new DirectoryInfo(folder).Name;
@@ -761,7 +803,7 @@ namespace IDFObjects
                     UWindow = samples.GetSamplesValues("u_Window", s),
                     GWindow = samples.GetSamplesValues("g_Window", s),
                     Infiltration = samples.GetSamplesValues("Infiltration", s),
-
+                    Permeability = samples.GetSamplesValues("Air Permeability", s),
                     UIFloor = samples.GetSamplesValues("u_IFloor", s),
                     UIWall = samples.GetSamplesValues("u_IWall", s),
                     HCSlab = samples.GetSamplesValues("hc_Slab", s),
@@ -799,6 +841,7 @@ namespace IDFObjects
             }
             return values;
         }
+
         public static T DeepClone<T>(T obj)
         {
             using (var ms = new MemoryStream())
@@ -890,42 +933,42 @@ namespace IDFObjects
             }
             return array;
         }
-        public static T2 GetSample<T, T2>(this T pars, Dictionary<string, double[]> sample, int n) where T2 : new()
-        {
-            T2 r = new T2();
-            foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
-            && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD > 0))
-            {
-                ProbabilityDistributionFunction v = fi.GetValue(pars) as ProbabilityDistributionFunction;
-                double val = 0;
-                switch (v.Distribution)
-                {
-                    case PDF.unif:
-                        val = v.Min + v.Range * sample[fi.Name][n];
-                        break;
-                    case PDF.norm:
-                        val = v.Mean + v.VariationOrSD * sample[fi.Name][n];
-                        break;
-                }
-                FieldInfo f = typeof(T2).GetFields().First(x => x.Name == fi.Name);
-                if (f.FieldType == typeof(int))
-                    f.SetValue(r, (int) Math.Floor(val));
-                else
-                    f.SetValue(r, val);
-            };
-            foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
-            && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD == 0))
-            {
-                ProbabilityDistributionFunction v = fi.GetValue(pars) as ProbabilityDistributionFunction;
-                double val = v.Mean;
-                FieldInfo f = typeof(T2).GetFields().First(x => x.Name == fi.Name);
-                if (f.FieldType == typeof(int))
-                    f.SetValue(r, (int)Math.Floor(val));
-                else
-                    f.SetValue(r, val);
-            };
-            return r;
-        }
+        //public static T2 GetSample<T, T2>(this T pars, Dictionary<string, double[]> sample, int n) where T2 : new()
+        //{
+        //    T2 r = new T2();
+        //    foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
+        //    && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD > 0))
+        //    {
+        //        ProbabilityDistributionFunction v = fi.GetValue(pars) as ProbabilityDistributionFunction;
+        //        double val = 0;
+        //        switch (v.Distribution)
+        //        {
+        //            case PDF.unif:
+        //                val = v.Min + v.Range * sample[fi.Name][n];
+        //                break;
+        //            case PDF.norm:
+        //                val = v.Mean + v.VariationOrSD * sample[fi.Name][n];
+        //                break;
+        //        }
+        //        FieldInfo f = typeof(T2).GetFields().First(x => x.Name == fi.Name);
+        //        if (f.FieldType == typeof(int))
+        //            f.SetValue(r, (int) Math.Floor(val));
+        //        else
+        //            f.SetValue(r, val);
+        //    };
+        //    foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
+        //    && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD == 0))
+        //    {
+        //        ProbabilityDistributionFunction v = fi.GetValue(pars) as ProbabilityDistributionFunction;
+        //        double val = v.Mean;
+        //        FieldInfo f = typeof(T2).GetFields().First(x => x.Name == fi.Name);
+        //        if (f.FieldType == typeof(int))
+        //            f.SetValue(r, (int)Math.Floor(val));
+        //        else
+        //            f.SetValue(r, val);
+        //    };
+        //    return r;
+        //}
         
         //internal static Dictionary<string, ProbabilityDistributionFunction> GetValidPDFs<T>(this T pars)
         //{

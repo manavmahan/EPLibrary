@@ -12,9 +12,9 @@ namespace IDFObjects
     {
         public HVACSystem HVACSystem;
         public ProbabilityDistributionFunction 
-            BoilerEfficiency = new ProbabilityDistributionFunction(),
-            HeatingCOP = new ProbabilityDistributionFunction(),
-            CoolingCOP = new ProbabilityDistributionFunction();
+            BoilerEfficiency = new ProbabilityDistributionFunction("Boiler Efficiency",""),
+            HeatingCOP = new ProbabilityDistributionFunction("Heating COP", ""),
+            CoolingCOP = new ProbabilityDistributionFunction("Cooling COP", "");
         public ProbabilisticBuildingService() { }
         public string ToString(string sep)
         {

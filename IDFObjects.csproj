@@ -90,10 +90,13 @@
     <Compile Include="Boiler.cs" />
     <Compile Include="Building.cs" />
     <Compile Include="BuildingConstruction.cs" />
+    <Compile Include="DesignInfo.cs" />
     <Compile Include="EPBuilding.cs" />
     <Compile Include="BuildingGeometry.cs" />
     <Compile Include="BuildingDesignParameters.cs" />
     <Compile Include="Line.cs" />
+    <Compile Include="RandomBuilding.cs" />
+    <Compile Include="RandomGeometry.cs" />
     <Compile Include="WWRInput.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -13,11 +13,12 @@ namespace IDFObjects
     {
         public bool EachWallSeparately;
         public BuildingWWR Average;
-        public ProbabilityDistributionFunction 
-            North = new ProbabilityDistributionFunction(),
-            East = new ProbabilityDistributionFunction(),
-            West = new ProbabilityDistributionFunction(),
-            South = new ProbabilityDistributionFunction();
+        public ProbabilityDistributionFunction
+            North = new ProbabilityDistributionFunction("WWR (North)", ""),
+            East = new ProbabilityDistributionFunction("WWR (East)", ""),
+            West = new ProbabilityDistributionFunction("WWR (West)", ""),
+            South = new ProbabilityDistributionFunction("WWR (South)", "");
+            
         public ProbabilisticBuildingWWR() { }
         public ProbabilisticBuildingWWR(
             ProbabilityDistributionFunction north,

@@ -19,7 +19,6 @@ namespace IDFObjects
         public ProbabilisticBuildingService pService;
         public List<ProbabilisticZoneConditions> zConditions = new List<ProbabilisticZoneConditions>();
         
-        public List<BuildingDesignParameters> AllSamples;
         public ProbabilisticBuildingDesignParameters() { }
         //public Dictionary<string, ProbabilityDistributionFunction> GetValidPDFs()
         //{
@@ -36,7 +35,7 @@ namespace IDFObjects
         {
             return new BuildingDesignParameters()
             {
-                Geometry = pGeometry.GetAverage(),
+                Geometry = pGeometry==null?null: pGeometry.GetAverage(),
                 Construction = pConstruction.GetAverage(),
                 WWR = pWWR.GetAverage(),
                 Service = pService.GetAverage(),
@@ -114,7 +113,7 @@ namespace IDFObjects
                 pService.Header(sep),
                 string.Join(sep, zConditions.Select(o => o.Header(sep))));
         }
-        public List<string> AllSamplesToString()
+        public List<string> AllSamplesToString(List<BuildingDesignParameters> AllSamples)
         {
             List<string> vals = new List<string>() { Header(",") };
             foreach (BuildingDesignParameters pars in AllSamples)
@@ -122,6 +121,49 @@ namespace IDFObjects
                 vals.Add(pars.ToString(","));
             }
             return vals;
+        }
+        public void UpdateSenstivityResults(string sensData)
+        {
+            Dictionary<string, double[]> dataDict = Utility.ConvertToDataframe(File.ReadAllLines(sensData).Where(s => s.First() != '#'));
+
+            List<string> parameters = dataDict.Keys.ToList();
+            List<string> zoneListNames = parameters.Where(p => p.Contains(':'))
+                .Select(p => p.Split(':')[0]).Distinct().ToList();
+
+
+            pConstruction.InternalMass.Sensitivity = dataDict.GetSensitivityValueForParameter("Internal Mass");
+            pConstruction.UWall.Sensitivity = dataDict.GetSensitivityValueForParameter("u_Wall");
+            pConstruction.UGFloor.Sensitivity = dataDict.GetSensitivityValueForParameter("u_GFloor");
+            pConstruction.URoof.Sensitivity = dataDict.GetSensitivityValueForParameter("u_Roof");
+            pConstruction.UWindow.Sensitivity = dataDict.GetSensitivityValueForParameter("u_Window");
+            pConstruction.GWindow.Sensitivity = dataDict.GetSensitivityValueForParameter("g_Window");
+            pConstruction.Infiltration.Sensitivity = dataDict.GetSensitivityValueForParameter("Infiltration");
+            pConstruction.Permeability.Sensitivity = dataDict.GetSensitivityValueForParameter("Air Permeability");
+            pConstruction.UIFloor.Sensitivity = dataDict.GetSensitivityValueForParameter("u_IFloor");
+            pConstruction.UIWall.Sensitivity = dataDict.GetSensitivityValueForParameter("u_IWall");
+            pConstruction.HCSlab.Sensitivity = dataDict.GetSensitivityValueForParameter("hc_Slab");
+
+            pWWR.North.Sensitivity = dataDict.GetSensitivityValueForParameter("WWR_North");
+            pWWR.East.Sensitivity = dataDict.GetSensitivityValueForParameter("WWR_East");
+            pWWR.West.Sensitivity = dataDict.GetSensitivityValueForParameter("WWR_West");
+            pWWR.South.Sensitivity = dataDict.GetSensitivityValueForParameter("WWR_South");
+
+            pService.BoilerEfficiency.Sensitivity = dataDict.GetSensitivityValueForParameter("Boiler Efficiency");
+            pService.HeatingCOP.Sensitivity = dataDict.GetSensitivityValueForParameter("Heating COP");
+            pService.CoolingCOP.Sensitivity = dataDict.GetSensitivityValueForParameter("Cooling COP");
+
+            foreach (string zlN in zoneListNames)
+            {
+                ProbabilisticZoneConditions z = zConditions.First(zo => zo.Name == zlN);
+                z.LHG.Sensitivity = dataDict.GetSensitivityValueForParameter(zlN + ":Light Heat Gain");
+                z.EHG.Sensitivity = dataDict.GetSensitivityValueForParameter(zlN + ":Equipment Heat Gain");
+                z.StartTime.Sensitivity = dataDict.GetSensitivityValueForParameter(zlN + ":Start Time");
+                z.OperatingHours.Sensitivity = dataDict.GetSensitivityValueForParameter(zlN + ":Operating Hours");
+                z.AreaPerPerson.Sensitivity = dataDict.GetSensitivityValueForParameter(zlN + ":Area Per Person");
+                z.HeatingSetpoint.Sensitivity = dataDict.GetSensitivityValueForParameter(zlN + ":Heating Setpoint");
+                z.CoolingSetpoint.Sensitivity = dataDict.GetSensitivityValueForParameter(zlN + ":Cooling Setpoint");
+            }
+            
         }
     }
 }

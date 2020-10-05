@@ -45,7 +45,7 @@ namespace IDFObjects
             if (exWallPoints != null && exWallPoints.Count > 0)
             {
                 XYZList dlPoint = Utility.GetDayLightPointsXYZList(floorPoints, exWallPoints);
-                new DayLighting(this, "Occupancy Schedule", dlPoint.OffsetHeight(0.9).xyzs, lightingLux);
+                new DayLighting(this, "Occupancy Schedule", dlPoint.ChangeZValue(floorPoints[0].xyzs[0].Z+0.9).xyzs, lightingLux);
             }
         }
         internal void CalcAreaVolume()

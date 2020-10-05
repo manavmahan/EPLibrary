@@ -116,7 +116,7 @@ namespace IDFObjects
                     break;
                 case (SurfaceType.Ceiling):
                     ConstructionName = "Floor_Ceiling";
-                    OutsideCondition = "Zone";
+                    OutsideCondition = "Adiabatic";
                     SunExposed = "NoSun";
                     WindExposed = "NoWind";
                     break;

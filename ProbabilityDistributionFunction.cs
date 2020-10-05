@@ -14,65 +14,52 @@ namespace IDFObjects
     public class ProbabilityDistributionFunction
     {
         //'unif','triang','norm','lognorm'
-        public double Mean, VariationOrSD, Range, Max, Min;
+        public double Mean, VariationOrSD, Sensitivity;
+        public string Label, Unit;
         public PDF Distribution;
-
         public ProbabilityDistributionFunction() { }
-        public ProbabilityDistributionFunction(double mean, double variation)
+        public ProbabilityDistributionFunction(string label, string unit) {
+            Label = label;
+            Unit = unit;
+        }
+        public ProbabilityDistributionFunction(string label, string unit, double mean, double variation)
         {
             Mean = mean; VariationOrSD = variation;
-            Max = mean + variation;
-            Min = mean - variation;
-            Range = Max - Min;
             Distribution = PDF.unif;
-        }     
-        public ProbabilityDistributionFunction(double mean, double VariationOrSD, string Distribution)
+        }
+        public void UpdateProbabilityDistributionFunction(PDFValues p)
         {
-            switch (Distribution)
-            {
-                case "norm":
-                default:
-                    Mean = mean;
-                    this.VariationOrSD = VariationOrSD;
-                    this.Distribution = PDF.norm;
-                    break;
-                case "triang":
-                    Mean = mean;
-                    this.VariationOrSD = VariationOrSD;
-                    Max = Mean + this.VariationOrSD;
-                    Min = Mean - this.VariationOrSD;
-                    Range = Max - Min;
-                    this.Distribution = PDF.tria;
-                    break;
-                case "unif":
-                    Mean = mean;
-                    this.VariationOrSD = VariationOrSD;
-                    Max = Mean + this.VariationOrSD; 
-                    Min = Mean - this.VariationOrSD;
-                    Range = Max - Min;
-                    this.Distribution = PDF.unif;
-                    break;
-            }
-        }        
+            Mean = p.Mean;
+            VariationOrSD = p.VariationOrSD;
+            Distribution = p.Distribution;
+        }
         public override string ToString()
         {
             string val;
-            if (Mean != 0)
+            if (Mean != 0 || VariationOrSD != 0)
             {
-                switch (Distribution)
-                {
-                    case PDF.unif:
-                    case PDF.norm:
-                    default:
-                        val = string.Join(",", Mean, VariationOrSD, Distribution);
-                        break;
-                }
+                val = string.Join(",", Mean, VariationOrSD, Distribution);
             }
             else
             {
                 val = "";
             }
-            return val;          
+            return val;
+        }
+    }
+
+    public class PDFValues{
+        public double Mean, VariationOrSD; public PDF Distribution;
+
+        public PDFValues()
+        {
+
+        }
+        public PDFValues(double Mean, double VariationOrSD, PDF Distribution)
+        {
+            this.Mean = Mean;
+            this.VariationOrSD = VariationOrSD;
+            this.Distribution = Distribution;
         }
     }
 }

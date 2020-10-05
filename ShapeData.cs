@@ -22,9 +22,9 @@ namespace IDFObjects
             building.zones.SelectMany(z => z.Surfaces.Where(s => s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors")).ToList().
             ForEach(w=>WallPoints.Add(w.Name, w.VerticesList));
         }
-        public string BuildingString()
+        public List<string> BuildingString()
         {
-            return string.Join(",", File, GroundPoints.To2DPointString());
+            return new List<string>() { string.Join(",", File, GroundPoints.To2DPointString()) };
         }
         public List<string> ZoneString()
         {
