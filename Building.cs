@@ -510,7 +510,7 @@ namespace IDFObjects
         }
         public void GeneratePeopleLightEquipmentInfiltrationVentilationThermostat()
         {
-            if (Parameters.Construction.Infiltration == 0)
+            if (Parameters.Construction.Permeability != 0)
                 Parameters.Construction.Infiltration = Math.Round(0.1 + Parameters.Construction.Permeability * 0.07 * 1.25 * totalExposedSurfaceArea / totalVolume,3);
             foreach (ZoneList zList in ZoneLists)
             {

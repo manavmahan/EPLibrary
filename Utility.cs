@@ -785,7 +785,7 @@ namespace IDFObjects
                     Width = samples.GetSamplesValues("Width", s),
                     Height = samples.GetSamplesValues("Height", s),
                     FloorArea = samples.GetSamplesValues("Floor Area", s),
-                    NFloors = (int)samples.GetSamplesValues("NFloors", s),
+                    NFloors = (int)Math.Round(samples.GetSamplesValues("NFloors", s)),
                     Shape = (int)samples.GetSamplesValues("Shape", s),
                     ARatio = samples.GetSamplesValues("ARatio", s),
                     Orientation = (int) Math.Round(samples.GetSamplesValues("Orientation", s)),
