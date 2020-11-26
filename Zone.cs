@@ -14,6 +14,7 @@ namespace IDFObjects
         
         public EPZone EP = new EPZone();
         public List<EPZone> EPP;
+        public List<EPZone> EPHourly;
         public List<Surface> Surfaces { get; set; }
         public List<InternalMass> iMasses = new List<InternalMass>();        
         public DayLighting DayLightControl;
@@ -30,10 +31,10 @@ namespace IDFObjects
         public double totalWallArea, totalWindowArea, totalGFloorArea, totalRoofArea, totalIFloorArea, totalIWallArea, 
             totalIFloorAreaExOther, totalIWallAreaExOther, 
             TotalHeatCapacity, TotalHeatCapacityDeDuplicatingIntSurfaces,            
-            wallHeatFlow, windowHeatFlow, gFloorHeatFlow, roofHeatFlow, infiltrationFlow, 
+            wallWindowHeatFlow, gFloorHeatFlow, roofHeatFlow, infiltrationFlow, 
             SolarRadiation;
 
-        public double[] p_wallHeatFlow, p_windowHeatFlow, p_gFloorHeatFlow, p_roofHeatFlow, p_infiltrationFlow;
+        public double[] h_wallwindowHeatFlow, h_windowHeatFlow, h_gFloorHeatFlow, h_roofHeatFlow, h_infiltrationFlow, h_SolarRadiation;
         internal string OccupancyScheduleName;
 
         public void CreateDaylighting(double lightingLux)
@@ -85,10 +86,8 @@ namespace IDFObjects
         }
         public void AssociateEnergyResults(Dictionary<string, double[]> resultsDF)
         {
-            wallHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.HeatFlow).Sum();
+            wallWindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.HeatFlow).Sum();
             gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.HeatFlow).Sum();
-            windowHeatFlow = Surfaces.Where(w => w.Fenestrations != null)
-                .SelectMany(w => w.Fenestrations).Select(s => s.HeatFlow).Sum();
             roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.HeatFlow).Sum();
             SolarRadiation = Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f => f.Area * f.SolarRadiation).Sum();
             try
@@ -121,40 +120,32 @@ namespace IDFObjects
                 EP.LightsLoad = resultsDF[resultsDF.Keys.First(a => a.ToUpper().Contains(Name.ToUpper()) && a.Contains("Lights"))].Average();
             }
         } 
-        public void AssociateProbabilisticEnergyResults(Dictionary<string, double[]> resultsDF)
+        public void AssociateHourlyEnergyResults(Dictionary<string, double[]> resultsDF)
         {
-            p_wallHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").
-                Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-            p_gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").
-                Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
+            h_wallwindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").
+                Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
+            h_gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").
+                Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
+            h_roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).
+                Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
+            h_SolarRadiation = Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f =>  f.h_SolarRadiation.MultiplyBy(f.Area)).ToList().AddArrayElementWise();
+
             try
             {
-                p_windowHeatFlow = Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).
-                    Select(s => s.p_HeatFlow).ToList().AddArrayElementWise(); 
-            }
-            catch { }
-            p_roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).
-                Select(s => s.p_HeatFlow).ToList().AddArrayElementWise();
-           
-            try
-            {
-                p_infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && 
+                h_infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && 
                     a.Contains("Zone Infiltration Total Heat Gain Energy"))].SubtractArrayElementWise(
                          resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && 
                          a.Contains("Zone Infiltration Total Heat Loss Energy"))]).ConvertWfromJoule();
             }
             catch 
             {
-                p_infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Infiltration"))];
+                h_infiltrationFlow = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Infiltration"))];
             }
                        
-            EPP = new List<EPZone>();
-            for (int i = 0; i < resultsDF.First().Value.Length; i++)
-            {
-                EPP[i].HeatingLoad = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Heating"))][i];
-                EPP[i].CoolingLoad = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Cooling"))][i];
-                EPP[i].LightsLoad = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Lights"))][i];
-            }
+            EP.HeatingLoadHourly = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Heating"))];
+            EP.CoolingLoadHourly = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Cooling"))];
+            EP.LightsLoadHourly = resultsDF[resultsDF.Keys.First(a => a.Contains(Name.ToUpper()) && a.Contains("Lights"))];
+            
         }
         public Zone() { }
         public Zone(double height, string name, int level)

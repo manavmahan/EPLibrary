@@ -11,7 +11,7 @@ namespace IDFObjects
     {
         public string Name = "Building";
 
-        public double StartTime, OperatingHours, LHG, EHG, AreaPerPerson, HeatingSetpoint, CoolingSetpoint; 
+        public double StartTime, OperatingHours, LHG, EHG, Occupancy, HeatingSetpoint, CoolingSetpoint; 
         public ZoneConditions() { }
 
         public ZoneConditions(double StartTime, double OperatingHours, double LHG, double EHG, double AreaPerPerson,
@@ -21,7 +21,7 @@ namespace IDFObjects
             this.OperatingHours = OperatingHours; 
             this.LHG = LHG; 
             this.EHG = EHG;
-            this.AreaPerPerson = AreaPerPerson;
+            this.Occupancy = AreaPerPerson;
             this.HeatingSetpoint = HeatingSP;
             this.CoolingSetpoint = CoolingSP;
         }
@@ -66,7 +66,7 @@ namespace IDFObjects
 
         public string ToString(string sep)
         {
-            return string.Join(sep, StartTime, OperatingHours, LHG, EHG, AreaPerPerson, HeatingSetpoint, CoolingSetpoint);
+            return string.Join(sep, StartTime, OperatingHours, LHG, EHG, Occupancy, HeatingSetpoint, CoolingSetpoint);
         }
         public string Header(string sep)
         {
@@ -75,7 +75,7 @@ namespace IDFObjects
                 "{0}Operating Hours{1}" +
                 "{0}Light Heat Gain{1}" +
                 "{0}Equipment Heat Gain{1}" +
-                "{0}Area Per Person{1}" +
+                "{0}Occupancy{1}" +
                 "{0}Heating Setpoint{1}"+
                 "{0}Cooling Setpoint",
                 Name+":", sep);

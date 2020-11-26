@@ -19,7 +19,7 @@ namespace IDFObjects
         public List<Fenestration> Fenestrations;
         public List<ShadingOverhang> Shading;
         public double SolarRadiation, HeatFlow;
-        public double[] p_SolarRadiation, p_HeatFlow;
+        public double[] h_SolarRadiation, h_HeatFlow;
 
         //[NonSerialized]
         //public Zone Zone;

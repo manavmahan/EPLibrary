@@ -16,8 +16,8 @@ namespace IDFObjects
 
         public string Header(string sep)
         {
-            return string.Join(sep, "Length", "Width", "Height", "rLenA", "rWidA", "BasementDepth", 
-                "Orientation", "Floor Area", "ARatio", "Shape", "NFloors");
+            return string.Join(sep, "Length", "Width", "Height", "rLenA", "rWidA", "Basement Depth", 
+                "Orientation", "Floor Area", "Aspect Ratio", "Shape", "Number of Floors");
         }
         public string ToString(string sep)
         {

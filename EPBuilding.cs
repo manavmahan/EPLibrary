@@ -16,27 +16,20 @@ namespace IDFObjects
         
         public double[] ThermalEnergyMonthly, OperationalEnergyMonthly,
             ZoneHeatingLoadMonthly, ZoneCoolingLoadMonthly, ZoneLightsLoadMonthly, EUIMonthly;
+
+        public double[] ThermalEnergyHourly, OperationalEnergyHourly,
+            ZoneHeatingLoadHourly, ZoneCoolingLoadHourly, ZoneLightsLoadHourly, EUIHourly;
         public EPBuilding() { }
-        public static string Header (bool Monthly)
+        public static string Header ()
         {
             List<string> vars = new List<string>() { "Heating Load", "Cooling Load", "Lights Load",
                 "Thermal Energy", "Operational Energy", "EUI"};
 
-            if (Monthly)
-            {
-                string mVars = string.Empty;
-                foreach (string var in vars)
-                {
-                    mVars += string.Join(",", Enum.GetNames(typeof(Month)).Select(m => string.Format("{0} ({1})", var, m)));
-                }
-                return mVars;
-            }
-            else
-                return string.Join(",", vars);
+            return string.Join(",", vars);
         }
-        public string ToString(bool Monthly)
+        public string ToString(string time)
         {
-            if (Monthly) 
+            if (time == "monthly") 
             {
                 return string.Join(",", 
                     ZoneHeatingLoadMonthly.ToCSVString(), 
@@ -46,11 +39,18 @@ namespace IDFObjects
                     OperationalEnergyMonthly.ToCSVString(), 
                     EUIMonthly.ToCSVString()) ;
             }
-            else
+            if (time == "hourly")
             {
-                return string.Join(",",ZoneHeatingLoad, ZoneCoolingLoad, ZoneLightsLoad, 
-                    ThermalEnergy, OperationalEnergy, EUI);                
+                return string.Join(",",
+                    ZoneHeatingLoadHourly.ToCSVString(),
+                    ZoneCoolingLoadHourly.ToCSVString(),
+                    ZoneLightsLoadHourly.ToCSVString(),
+                    ThermalEnergyHourly.ToCSVString(),
+                    OperationalEnergyHourly.ToCSVString(),
+                    EUIHourly.ToCSVString());
             }
+            return string.Join(",", ZoneHeatingLoad, ZoneCoolingLoad, ZoneLightsLoad,
+                   ThermalEnergy, OperationalEnergy, EUI);
         }
     }    
 }

@@ -91,10 +91,13 @@
     <Compile Include="Building.cs" />
     <Compile Include="BuildingConstruction.cs" />
     <Compile Include="DesignInfo.cs" />
+    <Compile Include="DesignOption.cs" />
+    <Compile Include="DesignSpace.cs" />
     <Compile Include="EPBuilding.cs" />
     <Compile Include="BuildingGeometry.cs" />
     <Compile Include="BuildingDesignParameters.cs" />
     <Compile Include="Line.cs" />
+    <Compile Include="PEASettings.cs" />
     <Compile Include="RandomBuilding.cs" />
     <Compile Include="RandomGeometry.cs" />
     <Compile Include="WWRInput.cs">
@@ -193,6 +196,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
-if exist "$(AppData)\Autodesk\REVIT\Addins\2021" copy "$(ProjectDir)$(OutputPath)*.dll" "$(AppData)\Autodesk\REVIT\Addins\2021"</PostBuildEvent>
+if exist "$(AppData)\Autodesk\REVIT\Addins\2021" copy "$(ProjectDir)$(OutputPath)*.dll" "$(AppData)\Autodesk\REVIT\Addins\2021"
+copy "$(ProjectDir)$(OutputPath)*.dll" "C:\Users\u0115868a\Documents\GitHub\DesignAssistanceWeb\bin\Debug"</PostBuildEvent>
   </PropertyGroup>
 </Project>

@@ -585,17 +585,18 @@ namespace IDFObjects
                 List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
                 foreach (Surface surf in bSurfaces)
                 {
+                    surf.HeatFlow = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Rate"))].Average();
                     if (surf.OutsideCondition == "Outdoors")
                     {
                         if (surf.Fenestrations != null && surf.Fenestrations.Count != 0)
                         {
                             Fenestration win = surf.Fenestrations[0];
                             win.SolarRadiation = data[data.Keys.First(a => a.Contains(win.Name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))].Average();
-                            win.HeatFlow = data[data.Keys.First(s => s.Contains(win.Name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Rate"))].Average();
+                            surf.HeatFlow += data[data.Keys.First(s => s.Contains(win.Name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Rate"))].Average();
                         }
                         surf.SolarRadiation = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))].Average();
                     }
-                    surf.HeatFlow = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Rate"))].Average();
+                    
                 }
             }
             catch { }
@@ -678,7 +679,53 @@ namespace IDFObjects
                 EP.EUI = EP.OperationalEnergy / zones.Select(z => z.Area).Sum();
             }
         }
-        
+
+        public void AssociateEnergyResultsHourly(Dictionary<string, double[]> data)
+        {
+            List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
+            foreach (Surface surf in bSurfaces)
+            {
+                surf.h_HeatFlow = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Rate"))];
+
+                if (surf.OutsideCondition == "Outdoors")
+                {
+                    if (surf.Fenestrations != null && surf.Fenestrations.Count != 0)
+                    {
+                        Fenestration win = surf.Fenestrations[0];
+                        win.h_SolarRadiation = data[data.Keys.First(a => a.Contains(win.Name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))];
+                        surf.h_HeatFlow = new List<double[]> { surf.h_HeatFlow, data[data.Keys.First(s => s.Contains(win.Name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Rate"))] }.AddArrayElementWise();
+                    }
+                    surf.h_SolarRadiation = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))];
+                }
+                
+            }
+            foreach (Zone zone in zones)
+            {
+                zone.CalcAreaVolumeHeatCapacity(this); zone.AssociateHourlyEnergyResults(data);
+            }
+
+            EP = new EPBuilding()
+            {
+                ZoneHeatingLoadHourly = zones.Select(z => z.EP.HeatingLoadHourly.ToArray()).ToList().AddArrayElementWise(),
+                ZoneCoolingLoadHourly = zones.Select(z => z.EP.CoolingLoadHourly.ToArray()).ToList().AddArrayElementWise(),
+                ZoneLightsLoadHourly = zones.Select(z => z.EP.LightsLoadHourly.ToArray()).ToList().AddArrayElementWise(),
+            };
+            double[] BoilerEnergy = new double[8760], ChillerEnergy = new double[8760], TowerEnergy = new double[8760], HeatPumpEnergy = new double[8760];
+
+            if (data.Keys.Any(k => k.Contains("Boiler")))
+                BoilerEnergy = data[data.Keys.First(a => a.Contains("Boiler"))].ConvertKWhfromJoule();
+            if (data.Keys.Any(k => k.Contains("Chiller")))
+                ChillerEnergy = data[data.Keys.First(a => a.Contains("Chiller"))].ConvertKWhfromJoule();
+            if (data.Keys.Any(k => k.Contains("Cooling Tower")))
+                TowerEnergy = data[data.Keys.First(a => a.Contains("Cooling Tower"))].ConvertKWhfromJoule();
+            if (data.Keys.Any(k => k.Contains("Heat Pump")))
+                TowerEnergy = data.Keys.Where(a => a.Contains("Heat Pump")).Select(k => data[k]).ToList().AddArrayElementWise().ConvertKWhfromJoule();
+
+            EP.ThermalEnergyHourly = new List<double[]> { BoilerEnergy, ChillerEnergy, TowerEnergy, HeatPumpEnergy }.AddArrayElementWise();
+            EP.OperationalEnergyHourly = new List<double[]>() { EP.ThermalEnergyHourly, EP.ZoneLightsLoadHourly.MultiplyBy(0.001) }.AddArrayElementWise();
+            EP.EUIHourly = EP.OperationalEnergyHourly.MultiplyBy(1 / zones.Select(z => z.Area).Sum());
+        }
+
         public void AssociateProbabilisticEmbeddedEnergyResults(Dictionary<string, double[]> resultsDF)
         {
             //p_PERT_EmbeddedEnergy = resultsDF["PERT"];
@@ -733,42 +780,43 @@ namespace IDFObjects
             };
         }
        
-        public void InitialiseBuilding_SameFloorPlan(List<ZoneGeometryInformation> zonesInformation,
-            BuildingDesignParameters parameters, Location location)
-        {
-            Parameters = parameters;
-            CreateZoneLists();
-            foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
-            {
-                Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name, zoneInfo.Level);
-                XYZList floorPoints = zoneInfo.FloorPoints;                 
-                if (zoneInfo.Level == 0)
-                {
-                    new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor);
-                }
-                else
-                {
-                    new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
-                    {
-                        ConstructionName = "Floor_Ceiling",
-                        OutsideCondition = "Zone",
-                        OutsideObject = zoneInfo.Name.Remove(zoneInfo.Name.LastIndexOf(':')+1) + (zoneInfo.Level - 1)
-                    };
-                }
-                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, zoneInfo.CeilingPoints);
-                if (zoneInfo.Level == zonesInformation.Select(z=>z.Level).Max())
-                {
-                    zoneInfo.CeilingPoints.ForEach(ro=>
-                    new Surface(zone, ro, ro.CalculateArea(), SurfaceType.Roof));
-                }
-                zone.CreateDaylighting(500);
-                AddZone(zone);
-                try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
-                catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
-            }          
-            UpdateBuildingConstructionWWROperations(location);
-            RemoveEmptyZoneList();
-        }
+        //public void InitialiseBuilding_SameFloorPlan(List<ZoneGeometryInformation> zonesInformation,
+        //    BuildingDesignParameters parameters, Location location)
+        //{
+           
+        //    Parameters = parameters;
+        //    CreateZoneLists();
+        //    foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
+        //    {
+        //        Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name, zoneInfo.Level);
+        //        XYZList floorPoints = zoneInfo.FloorPoints;                 
+        //        if (zoneInfo.Level == 0)
+        //        {
+        //            new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor);
+        //        }
+        //        else
+        //        {
+        //            new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
+        //            {
+        //                ConstructionName = "Floor_Ceiling",
+        //                OutsideCondition = "Zone",
+        //                OutsideObject = zoneInfo.Name.Remove(zoneInfo.Name.LastIndexOf(':')+1) + (zoneInfo.Level - 1)
+        //            };
+        //        }
+        //        Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, zoneInfo.CeilingPoints);
+        //        if (zoneInfo.Level == zonesInformation.Select(z=>z.Level).Max())
+        //        {
+        //            zoneInfo.CeilingPoints.ForEach(ro=>
+        //            new Surface(zone, ro, ro.CalculateArea(), SurfaceType.Roof));
+        //        }
+        //        zone.CreateDaylighting(500);
+        //        AddZone(zone);
+        //        try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
+        //        catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
+        //    }          
+        //    UpdateBuildingConstructionWWROperations(location);
+        //    RemoveEmptyZoneList();
+        //}
         public void AdjustWindows()
         {
             if (Parameters.WWR.EachWallSeparately)

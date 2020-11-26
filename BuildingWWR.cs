@@ -28,7 +28,7 @@ namespace IDFObjects
         }
         public string Header(string sep)
         {
-            return string.Join(sep, "WWR_North", "WWR_East", "WWR_West", "WWR_South");
+            return string.Join(sep, "WWR (North)", "WWR (East)", "WWR (West)", "WWR (South)");
         }
     }
 }

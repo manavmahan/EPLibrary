@@ -17,7 +17,7 @@ namespace IDFObjects
             UIWall = new ProbabilityDistributionFunction("u-Value (Internal Wall)", "W/m\u00b2K"),
             UWindow = new ProbabilityDistributionFunction("u-Value (Windows)", "W/m\u00b2K"),
             GWindow = new ProbabilityDistributionFunction("g-Value (Windows)",""), 
-            HCSlab = new ProbabilityDistributionFunction("Heat Capacity (Floor Slabs)","kJ/K"), 
+            HCSlab = new ProbabilityDistributionFunction("Heat Capacity (Floor Slabs)","J/kgK"), 
             Infiltration = new ProbabilityDistributionFunction("Infiltration", "ACH"),
             Permeability=new ProbabilityDistributionFunction("Permeability", "m\u00b3/(h·m\u00b2)"),
             InternalMass = new ProbabilityDistributionFunction("Internal Mass", "kJ/m\u00b2K");

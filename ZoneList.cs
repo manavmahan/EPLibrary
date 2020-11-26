@@ -175,7 +175,7 @@ namespace IDFObjects
 
             CreateZoneSchedules();
             
-            People = new People(Conditions.AreaPerPerson)
+            People = new People(Conditions.Occupancy)
             {
                 Name = "People_" + Name,
                 ZoneName = Name,

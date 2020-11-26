@@ -19,7 +19,9 @@ namespace IDFObjects
         }
         public string Header(string sep)
         {
-            return string.Join(sep, "u_Wall", "u_GFloor", "u_Roof", "u_IFloor", "u_IWall", "u_Window", "g_Window", "hc_Slab", "Infiltration", "Air Permeability", "Internal Mass");
+            return string.Join(sep, "u-Value (Wall)", "u-Value (Ground Floor)", "u-Value (Roof)", "u-Value (Internal Floor)",
+                "u-Value (Internal Wall)", "u-Value (Windows)", "g-Value (Windows)", "Heat Capacity (Floor Slabs)", "Infiltration", 
+                "Permeability", "Internal Mass");
         }
     }
 }

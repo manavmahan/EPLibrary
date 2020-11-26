@@ -13,32 +13,23 @@ namespace IDFObjects
     {
         public double HeatingLoad, CoolingLoad, LightsLoad;
         public double[] HeatingLoadMonthly, CoolingLoadMonthly, LightsLoadMonthly;
+        public double[] HeatingLoadHourly, CoolingLoadHourly, LightsLoadHourly;
         public EPZone()
         {
             
         }
-        public string ToString(bool monthly)
+        public string ToString(string time)
         {
-            if (monthly)
+            if (time == "monthly") 
                 return string.Join(",", HeatingLoadMonthly.ToCSVString(), CoolingLoadMonthly.ToCSVString(), LightsLoadMonthly.ToCSVString());
-            else
-                return string.Join(",", HeatingLoad, CoolingLoad, LightsLoad);
+            if (time == "hourly")
+                return string.Join(",", HeatingLoadHourly.ToCSVString(), CoolingLoadHourly.ToCSVString(), LightsLoadHourly.ToCSVString()); 
+            return string.Join(",", HeatingLoad, CoolingLoad, LightsLoad);
         }
-        public static string Header(bool Monthly)
+        public static string Header()
         {
             List<string> vars = new List<string>() { "Heating Load", "Cooling Load", "Lights Load" };
-
-            if (Monthly)
-            {
-                string mVars = string.Empty;
-                foreach (string var in vars)
-                {
-                    mVars += string.Join(",", Enum.GetNames(typeof(Month)).Select(m => string.Format("{0} ({1})", var, m)));
-                }
-                return mVars;
-            }
-            else
-                return string.Join(",", vars);
+            return string.Join(",", vars);
         }       
     }
 }

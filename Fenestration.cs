@@ -10,8 +10,8 @@ namespace IDFObjects
     public class Fenestration
     {
         public Fenestration() { }
-        public double Area, SolarRadiation, HeatFlow, Orientation;
-        public double[] p_HeatFlow, p_SolarRadiation;
+        public double Area, SolarRadiation, Orientation;
+        public double[] h_SolarRadiation;
         //public BuildingSurface Face;
         public string FaceName, ZoneName;
         public XYZList VerticesList;
