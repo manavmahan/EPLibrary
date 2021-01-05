@@ -84,7 +84,7 @@ namespace IDFObjects
                 totalIWallAreaExOther * building.Parameters.Construction.hcIWall + totalRoofArea * building.Parameters.Construction.hcRoof +
                 iMasses.Select(m => m.area * building.Parameters.Construction.hcInternalMass).Sum();          
         }
-        public void AssociateEnergyResults(Dictionary<string, double[]> resultsDF)
+        public void AssociateEnergyResultsAnnual(Dictionary<string, double[]> resultsDF)
         {
             wallWindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.HeatFlow).Sum();
             gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.HeatFlow).Sum();

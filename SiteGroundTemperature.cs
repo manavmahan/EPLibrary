@@ -9,25 +9,18 @@ namespace IDFObjects
     [Serializable]
     public class SiteGroundTemperature
     {
-        public double jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec;
         public SiteGroundTemperature()
         { }
-        public SiteGroundTemperature(Location location)
+        public List<string> WriteInfo(Location location)
         {
             switch (location)
             {
+                case Location.BERLIN_DEU:
+                    return new List<string>() { "Site:GroundTemperature:BuildingSurface, 4.94, 2.03, 1.24, 1.93, 5.86, 10.25, 14.39, 17.39, 18.26, 16.86, 13.47, 9.19;" };
                 case Location.MUNICH_DEU:
                 default:
-                    jan = 6.17; feb = 5.07; mar = 5.33; apr = 6.27; may = 9.35; jun = 12.12;
-                    jul = 14.32; aug = 15.48; sep = 15.20; oct = 13.62; nov = 11.08; dec = 8.41;
-                    break;               
+                    return new List<string>() { "Site:GroundTemperature:BuildingSurface,6.17,5.07,5.33,6.27,9.35,12.12,14.32,15.48,15.20,13.62,11.08,8.41;" };                   
             }
-        }
-        public List<string> WriteInfo()
-        {
-            List<string> info = new List<string>() { "Site:GroundTemperature:BuildingSurface," };
-            info.AddRange(new List<string>() { string.Join(",", jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec) + "; ! - Site Ground Temperatures" });
-            return info;
         }
     }
 }

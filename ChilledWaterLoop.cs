@@ -9,7 +9,7 @@ namespace IDFObjects
     [Serializable]
     public class ChilledWaterLoop
     {
-        string name = "Chilled Water Loop";
+        public string name = "Chilled Water Loop";
 
         public ChilledWaterLoop()
         {

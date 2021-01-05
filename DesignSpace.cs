@@ -9,13 +9,15 @@ namespace IDFObjects
     [Serializable]
     public class DesignSpace
     {
-        public DesignSpace() { }
-        public ProbabilisticBuildingDesignParameters Parameters;
-        //public int NumSamples;
-        //public SamplingScheme SamplingScheme;
+        public DesignSpace() { }    
         public Building Building;
-        public RandomGeometry RandomGeometry = new RandomGeometry();
-        //public ProbabilityDistributionFunction EnergyTarget = new ProbabilityDistributionFunction();
+
+        public List<XYZList> SamplesFloorPlans = new List<XYZList>();
+
+        public ProbabilisticBuildingDesignParameters Parameters;
+        public List<BuildingDesignParameters> SampleParameters = new List<BuildingDesignParameters>();
+        public List<EPBuilding> EPP = new List<EPBuilding>();
+        public EPBuilding EP;
 
         private List<Building> AllSamples = new List<Building>();
         public void SetSamples(List<Building> Samples) => AllSamples = Samples;

@@ -69,14 +69,16 @@ namespace IDFObjects
         {
            
             List<string> info = new List<string>();
-            info.Add("\nSizingPeriod:DesignDay,");
-            info.Add("\t" + name + ",\t\t\t\t!-Name");
-            try
+            if (strData != null)
             {
+                info.Add("\nSizingPeriod:WeatherFileDays,");
+                info.Add("\t" + name + ",\t\t\t\t!-Name");
                 info.AddRange(strData);
             }
-            catch
+            else
             {
+                info.Add("\nSizingPeriod:DesignDay,");
+                info.Add("\t" + name + ",\t\t\t\t!-Name");
                 info.Add("\t" + month + ", \t\t\t\t!-Month");
                 info.Add("\t" + day + ",\t\t\t\t!-Day of Month");
                 info.Add("\t" + dayType + ", \t\t\t\t!-Day Type");

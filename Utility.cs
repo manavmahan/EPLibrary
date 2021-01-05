@@ -33,6 +33,7 @@ namespace IDFObjects
     {
         [Description("Brussels, Belgium")] BRUSSELS_BEL = 0,
         [Description("Munich, Germany")] MUNICH_DEU = 1,
+        [Description("Berlin, Germany")] BERLIN_DEU = 2,
     }
     public enum Month
     {
@@ -53,9 +54,9 @@ namespace IDFObjects
     public enum ControlType { none, Continuous, Stepped, ContinuousOff }
     public enum SamplingScheme
     {
-        [Description("Latin Hypercube Sampling")] LHS,
-        [Description("Monte Carlo Sampling")] MonteCarlo,
-        [Description("Sobol Sampling")] Sobol
+        [Description("Latin Hypercube Sampling")] LHS = 0,
+        [Description("Monte Carlo Sampling")] MonteCarlo =2,
+        [Description("Sobol Sampling")] Sobol =1
     }
     public enum AnalysisMode
     { 
@@ -68,8 +69,8 @@ namespace IDFObjects
     }
     public enum SimulationTool
     {
-        [Description("EnegryPlus Simulation")] EnergyPlus,
-        [Description("Machine Learning Model")] MLModel,
+        [Description("EnegryPlus Simulation")] EnergyPlus = 0,
+        [Description("Machine Learning Model")] MLModel =1,
     }
     public static class Utility
     {
@@ -1092,49 +1093,6 @@ namespace IDFObjects
             }
             return array;
         }
-        //public static T2 GetSample<T, T2>(this T pars, Dictionary<string, double[]> sample, int n) where T2 : new()
-        //{
-        //    T2 r = new T2();
-        //    foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
-        //    && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD > 0))
-        //    {
-        //        ProbabilityDistributionFunction v = fi.GetValue(pars) as ProbabilityDistributionFunction;
-        //        double val = 0;
-        //        switch (v.Distribution)
-        //        {
-        //            case PDF.unif:
-        //                val = v.Min + v.Range * sample[fi.Name][n];
-        //                break;
-        //            case PDF.norm:
-        //                val = v.Mean + v.VariationOrSD * sample[fi.Name][n];
-        //                break;
-        //        }
-        //        FieldInfo f = typeof(T2).GetFields().First(x => x.Name == fi.Name);
-        //        if (f.FieldType == typeof(int))
-        //            f.SetValue(r, (int) Math.Floor(val));
-        //        else
-        //            f.SetValue(r, val);
-        //    };
-        //    foreach (FieldInfo fi in typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
-        //    && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD == 0))
-        //    {
-        //        ProbabilityDistributionFunction v = fi.GetValue(pars) as ProbabilityDistributionFunction;
-        //        double val = v.Mean;
-        //        FieldInfo f = typeof(T2).GetFields().First(x => x.Name == fi.Name);
-        //        if (f.FieldType == typeof(int))
-        //            f.SetValue(r, (int)Math.Floor(val));
-        //        else
-        //            f.SetValue(r, val);
-        //    };
-        //    return r;
-        //}
-        
-        //internal static Dictionary<string, ProbabilityDistributionFunction> GetValidPDFs<T>(this T pars)
-        //{
-        //    return typeof(T).GetFields().Where(x => x.FieldType == typeof(ProbabilityDistributionFunction)
-        //     && (x.GetValue(pars) as ProbabilityDistributionFunction).VariationOrSD > 0).
-        //     ToDictionary(x=> x.Name, x=>x.GetValue(pars) as ProbabilityDistributionFunction);
-        //}
         public static List<string> ReplaceLastComma(this List<string> info)
         {
             string lastLine = info.Last();
@@ -1160,7 +1118,6 @@ namespace IDFObjects
             switch (location)
             {
                 case Location.MUNICH_DEU:
-                default:
                     winterday = new SizingPeriodDesignDay("MUNICH Ann Htg 99.6% Condns DB", 2, 21, "WinterDesignDay",
                         -12.8, 0.0, -13.9, 0.0, 95900.0, 1.0, 130.0, "No", "No", "No", "AshraeClearSky", 0.0);
 
@@ -1178,7 +1135,7 @@ namespace IDFObjects
 
                     summerday4 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 9)", 9, 21, "SummerDesignDay",
                         29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
-                    break;
+                    return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
                 case Location.BRUSSELS_BEL:
                     winterday = new SizingPeriodDesignDay("BRUSSELS Ann Htg 99.6% Condns DB", 1, 21, "WinterDesignDay",
                         -4.9, 0.0, -6.2, 0.0, 102600.0, 1.0, 70.0, "No", "No", "No", "AshraeClearSky", 0.0);
@@ -1197,9 +1154,22 @@ namespace IDFObjects
 
                     summerday4 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 9)", 9, 21, "SummerDesignDay",
                        28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
-                    break;
+                    return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
+                case Location.BERLIN_DEU:
+                default:
+                    SizingPeriodDesignDay sdd = new SizingPeriodDesignDay()
+                    {
+                        name = "Summer including Extreme Summer days",
+                        strData = new List<string>() { "7,18,7,25,SummerDesignDay, Yes, Yes;" }
+                    },
+                    wdd = new SizingPeriodDesignDay()
+                    {
+                        name = "Winter including Extreme Winter days",
+                        strData = new List<string>() { "1,25,2,1,WinterDesignDay, Yes, Yes;" }
+                    };
+                    return new List<SizingPeriodDesignDay>() { sdd, wdd };
             }
-            return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
+            
         }
     }
 }

@@ -22,19 +22,6 @@ namespace IDFObjects
         public double maxNWarmUpDays = 25;
         public double minNWarmUpDays = 6;
 
-        //Initialise blank building
-        //Create zone with wall, floor, roof including orientation
-        //run UpdateBuildingConstructionWWROperations
-
-
-        //Probablistic Attributes
-        public ProbabilisticBuildingDesignParameters p_Parameters;
-        public ProbabilisticEmbeddedEnergyParameters p_EEParameters;
-        public List<BuildingDesignParameters> SampleParameters =new List<BuildingDesignParameters>();
-        public List<XYZList[]> SamplesFloorPlans =new List<XYZList[]>();
-
-        //Probabilistic Operational Energy
-        public List<EPBuilding> EPP = new List<EPBuilding>();
 
         //EnergyPlus Output
         public EPBuilding EP = new EPBuilding();
@@ -68,8 +55,8 @@ namespace IDFObjects
 
         //to generate building in Revit
         public XYZList GroundPoints;
-        public XYZList[] FloorPlans;
-        public int nFloors;
+        public List<XYZList> FloorPoints;
+        public List<XYZList> RoofPoints;
 
         //HVAC Template - should be extracted from zone
         //public List<Thermostat> tStats = new List<Thermostat>();
@@ -97,7 +84,7 @@ namespace IDFObjects
                 {
                     Name = zoneListName,
                     Conditions = con                 
-                }) ;
+                });
             }
         }
 
@@ -577,7 +564,7 @@ namespace IDFObjects
             }
         }
         public Building() { }
-        public void AssociateEnergyResults(Dictionary<string, double[]> data)
+        public void AssociateEnergyResultsAnnual(Dictionary<string, double[]> data)
         {
             //exception for using ML predictions
             try
@@ -604,7 +591,7 @@ namespace IDFObjects
             {
                 foreach (Zone zone in zones)
                 {
-                    zone.CalcAreaVolumeHeatCapacity(this); zone.AssociateEnergyResults(data);
+                    zone.CalcAreaVolumeHeatCapacity(this); zone.AssociateEnergyResultsAnnual(data);
                 }
             }
             catch { }
@@ -664,6 +651,7 @@ namespace IDFObjects
                     TowerEnergy = data.Keys.Where(a => a.Contains("Heat Pump")).SelectMany(k => data[k]).Sum().ConvertKWhfromJoule();
 
                 EP.ThermalEnergy = BoilerEnergy + ChillerEnergy + TowerEnergy + HeatPumpEnergy;
+                EP.OperationalEnergy = EP.ThermalEnergy + EP.ZoneLightsLoad.ConvertKWhafromWm();
 
                 if (data.Keys.Any(k => k.Contains("Thermal Energy"))) 
                 {
@@ -778,45 +766,7 @@ namespace IDFObjects
                 Utility.IDFLineFormatter(maxNWarmUpDays, "Maximum Number of Warmup Days"),
                 Utility.IDFLastLineFormatter(minNWarmUpDays, "Minimum Number of Warmup Days")
             };
-        }
-       
-        //public void InitialiseBuilding_SameFloorPlan(List<ZoneGeometryInformation> zonesInformation,
-        //    BuildingDesignParameters parameters, Location location)
-        //{
-           
-        //    Parameters = parameters;
-        //    CreateZoneLists();
-        //    foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
-        //    {
-        //        Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name, zoneInfo.Level);
-        //        XYZList floorPoints = zoneInfo.FloorPoints;                 
-        //        if (zoneInfo.Level == 0)
-        //        {
-        //            new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor);
-        //        }
-        //        else
-        //        {
-        //            new Surface(zone, floorPoints.Reverse(), floorPoints.CalculateArea(), SurfaceType.Floor)
-        //            {
-        //                ConstructionName = "Floor_Ceiling",
-        //                OutsideCondition = "Zone",
-        //                OutsideObject = zoneInfo.Name.Remove(zoneInfo.Name.LastIndexOf(':')+1) + (zoneInfo.Level - 1)
-        //            };
-        //        }
-        //        Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, zoneInfo.CeilingPoints);
-        //        if (zoneInfo.Level == zonesInformation.Select(z=>z.Level).Max())
-        //        {
-        //            zoneInfo.CeilingPoints.ForEach(ro=>
-        //            new Surface(zone, ro, ro.CalculateArea(), SurfaceType.Roof));
-        //        }
-        //        zone.CreateDaylighting(500);
-        //        AddZone(zone);
-        //        try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
-        //        catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
-        //    }          
-        //    UpdateBuildingConstructionWWROperations(location);
-        //    RemoveEmptyZoneList();
-        //}
+        }      
         public void AdjustWindows()
         {
             if (Parameters.WWR.EachWallSeparately)
@@ -906,10 +856,19 @@ namespace IDFObjects
                 FloorCeiling.OutsideCondition = "Adiabatic";
             }
         }
+        public bool intialised = false;
         public void InitialiseBuilding(List<ZoneGeometryInformation> zonesInformation, 
-           BuildingDesignParameters parameters, Location location)
+           BuildingDesignParameters parameters, Location location, double offsetDistance)
         {
+            if (zonesInformation == null)
+            {
+                zonesInformation = Utility.GetZoneGeometryInformation(Utility.GetAllRooms(FloorPoints[0].xyzs, offsetDistance, parameters.ZConditions.First().Name),
+                    FloorPoints, RoofPoints);
+            }
+            BuildingGeometry geometry = Parameters.Geometry.DeepClone();
             Parameters = parameters;
+            Parameters.Geometry = geometry;
+
             CreateZoneLists();
 
             foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
@@ -940,6 +899,7 @@ namespace IDFObjects
             }          
             UpdateBuildingConstructionWWROperations(location);
             RemoveEmptyZoneList();
+            intialised = true;
         }
     }    
 }

@@ -151,7 +151,7 @@ namespace IDFObjects
         {
             Dictionary<string, IList<string>> CSVData = new Dictionary<string, IList<string>>();
             string idfFile = building.name;
-            int co = time == "monthly" ? 12 : 8760;
+            //int co = time == "monthly" ? 12 : 8760;
 
 
             BuildingConstruction buildingConstruction = building.Parameters.Construction;

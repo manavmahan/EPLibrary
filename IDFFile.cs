@@ -20,14 +20,15 @@ namespace IDFObjects
         public SiteLocation sLocation = new SiteLocation(Location.MUNICH_DEU);
         public List<SizingPeriodDesignDay> SDesignDay;
         public RunPeriod rPeriod = new RunPeriod();
-        public SiteGroundTemperature gTemperature = new SiteGroundTemperature(Location.MUNICH_DEU);
+        public SiteGroundTemperature gTemperature = new SiteGroundTemperature();
         public GlobalGeometryRules geomRules = new GlobalGeometryRules();
-
+        public Location Location;
         //Building - contain schedules, material, constructions, zones, zoneLists, 
         public Building building = new Building();
         public Output output;
         public IDFFile(Location location) 
         {
+            Location = location;
             sLocation = new SiteLocation(location);
             SDesignDay = Utility.CreateDesignDays(location);
         }
@@ -49,7 +50,7 @@ namespace IDFObjects
             info.AddRange(sLocation.WriteInfo());
             SDesignDay.ForEach(s => info.AddRange(s.WriteInfo()));
             info.AddRange(rPeriod.WriteInfo());
-            info.AddRange(gTemperature.WriteInfo());
+            info.AddRange(gTemperature.WriteInfo(Location));
             info.AddRange(geomRules.WriteInfo());
 
             building.schedulelimits.ForEach(s => info.AddRange(s.WriteInfo()));

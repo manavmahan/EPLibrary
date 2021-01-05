@@ -34,6 +34,12 @@ namespace IDFObjects
                     timeZone = 1.0;
                     elevation = 58.0;
                     break;
+                case Location.BERLIN_DEU:
+                    latitude = 50.9;
+                    longitude = 13.40;
+                    timeZone = 1.0;
+                    elevation = 49.0;
+                    break;
             }
         }
         public List<string> WriteInfo()
