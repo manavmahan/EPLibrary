@@ -9,7 +9,7 @@ namespace IDFObjects
     [Serializable]
     public class Tower
     {
-        string name = "Main Tower";
+        public string name = "Main Tower";
 
         public Tower()
         {

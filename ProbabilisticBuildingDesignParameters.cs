@@ -126,8 +126,8 @@ namespace IDFObjects
                 typeof(ProbabilisticZoneConditions).GetFields().Where(a => a.FieldType == typeof(ProbabilityDistributionFunction)).ToList().ForEach(a =>
                 {
                     ProbabilityDistributionFunction pdf = a.GetValue(z) as ProbabilityDistributionFunction;
-                    pdf.Sensitivity = dataDict.GetSensitivityValueForParameter(pdf.Label);
-                });
+                    pdf.Sensitivity = dataDict.GetSensitivityValueForParameter($"{z.Name}:{pdf.Label}");
+                }); 
             }
             
         }
