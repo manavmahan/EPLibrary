@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -8,6 +9,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading;
 using System.Windows.Forms;
 using System.Xml.Linq;
 using DocumentFormat.OpenXml.Bibliography;
@@ -752,6 +754,7 @@ namespace IDFObjects
         }
         public static Dictionary<string, double[]> ConvertToDataframe(IEnumerable<string> csvFile)
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             IEnumerable<string> header = csvFile.ElementAt(0).Split(',').Skip(1);
             Dictionary<string, double[]> data = new Dictionary<string, double[]>();
 
@@ -774,6 +777,7 @@ namespace IDFObjects
         }
         public static Dictionary<string, double[]> ReadSampleFile(string parFile, out int count)
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             List<string> rawFile = File.ReadAllLines(parFile).Where(s => s[0] != '#').ToList();
 
             int nSamples = rawFile.Count;
@@ -1004,6 +1008,7 @@ namespace IDFObjects
 
         public static T DeepClone<T>(this T obj)
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             using (var ms = new MemoryStream())
             {
                 var formatter = new BinaryFormatter();
@@ -1014,12 +1019,14 @@ namespace IDFObjects
         }
         public static void Serialise<T>(this T obj, string filePath)
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             TextWriter tW = File.CreateText(filePath);
             new JsonSerializer() { Formatting = Formatting.Indented }.Serialize(tW, obj);
             tW.Close();
         }
         public static T DeSerialise<T>(string filePath)
         {
+            Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             TextReader tR = File.OpenText(filePath);
             T val = new JsonSerializer().Deserialize<T>(new JsonTextReader(tR));
             tR.Close();
