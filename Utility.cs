@@ -342,7 +342,8 @@ namespace IDFObjects
                         if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
                             con = "Outdoors";
                     }
-                    zone.WallCreationData.Add(c.ChangeZValue(zone.FloorPoints.xyzs.First().Z), con);
+                    zone.WallCreationDataKey.Add(con);
+                    zone.WallCreationDataValue.Add(c.ChangeZValue(zone.FloorPoints.xyzs.First().Z));
                 }
             }
             return zoneInfoList;
@@ -396,7 +397,8 @@ namespace IDFObjects
                     {
                         KeyValuePair<string, List<Line>> matchingCurve = allRoomSegmentsNotThisRoom
                             .First(x => x.Value.Any(y => CompareCurves(c, y)));
-                        zone.WallCreationData.Add(c, matchingCurve.Key);
+                        zone.WallCreationDataKey.Add(matchingCurve.Key);
+                        zone.WallCreationDataValue.Add(c);
 
                         List<Line> matchingZoneSegments = newAllRoomSegmentsIDF[matchingCurve.Key];
                         matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
@@ -404,8 +406,8 @@ namespace IDFObjects
                     catch
                     {
                         if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
-                        { zone.WallCreationData.Add(c, "Outdoors"); }
-                        else { zone.WallCreationData.Add(c, "Adiabatic"); }
+                        { zone.WallCreationDataKey.Add("Outdoors"); zone.WallCreationDataValue.Add(c); }
+                        else { zone.WallCreationDataKey.Add("Adiabatic"); zone.WallCreationDataValue.Add(c); }
                     }
                 }
             }
@@ -615,24 +617,24 @@ namespace IDFObjects
         {
             return point.ChangeZValue(face.xyzs.First().Z);
         }
-        public static void CreateZoneWalls(Zone z, Dictionary<Line, string> wallsData, List<XYZList> ceilings)
+        public static void CreateZoneWalls(Zone z, List<string> wallDataKey, List<Line> wallDataValue, List<XYZList> ceilings)
         {
-            foreach (KeyValuePair<Line, string> wallData in wallsData)
+            for (int i=0; i<wallDataKey.Count;i++)
             {
-                XYZ p1 = wallData.Key.P0, p2 = wallData.Key.P1,
+                XYZ p1 = wallDataValue[i].P0, p2 = wallDataValue[i].P1,
                     p3 = p2.GetVerticalProjection(ceilings), p4 = p1.GetVerticalProjection(ceilings);
                 XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
                 double area = p1.DistanceTo(p2) * p2.DistanceTo(p3);
                 Surface wall = new Surface(z, wallPoints, area, SurfaceType.Wall);
-                if (wallData.Value != "Outdoors")
+                if (wallDataKey[i] != "Outdoors")
                 {
-                    if (wallData.Value == "Adiabatic")
+                    if (wallDataKey[i] == "Adiabatic")
                     {
                         wall.OutsideCondition = "Adiabatic"; wall.OutsideObject = "";
                     }
                     else
                     {
-                        wall.OutsideCondition = "Zone"; wall.OutsideObject = wallData.Value;
+                        wall.OutsideCondition = "Zone"; wall.OutsideObject = wallDataKey[i];
                     }
                     wall.ConstructionName = "InternalWall";
                     wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind"; wall.Fenestrations = new List<Fenestration>();

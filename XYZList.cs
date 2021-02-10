@@ -70,7 +70,7 @@ namespace IDFObjects
                 Area += (point.X * nextPoint.Y) - (point.Y * nextPoint.X);
             }
             Area = Math.Abs(Area / 2);
-            return Math.Round(Area,3);
+            return Math.Round(Area,2);
         }
         public List<string> WriteInfo()
         {

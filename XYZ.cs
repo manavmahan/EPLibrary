@@ -11,7 +11,7 @@ namespace IDFObjects
     {
         public double X = 0, Y = 0, Z = 0;
         public XYZ() { }
-        public XYZ(double x, double y, double z) { X = Math.Round(x,3); Y = Math.Round(y,3); Z = Math.Round(z,3); }
+        public XYZ(double x, double y, double z) { X = Math.Round(x,5); Y = Math.Round(y,5); Z = Math.Round(z,5); }
         public XYZ(double[] point) { X = point[0]; Y = point[1]; Z = point[2]; }
         public XYZ Subtract(XYZ newXYZ) { return new XYZ(X - newXYZ.X, Y - newXYZ.Y, Z - newXYZ.Z); }
         public XYZ Transform(double angle)
@@ -106,7 +106,7 @@ namespace IDFObjects
         public XYZ MovePoint(XYZ towardsPoint, double distance)
         {
             double distBetPoints = DistanceTo(towardsPoint);
-            return Math.Round(distBetPoints, 4) > 0 ? Add(Subtract(towardsPoint).Multiply(distance / distBetPoints)) : this;
+            return Math.Round(distBetPoints, 3) > 0 ? Add(Subtract(towardsPoint).Multiply(distance / distBetPoints)) : this;
         }
     }
 }

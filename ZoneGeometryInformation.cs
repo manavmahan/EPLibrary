@@ -15,7 +15,8 @@ namespace IDFObjects
         public XYZList FloorPoints;
         public List<XYZList> CeilingPoints;
         public int Level;
-        public Dictionary<Line, string> WallCreationData = new Dictionary<Line, string>();
+        public List<string> WallCreationDataKey = new List<string>();
+        public List<Line> WallCreationDataValue = new List<Line>();
         public ZoneGeometryInformation() { }
     }
 }

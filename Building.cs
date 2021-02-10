@@ -884,7 +884,7 @@ namespace IDFObjects
                         OutsideCondition = "Adiabatic"
                     };
                 
-                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationData, zoneInfo.CeilingPoints);
+                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationDataKey, zoneInfo.WallCreationDataValue, zoneInfo.CeilingPoints);
                 zoneInfo.CeilingPoints.ForEach(c =>
                 {
                     if (zoneInfo.Level == parameters.Geometry.NFloors - 1)
