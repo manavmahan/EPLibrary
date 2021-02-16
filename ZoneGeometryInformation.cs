@@ -13,7 +13,8 @@ namespace IDFObjects
         public string Name;
         public double Height;
         public XYZList FloorPoints;
-        public List<XYZList> CeilingPoints;
+        public List<XYZList> CeilingPoints = new List<XYZList>();
+        public List<XYZList> RoofPoints = new List<XYZList>();
         public int Level;
         public List<string> WallCreationDataKey = new List<string>();
         public List<Line> WallCreationDataValue = new List<Line>();

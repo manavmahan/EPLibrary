@@ -298,17 +298,23 @@ namespace IDFObjects
                     XYZList flPointList = new XYZList(floorPoints);
                     flPointList.RemoveCollinearPoints();
                     zInfo.FloorPoints = flPointList.ChangeZValue(floors[f].xyzs.First().Z);
-                    List<XYZList> ceilings = new List<XYZList>();
+                    List<XYZList> ceilingOrRoof = new List<XYZList>();
                     try
                     {
-                        ceilings = new List<XYZList>() { floors[f + 1] };                        
+                        zInfo.CeilingPoints = new List<XYZList>() { floors[f + 1] };                        
                     }
                     catch
                     {
-                        ceilings = roofs;
+                        ceilingOrRoof = roofs;
                     }
-                    zInfo.CeilingPoints = ceilings.Select(c=>
+                    List<XYZList> rOrc = ceilingOrRoof.Select(c =>
                         new XYZList(flPointList.xyzs.Select(p => p.GetVerticalProjection(c)).ToList())).ToList();
+
+                    if (f != floors.Count - 1)
+                        zInfo.CeilingPoints = rOrc;
+                    else
+                        zInfo.RoofPoints = rOrc;
+
                     zInfo.Level = f;
                     zInfo.Height = zInfo.CeilingPoints.SelectMany(ro => ro.xyzs.Select(p => p.Z)).Average() - zInfo.FloorPoints.xyzs.First().Z;
                     zoneInfoList.Add(zInfo);
@@ -617,12 +623,14 @@ namespace IDFObjects
         {
             return point.ChangeZValue(face.xyzs.First().Z);
         }
-        public static void CreateZoneWalls(Zone z, List<string> wallDataKey, List<Line> wallDataValue, List<XYZList> ceilings)
+        public static void CreateZoneWalls(Zone z, List<string> wallDataKey, List<Line> wallDataValue, List<XYZList> ceilings, List<XYZList> roofs)
         {
             for (int i=0; i<wallDataKey.Count;i++)
             {
+                List<XYZList> roofCeilings = new List<XYZList>();
+                roofCeilings.AddRange(ceilings); roofCeilings.AddRange(roofs);
                 XYZ p1 = wallDataValue[i].P0, p2 = wallDataValue[i].P1,
-                    p3 = p2.GetVerticalProjection(ceilings), p4 = p1.GetVerticalProjection(ceilings);
+                    p3 = p2.GetVerticalProjection(roofCeilings), p4 = p1.GetVerticalProjection(roofCeilings);
                 XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
                 double area = p1.DistanceTo(p2) * p2.DistanceTo(p3);
                 Surface wall = new Surface(z, wallPoints, area, SurfaceType.Wall);

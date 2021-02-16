@@ -848,15 +848,23 @@ namespace IDFObjects
             }
             remove.ForEach(z => ZoneLists.Remove(z));
         }
-        public void AssignFloorCeilingAsRoof(Surface FloorCeiling, XYZList SLoop)
+        public bool intialised = false;
+        public void MergeFloorCeiligs()
         {
-            if (Utility.IsFLoopInsideSLoop(FloorCeiling.VerticesList, SLoop))
+            List<Surface> ceilings = zones.Select(z => z.Surfaces.First(s => s.surfaceType == SurfaceType.Ceiling)).ToList();
+            foreach(Zone z in zones.Where(z => z.Level != 0))
             {
-                FloorCeiling.ConstructionName = "Roof";
-                FloorCeiling.OutsideCondition = "Adiabatic";
+                Surface fl = z.Surfaces.First(s => s.surfaceType == SurfaceType.Floor);
+                if (ceilings.Any(c => c.VerticesList == fl.VerticesList))
+                {
+                    fl.OutsideCondition = "Zone";
+                    fl.OutsideObject = ceilings.First(c => c.VerticesList == fl.VerticesList).ZoneName;
+                    Surface remove = ceilings.First(c => c.VerticesList == fl.VerticesList);
+                    fl.OutsideObject = remove.ZoneName;
+                    zones.First(zl => zl.Name == remove.ZoneName).Surfaces.Remove(remove);
+                }
             }
         }
-        public bool intialised = false;
         public void InitialiseBuilding(List<ZoneGeometryInformation> zonesInformation, 
            BuildingDesignParameters parameters, Location location, double offsetDistance)
         {
@@ -884,14 +892,10 @@ namespace IDFObjects
                         OutsideCondition = "Adiabatic"
                     };
                 
-                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationDataKey, zoneInfo.WallCreationDataValue, zoneInfo.CeilingPoints);
-                zoneInfo.CeilingPoints.ForEach(c =>
-                {
-                    if (zoneInfo.Level == parameters.Geometry.NFloors - 1)
-                        new Surface(zone, c, c.CalculateArea(), SurfaceType.Roof);
-                    else
-                        new Surface(zone, c, c.CalculateArea(), SurfaceType.Ceiling);                       
-                });
+                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationDataKey, zoneInfo.WallCreationDataValue, zoneInfo.CeilingPoints, zoneInfo.RoofPoints);
+                zoneInfo.CeilingPoints.ForEach(c => new Surface(zone, c, c.CalculateArea(), SurfaceType.Ceiling));
+                zoneInfo.RoofPoints.ForEach(c => new Surface(zone, c, c.CalculateArea(), SurfaceType.Roof));
+                
                 zone.CreateDaylighting(500);
                 AddZone(zone);
                 try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }

@@ -93,10 +93,8 @@ namespace IDFObjects
         {
             Area = area;
             GrossArea = area;
-
             VerticesList = verticesList;
             this.surfaceType = surfaceType;
-
             switch (this.surfaceType)
             {
                 case (SurfaceType.Floor):

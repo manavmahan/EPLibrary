@@ -12,7 +12,8 @@ namespace IDFObjects
         public double X = 0, Y = 0, Z = 0;
         public XYZ() { }
         public XYZ(double x, double y, double z) { X = Math.Round(x,5); Y = Math.Round(y,5); Z = Math.Round(z,5); }
-        public XYZ(double[] point) { X = point[0]; Y = point[1]; Z = point[2]; }
+        public XYZ(double x, double y) { X = Math.Round(x, 5); Y = Math.Round(y, 5); Z = 0; }
+        public XYZ(double[] point) { new XYZ(point[0], point[1], point[2]); }
         public XYZ Subtract(XYZ newXYZ) { return new XYZ(X - newXYZ.X, Y - newXYZ.Y, Z - newXYZ.Z); }
         public XYZ Transform(double angle)
         {
@@ -23,7 +24,7 @@ namespace IDFObjects
         }
         public bool Equals(XYZ point1)
         {
-            return X==point1.X && Y == point1.Y && Z == point1.Z;
+            return Math.Round(X - point1.X, 1) == 0 && Math.Round(Y - point1.Y, 1) == 0 && Math.Round(Z - point1.Z, 1) == 0;
         }
         public bool EqualsExceptZ(XYZ point1)
         {
@@ -31,7 +32,7 @@ namespace IDFObjects
         }
         public bool IsAlmostEqual(XYZ point1)
         {
-            return (Math.Round(X-point1.X,1) ==0 && Math.Round(Y-point1.Y,1)==0 && Math.Round(Z-point1.Z,1)==0);
+            return Math.Round(X-point1.X,1) ==0 && Math.Round(Y-point1.Y,1)==0 && Math.Round(Z-point1.Z,1)==0;
         }
         public override int GetHashCode()
         {

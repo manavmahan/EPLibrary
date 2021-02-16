@@ -8,11 +8,47 @@ using System.Windows.Forms;
 namespace IDFObjects
 {
     [Serializable]
-    public class XYZList
+    public class XYZList : IEquatable<XYZList>
     {
         public List<XYZ> xyzs;
         public XYZList() { }
-        
+        public bool Equals(XYZList loop)
+        {
+            RemoveCollinearPoints();
+            loop.RemoveCollinearPoints();
+            if (xyzs.Count != loop.xyzs.Count)
+                return false;
+            else
+            {
+                int overLaps = 0;
+                foreach (XYZ p in loop.xyzs)
+                {
+                    if (xyzs.Any(p1=>p1==p))
+                        overLaps++;
+                }
+                return overLaps == xyzs.Count;
+            }
+        }
+        public override int GetHashCode()
+        {
+            return xyzs.Select(p=>p.GetHashCode()).Sum();
+        }
+        public void OrientLoop(int n)
+        {
+            List<XYZ> xYZs = new List<XYZ>();         
+            for (int i=n; i<n+xyzs.Count;i++)
+            {
+                try
+                {
+                    xYZs.Add(xyzs[n]);
+                }
+                catch
+                {
+                    xYZs.Add(xyzs[n-xyzs.Count]);
+                }
+            }
+            xyzs = xYZs;
+        }
         public void RemoveCollinearPoints()
         {
             List<Line> Edges = Utility.GetExternalEdges(xyzs);
