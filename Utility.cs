@@ -301,7 +301,7 @@ namespace IDFObjects
                     List<XYZList> ceilingOrRoof = new List<XYZList>();
                     try
                     {
-                        zInfo.CeilingPoints = new List<XYZList>() { floors[f + 1] };                        
+                        ceilingOrRoof = new List<XYZList>() { floors[f + 1] };                        
                     }
                     catch
                     {
@@ -316,7 +316,9 @@ namespace IDFObjects
                         zInfo.RoofPoints = rOrc;
 
                     zInfo.Level = f;
-                    zInfo.Height = zInfo.CeilingPoints.SelectMany(ro => ro.xyzs.Select(p => p.Z)).Average() - zInfo.FloorPoints.xyzs.First().Z;
+
+                    zInfo.Height =
+                        rOrc.SelectMany(ro => ro.xyzs.Select(p => p.Z)).Average() - zInfo.FloorPoints.xyzs.First().Z;
                     zoneInfoList.Add(zInfo);
                 }
             }
