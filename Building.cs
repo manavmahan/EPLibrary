@@ -870,6 +870,12 @@ namespace IDFObjects
         {
             if (zonesInformation == null)
             {
+                if (FloorPoints == null || FloorPoints.Count == 0)
+                {
+                    FloorPoints = Utility.GetRange(0, Parameters.Geometry.NFloors).Select(i =>
+                                                    GroundPoints.ChangeZValue(i * Parameters.Geometry.Height)).ToList();
+                    RoofPoints = new List<XYZList>() { GroundPoints.ChangeZValue(Parameters.Geometry.Height * Parameters.Geometry.NFloors + 1) };
+                }
                 zonesInformation = Utility.GetZoneGeometryInformation(Utility.GetAllRooms(FloorPoints[0].xyzs, offsetDistance, parameters.ZConditions.First().Name),
                     FloorPoints, RoofPoints);
             }

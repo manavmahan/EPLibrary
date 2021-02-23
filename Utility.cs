@@ -1,22 +1,14 @@
-﻿using System;
+﻿using DocumentFormat.OpenXml.Wordprocessing;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
-using System.Windows.Forms;
-using System.Xml.Linq;
-using DocumentFormat.OpenXml.Bibliography;
-using DocumentFormat.OpenXml.Drawing.Charts;
-using DocumentFormat.OpenXml.Wordprocessing;
-using Microsoft.JScript;
-using Newtonsoft.Json;
 using Formatting = Newtonsoft.Json.Formatting;
 
 namespace IDFObjects
@@ -76,6 +68,15 @@ namespace IDFObjects
     }
     public static class Utility
     {
+        public static List<int> GetRange(int n1, int n2)
+        {
+            List<int> r = new List<int>();
+            for (int i = n1; i < n2; i++)
+            {
+                r.Add(i);
+            }
+            return r;
+        }
         public static List<XYZList> FindTopRoof(List<XYZList> allRoofs)
         {
             double topRoofBase = 0;

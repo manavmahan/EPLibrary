@@ -113,7 +113,7 @@
     <Compile Include="ProbabilisticBuildingDesignParameters.cs" />
     <Compile Include="ProbabilisticBuildingGeometry.cs" />
     <Compile Include="ProbabilisticBuildingService.cs" />
-    <Compile Include="ShapeData.cs" />
+    <Compile Include="CSVShapeData.cs" />
     <Compile Include="Surface.cs" />
     <Compile Include="ChilledWaterLoop.cs" />
     <Compile Include="Chiller.cs" />

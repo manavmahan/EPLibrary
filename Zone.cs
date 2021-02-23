@@ -124,10 +124,11 @@ namespace IDFObjects
         {
             h_wallwindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").
                 Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
-            h_gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").
-                Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
-            h_roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).
-                Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
+            h_gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground")==null? new double[8760]:
+                Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
+            
+            h_roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof) == null ? new double[8760] :
+                Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
             h_SolarRadiation = Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f =>  f.h_SolarRadiation.MultiplyBy(f.Area)).ToList().AddArrayElementWise();
 
             try

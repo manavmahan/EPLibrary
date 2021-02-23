@@ -29,7 +29,7 @@ namespace IDFObjects
         }
         public string ToString(string time)
         {
-            if (time == "monthly") 
+            if (time == "Monthly") 
             {
                 return string.Join(",", 
                     ZoneHeatingLoadMonthly.ToCSVString(), 
@@ -39,7 +39,7 @@ namespace IDFObjects
                     OperationalEnergyMonthly.ToCSVString(), 
                     EUIMonthly.ToCSVString()) ;
             }
-            if (time == "hourly")
+            if (time == "Hourly")
             {
                 return string.Join(",",
                     ZoneHeatingLoadHourly.ToCSVString(),

@@ -20,9 +20,9 @@ namespace IDFObjects
         }
         public string ToString(string time)
         {
-            if (time == "monthly") 
+            if (time == "Monthly") 
                 return string.Join(",", HeatingLoadMonthly.ToCSVString(), CoolingLoadMonthly.ToCSVString(), LightsLoadMonthly.ToCSVString());
-            if (time == "hourly")
+            if (time == "Hourly")
                 return string.Join(",", HeatingLoadHourly.ToCSVString(), CoolingLoadHourly.ToCSVString(), LightsLoadHourly.ToCSVString()); 
             return string.Join(",", HeatingLoad, CoolingLoad, LightsLoad);
         }
