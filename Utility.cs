@@ -1188,8 +1188,7 @@ namespace IDFObjects
                         strData = new List<string>() { "1,25,2,1,WinterDesignDay, Yes, Yes;" }
                     };
                     return new List<SizingPeriodDesignDay>() { sdd, wdd };
-            }
-            
+            }       
         }
     }
 }

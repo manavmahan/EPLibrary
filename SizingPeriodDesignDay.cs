@@ -64,10 +64,8 @@ namespace IDFObjects
             this.name = name;
             this.strData = strData;
         }
-
         public List<string> WriteInfo()
-        {
-           
+        {      
             List<string> info = new List<string>();
             if (strData != null)
             {
@@ -107,6 +105,5 @@ namespace IDFObjects
             }
             return info;
         }
-
     }
 }
