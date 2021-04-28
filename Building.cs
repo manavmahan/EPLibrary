@@ -566,7 +566,6 @@ namespace IDFObjects
         public Building() { }
         public void AssociateEnergyResultsAnnual(Dictionary<string, double[]> data)
         {
-            //exception for using ML predictions
             try
             {
                 List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
@@ -575,15 +574,18 @@ namespace IDFObjects
                     surf.HeatFlow = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper()) && s.Contains("Surface Inside Face Conduction Heat Transfer Rate"))].Average();
                     if (surf.OutsideCondition == "Outdoors")
                     {
+                        surf.SolarRadiation = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper())
+                                                && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area")
+                                                && !s.Contains("WINDOW"))].Average() * surf.Area;
                         if (surf.Fenestrations != null && surf.Fenestrations.Count != 0)
                         {
                             Fenestration win = surf.Fenestrations[0];
-                            win.SolarRadiation = data[data.Keys.First(a => a.Contains(win.Name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))].Average();
-                            surf.HeatFlow += data[data.Keys.First(s => s.Contains(win.Name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Rate"))].Average();
-                        }
-                        surf.SolarRadiation = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))].Average();
-                    }
-                    
+                            win.SolarRadiation = win.Area * data[data.Keys.First(a => a.Contains(win.Name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))].Average();
+                            win.HeatFlow = data[data.Keys.First(s => s.Contains(win.Name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Rate"))].Average();
+                            surf.HeatFlow += win.HeatFlow;
+                            surf.SolarRadiation += win.SolarRadiation;
+                        }                     
+                    }                  
                 }
             }
             catch { }
@@ -595,77 +597,38 @@ namespace IDFObjects
                 }
             }
             catch { }
-            if (data.First().Value.Length == 12)
+            EP = new EPBuilding()
             {
-                EP = new EPBuilding()
-                {
-                    ZoneHeatingLoadMonthly = zones.Select(z => z.EP.HeatingLoadMonthly.ToArray()).ToList().AddArrayElementWise(),
-                    ZoneCoolingLoadMonthly = zones.Select(z => z.EP.CoolingLoadMonthly.ToArray()).ToList().AddArrayElementWise(),
-                    ZoneLightsLoadMonthly = zones.Select(z => z.EP.LightsLoadMonthly.ToArray()).ToList().AddArrayElementWise(),
-                };
-                double[] BoilerEnergy = new double[12], ChillerEnergy = new double[12], TowerEnergy = new double[12], HeatPumpEnergy = new double[12];
-                
-                if (data.Keys.Any(k=>k.Contains("Boiler")))
-                    BoilerEnergy = data[data.Keys.First(a => a.Contains("Boiler"))].ConvertKWhfromJoule(); 
-                if (data.Keys.Any(k=>k.Contains("Chiller")))
-                    ChillerEnergy = data[data.Keys.First(a => a.Contains("Chiller"))].ConvertKWhfromJoule();
-                if (data.Keys.Any(k => k.Contains("Cooling Tower")))
-                    TowerEnergy = data[data.Keys.First(a => a.Contains("Cooling Tower"))].ConvertKWhfromJoule();
-                if (data.Keys.Any(k => k.Contains("Heat Pump")))
-                    TowerEnergy = data.Keys.Where(a => a.Contains("Heat Pump")).Select(k=>data[k]).ToList().AddArrayElementWise().ConvertKWhfromJoule();
-                
-                EP.ThermalEnergyMonthly = new List<double[]> { BoilerEnergy, ChillerEnergy, TowerEnergy, HeatPumpEnergy }.AddArrayElementWise();
-                EP.OperationalEnergyMonthly = new List<double[]>() { EP.ThermalEnergyMonthly, EP.ZoneLightsLoadMonthly.ConvertKWhafromWm() }
-                                    .AddArrayElementWise(); 
-                if (data.Keys.Any(k => k.Contains("Thermal Energy")))
-                {
-                    EP.ThermalEnergyMonthly = data[data.Keys.First(a => a.Contains("Thermal Energy"))];
-                    EP.OperationalEnergyMonthly = new List<double[]>() { EP.ThermalEnergyMonthly, EP.ZoneLightsLoadMonthly.ConvertKWhafromWm() }
-                                    .AddArrayElementWise();
-                }
-                if (data.Keys.Any(k => k.Contains("Operational Energy")))
-                {
-                    EP.OperationalEnergyMonthly = data[data.Keys.First(a => a.Contains("Operational Energy"))];
-                    EP.ThermalEnergyMonthly = EP.OperationalEnergyMonthly.SubtractArrayElementWise(EP.ZoneLightsLoadMonthly.ConvertKWhafromW());
-                }
-                EP.EUIMonthly = EP.OperationalEnergyMonthly.MultiplyBy(1/zones.Select(z => z.Area).Sum());
-                EP.SumAverageMonthlyValues();
-            }
-            else
+                ZoneHeatingLoad = zones.Select(z => z.EP.HeatingLoad).Sum(),
+                ZoneCoolingLoad = zones.Select(z => z.EP.CoolingLoad).Sum(),
+                ZoneLightsLoad = zones.Select(z => z.EP.LightsLoad).Sum()
+            };
+            double BoilerEnergy = 0, ChillerEnergy = 0, TowerEnergy = 0, HeatPumpEnergy = 0;
+
+            if (data.Keys.Any(k => k.Contains("Boiler")))
+                BoilerEnergy = data[data.Keys.First(a => a.Contains("Boiler"))].Sum().ConvertKWhfromJoule();
+            if (data.Keys.Any(k => k.Contains("Chiller")))
+                ChillerEnergy = data[data.Keys.First(a => a.Contains("Chiller"))].Sum().ConvertKWhfromJoule();
+            if (data.Keys.Any(k => k.Contains("Cooling Tower")))
+                TowerEnergy = data[data.Keys.First(a => a.Contains("Cooling Tower"))].Sum().ConvertKWhfromJoule();
+            if (data.Keys.Any(k => k.Contains("Heat Pump")))
+                HeatPumpEnergy = data.Keys.Where(a => a.Contains("Heat Pump")).SelectMany(k => data[k]).Sum().ConvertKWhfromJoule();
+
+            EP.ThermalEnergy = BoilerEnergy + ChillerEnergy + TowerEnergy + HeatPumpEnergy;
+            EP.OperationalEnergy = EP.ThermalEnergy + EP.ZoneLightsLoad.ConvertKWhafromW();
+
+            if (data.Keys.Any(k => k.Contains("Thermal Energy")))
             {
-                EP = new EPBuilding()
-                {
-                    ZoneHeatingLoad = zones.Select(z => z.EP.HeatingLoad).Sum(),
-                    ZoneCoolingLoad = zones.Select(z => z.EP.CoolingLoad).Sum(),
-                    ZoneLightsLoad = zones.Select(z => z.EP.LightsLoad).Sum()          
-                };
-                double BoilerEnergy = 0, ChillerEnergy = 0, TowerEnergy = 0, HeatPumpEnergy =0;
-
-                if (data.Keys.Any(k => k.Contains("Boiler")))
-                    BoilerEnergy = data[data.Keys.First(a => a.Contains("Boiler"))].Sum().ConvertKWhfromJoule();
-                if (data.Keys.Any(k => k.Contains("Chiller")))
-                    ChillerEnergy = data[data.Keys.First(a => a.Contains("Chiller"))].Sum().ConvertKWhfromJoule();
-                if (data.Keys.Any(k => k.Contains("Cooling Tower")))
-                    TowerEnergy = data[data.Keys.First(a => a.Contains("Cooling Tower"))].Sum().ConvertKWhfromJoule();
-                if (data.Keys.Any(k => k.Contains("Heat Pump")))
-                    TowerEnergy = data.Keys.Where(a => a.Contains("Heat Pump")).SelectMany(k => data[k]).Sum().ConvertKWhfromJoule();
-
-                EP.ThermalEnergy = BoilerEnergy + ChillerEnergy + TowerEnergy + HeatPumpEnergy;
-                EP.OperationalEnergy = EP.ThermalEnergy + EP.ZoneLightsLoad.ConvertKWhafromWm();
-
-                if (data.Keys.Any(k => k.Contains("Thermal Energy"))) 
-                {
-                    EP.ThermalEnergy = data[data.Keys.First(a => a.Contains("Thermal Energy"))].Sum();
-                    EP.OperationalEnergy = EP.ThermalEnergy + EP.ZoneLightsLoad.ConvertKWhafromWm();
-                }
-
-                if (data.Keys.Any(k => k.Contains("Operational Energy")))
-                {
-                    EP.OperationalEnergy = data[data.Keys.First(a => a.Contains("Operational Energy"))].Sum();
-                    EP.ThermalEnergy = EP.OperationalEnergy - EP.ZoneLightsLoad.ConvertKWhafromW();
-                }             
-                EP.EUI = EP.OperationalEnergy / zones.Select(z => z.Area).Sum();
+                EP.ThermalEnergy = data[data.Keys.First(a => a.Contains("Thermal Energy"))].Sum();
+                EP.OperationalEnergy = EP.ThermalEnergy + EP.ZoneLightsLoad.ConvertKWhafromW();
             }
+
+            if (data.Keys.Any(k => k.Contains("Operational Energy")))
+            {
+                EP.OperationalEnergy = data[data.Keys.First(a => a.Contains("Operational Energy"))].Sum();
+                EP.ThermalEnergy = EP.OperationalEnergy - EP.ZoneLightsLoad.ConvertKWhafromW();
+            }
+            EP.EUI = EP.OperationalEnergy / zones.Select(z => z.Area).Sum();
         }
 
         public void AssociateEnergyResultsHourly(Dictionary<string, double[]> data)

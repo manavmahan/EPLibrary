@@ -13,10 +13,10 @@ namespace IDFObjects
     [Serializable]
     public class ProbabilisticBuildingDesignParameters
     {
-        public ProbabilisticBuildingGeometry pGeometry;
-        public ProbabilisticBuildingConstruction pConstruction;
-        public ProbabilisticBuildingWWR pWWR ;
-        public ProbabilisticBuildingService pService ;
+        public ProbabilisticBuildingGeometry pGeometry = new ProbabilisticBuildingGeometry();
+        public ProbabilisticBuildingConstruction pConstruction = new ProbabilisticBuildingConstruction();
+        public ProbabilisticBuildingWWR pWWR=new ProbabilisticBuildingWWR();
+        public ProbabilisticBuildingService pService=new ProbabilisticBuildingService();
         public List<ProbabilisticZoneConditions> zConditions =  new List<ProbabilisticZoneConditions>();       
         public ProbabilisticBuildingDesignParameters() { }
         public BuildingDesignParameters GetAverage()

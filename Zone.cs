@@ -31,7 +31,7 @@ namespace IDFObjects
         public double totalWallArea, totalWindowArea, totalGFloorArea, totalRoofArea, totalIFloorArea, totalIWallArea, 
             totalIFloorAreaExOther, totalIWallAreaExOther, 
             TotalHeatCapacity, TotalHeatCapacityDeDuplicatingIntSurfaces,            
-            wallWindowHeatFlow, gFloorHeatFlow, roofHeatFlow, infiltrationFlow, 
+            WallHeatFlow,WindowHeatFlow,wallWindowHeatFlow, gFloorHeatFlow, roofHeatFlow, infiltrationFlow, 
             SolarRadiation;
 
         public double[] h_wallwindowHeatFlow, h_windowHeatFlow, h_gFloorHeatFlow, h_roofHeatFlow, h_infiltrationFlow, h_SolarRadiation;
@@ -86,7 +86,15 @@ namespace IDFObjects
         }
         public void AssociateEnergyResultsAnnual(Dictionary<string, double[]> resultsDF)
         {
+            WindowHeatFlow = 0;
             wallWindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.HeatFlow).Sum();
+            try
+            {
+                WindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors" && w.Fenestrations.Count > 0)
+                    .SelectMany(s => s.Fenestrations).Select(w => w.HeatFlow).Sum();
+            }
+            catch { }
+            WallHeatFlow = wallWindowHeatFlow - WindowHeatFlow;
             gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.HeatFlow).Sum();
             roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.HeatFlow).Sum();
             SolarRadiation = Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f => f.Area * f.SolarRadiation).Sum();
