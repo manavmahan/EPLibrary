@@ -13,19 +13,19 @@ namespace IDFObjects
         public string Name, ZoneName, scheduleName;
 
         public string designLevelCalcMeth { get; set; }
-        //public double lightingLevel { get; set; }
-        public double wattsPerArea { get; set; }
+        //public float lightingLevel { get; set; }
+        public float wattsPerArea { get; set; }
 
-        public double fractionLatent { get; set; }
-        public double fractionRadiant { get; set; }
-        public double fractionLost { get; set; }
+        public float fractionLatent { get; set; }
+        public float fractionRadiant { get; set; }
+        public float fractionLost { get; set; }
 
-        public ElectricEquipment(double wPA)
+        public ElectricEquipment(float wPA)
         {
             wattsPerArea = wPA;
             designLevelCalcMeth = "Watts/area";
             scheduleName = "Electric Equipment and Lighting Schedule";
-            fractionRadiant = 0.1;
+            fractionRadiant = 0.1f;
         }
         public List<string> WriteInfo()
         {

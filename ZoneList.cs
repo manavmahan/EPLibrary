@@ -32,39 +32,39 @@ namespace IDFObjects
             Schedules = new List<ScheduleCompact>();
             int[] vals= Conditions.GetStartEndTime(13);
             int hour1 = vals[0], minutes1 = vals[1], hour2 = vals[2], minutes2 = vals[3];
-            double[] heatingSetPoints = new double[]
+            float[] heatingSetPoints = new float[]
             {
                 Conditions.HeatingSetpoint,
                 Conditions.HeatingSetpoint - 5
             };
 
-            double[] coolingSetPoints = new double[]
+            float[] coolingSetPoints = new float[]
             {
                 Conditions.CoolingSetpoint,
                 Conditions.CoolingSetpoint + 5
             };
 
-            double heatingSetpoint1 = heatingSetPoints[0];
-            double heatingSetpoint2 = heatingSetPoints[1];
+            float heatingSetpoint1 = heatingSetPoints[0];
+            float heatingSetpoint2 = heatingSetPoints[1];
 
-            double coolingSetpoint1 = coolingSetPoints[0];
-            double coolingSetpoint2 = coolingSetPoints[1];
+            float coolingSetpoint1 = coolingSetPoints[0];
+            float coolingSetpoint2 = coolingSetPoints[1];
 
             //60 minutes earlier
             int hour1b = hour1 - 1;
             int minutes1b = minutes1;
 
-            Dictionary<string, Dictionary<string, double>> heatSP = new Dictionary<string, Dictionary<string, double>>(),
-                coolSP = new Dictionary<string, Dictionary<string, double>>(),
-                heatSP18 = new Dictionary<string, Dictionary<string, double>>(),
-                occupancyS = new Dictionary<string, Dictionary<string, double>>(),
-                ventilS = new Dictionary<string, Dictionary<string, double>>(),
-                leHeatGain = new Dictionary<string, Dictionary<string, double>>();
+            Dictionary<string, Dictionary<string, float>> heatSP = new Dictionary<string, Dictionary<string, float>>(),
+                coolSP = new Dictionary<string, Dictionary<string, float>>(),
+                heatSP18 = new Dictionary<string, Dictionary<string, float>>(),
+                occupancyS = new Dictionary<string, Dictionary<string, float>>(),
+                ventilS = new Dictionary<string, Dictionary<string, float>>(),
+                leHeatGain = new Dictionary<string, Dictionary<string, float>>();
 
             string days1 = "WeekDays SummerDesignDay WinterDesignDay CustomDay1 CustomDay2";
             string days2 = "Weekends Holiday";
 
-            Dictionary<string, double> heatSPV1 = new Dictionary<string, double>(), heatSPV2 = new Dictionary<string, double>();
+            Dictionary<string, float> heatSPV1 = new Dictionary<string, float>(), heatSPV2 = new Dictionary<string, float>();
             heatSPV1.Add(hour1b + ":" + minutes1b, heatingSetpoint2);
             heatSPV1.Add(hour2 + ":" + minutes2, heatingSetpoint1);
             heatSPV1.Add("24:00", heatingSetpoint2);
@@ -77,7 +77,7 @@ namespace IDFObjects
                 daysTimeValue = heatSP
             };
 
-            Dictionary<string, double> coolSPV1 = new Dictionary<string, double>(), coolSPV2 = new Dictionary<string, double>();
+            Dictionary<string, float> coolSPV1 = new Dictionary<string, float>(), coolSPV2 = new Dictionary<string, float>();
             coolSPV1.Add(hour1b + ":" + minutes1b, coolingSetpoint2);
             coolSPV1.Add(hour2 + ":" + minutes2, coolingSetpoint1);
             coolSPV1.Add("24:00", coolingSetpoint2);
@@ -90,7 +90,7 @@ namespace IDFObjects
                 daysTimeValue = coolSP
             };
 
-            Dictionary<string, double> occupV1 = new Dictionary<string, double>(), occupV2 = new Dictionary<string, double>();
+            Dictionary<string, float> occupV1 = new Dictionary<string, float>(), occupV2 = new Dictionary<string, float>();
             occupV1.Add(hour1 + ":" + minutes1, 0);
             occupV1.Add(hour2 + ":" + minutes2, 1);
             occupV1.Add("24:00", 0);
@@ -103,7 +103,7 @@ namespace IDFObjects
                 daysTimeValue = occupancyS
             };
 
-            Dictionary<string, double> ventilV1 = new Dictionary<string, double>(), ventilV2 = new Dictionary<string, double>();
+            Dictionary<string, float> ventilV1 = new Dictionary<string, float>(), ventilV2 = new Dictionary<string, float>();
             ventilV1.Add(hour1 + ":" + minutes1, 0);
             ventilV1.Add(hour2 + ":" + minutes2, 1);
             ventilV1.Add("24:00", 0);
@@ -116,8 +116,8 @@ namespace IDFObjects
                 daysTimeValue = ventilS
             };
             
-            double equipOffsetFraction = .1;
-            Dictionary<string, double> lehgV1 = new Dictionary<string, double>(), lehgV2 = new Dictionary<string, double>();
+            float equipOffsetFraction = .1f;
+            Dictionary<string, float> lehgV1 = new Dictionary<string, float>(), lehgV2 = new Dictionary<string, float>();
             lehgV1.Add(hour1 + ":" + minutes1, equipOffsetFraction);
             lehgV1.Add(hour2 + ":" + minutes2, 1);
             lehgV1.Add("24:00", equipOffsetFraction);
@@ -139,8 +139,8 @@ namespace IDFObjects
             ScheduleCompact activity = new ScheduleCompact()
             {
                 name = Name + "_ActivitySchedule",
-                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
-                    { "AllDays", new Dictionary<string, double>() {{"24:00", 125} } } }
+                daysTimeValue = new Dictionary<string, Dictionary<string, float>>() {
+                    { "AllDays", new Dictionary<string, float>() {{"24:00", 125} } } }
             };
 
             Schedules.Add(heatingSP);
@@ -156,7 +156,7 @@ namespace IDFObjects
             List<Zone> zones = building.zones.Where(z => ZoneNames.Contains(z.Name)).ToList();
             zones.Where(z => z.DayLightControl != null).ToList().ForEach(z => z.DayLightControl.AvailabilitySchedule = Schedules.First(s=>s.name.Contains("Occupancy")).name);
         }
-        public void CreateVentialtionNatural(double coolingSP)
+        public void CreateVentialtionNatural(float coolingSP)
         {
             ZoneVentilationNatural = new ZoneVentilation()
             {
@@ -165,7 +165,7 @@ namespace IDFObjects
                 VentilationType = "Natural",
                 airChangesHour = 2,
                 minIndoorTemp = 23,
-                maxIndoorTemp = coolingSP-.1,
+                maxIndoorTemp = coolingSP-.1f,
                 scheduleName = Schedules.First(s => s.name.Contains("Ventilation")).name,
             };
         }

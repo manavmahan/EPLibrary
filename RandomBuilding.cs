@@ -15,8 +15,8 @@ namespace IDFObjects
         public GridPoint StartPoint;
         public List<GridPoint> BuildingGrid;
 
-        public double EdgeSize;
-        public double Area;
+        public float EdgeSize;
+        public float Area;
         public int RequiredGridPoints;
 
         public List<GridPoint> AllowedPoints = new List<GridPoint>();
@@ -24,7 +24,7 @@ namespace IDFObjects
         List<List<GridPoint>> Edges, Loop; public List<IDFObjects.XYZ> ScaledLoop;
         
         public RandomBuilding() { }
-        public RandomBuilding(double area, double minimumEdgeLength, double maxEdgeLength, int maxBoxes, XYZList SitePoints, double Orientation, Random random)
+        public RandomBuilding(float area, float minimumEdgeLength, float maxEdgeLength, int maxBoxes, XYZList SitePoints, float Orientation, Random random)
         {
             int minPoints = (int) Math.Ceiling(area / (maxEdgeLength * maxEdgeLength));
             int maxPoints = (int) Math.Floor(area / (minimumEdgeLength * minimumEdgeLength));
@@ -34,32 +34,33 @@ namespace IDFObjects
 
             RequiredGridPoints = Math.Min(maxBoxes, RequiredGridPoints);
 
-            EdgeSize = Math.Round(Math.Sqrt(area / RequiredGridPoints),2);
+            EdgeSize = (float) Math.Round(Math.Sqrt(area / RequiredGridPoints),2);
             
             XYZList sPoints = IDFObjects.Utility.DeepClone(SitePoints);
             sPoints.Transform(-Orientation); 
             
-            List<XYZ> scSitePoints = sPoints.xyzs.Select(x => new XYZ(x.X / EdgeSize, x.Y / EdgeSize, x.Z)).ToList();
-            scSitePoints = Utility.GetOffset(scSitePoints, 0.5*Math.Sqrt(2));
+            List<XYZ> scSitePoints = Utility.GetOffset(sPoints.xyzs, 0.5f * EdgeSize * (float) Math.Cos(2));
+            scSitePoints = sPoints.xyzs.Select(x => new XYZ(x.X / EdgeSize, x.Y / EdgeSize, x.Z)).ToList();
+            
 
-            double minX = scSitePoints.Select(x => x.X).Min();
-            double maxX = scSitePoints.Select(x => x.X).Max();
-            double minY = scSitePoints.Select(x => x.Y).Min();
-            double maxY = scSitePoints.Select(x => x.Y).Max();
+            float minX = scSitePoints.Select(x => x.X).Min();
+            float maxX = scSitePoints.Select(x => x.X).Max();
+            float minY = scSitePoints.Select(x => x.Y).Min();
+            float maxY = scSitePoints.Select(x => x.Y).Max();
             List<Line> SiteEdges = IDFObjects.Utility.GetExternalEdges(scSitePoints);
 
             Area = RequiredGridPoints * EdgeSize * EdgeSize;
-            double d = 0.1;
+            float d = 0.1f;
             List<List<GridPoint>> aPoints = new List<List<GridPoint>>();
 
-            for (double xd = 0; xd < 1; xd += d)
+            for (float xd = 0; xd < 1; xd += d)
             {
-                for (double yd = 0; yd < 1; yd += d)
+                for (float yd = 0; yd < 1; yd += d)
                 { 
                     List<GridPoint> a = new List<GridPoint>();
-                    for (double x = Math.Floor(minX-xd); x <= Math.Ceiling(maxX+xd); x++)
+                    for (float x = (float) Math.Floor(minX-xd); x <= Math.Ceiling(maxX+xd); x++)
                     {
-                        for (double y = Math.Floor(minY-yd); y <= Math.Ceiling(maxY+yd); y++)
+                        for (float y = (float) Math.Floor(minY-yd); y <= Math.Ceiling(maxY+yd); y++)
                         {
                             if (IDFObjects.Utility.PointInsideLoopExceptZ(SiteEdges, new XYZ(x, y, 0)))
                             {
@@ -79,17 +80,17 @@ namespace IDFObjects
 
         public GridPoint GetCenter(List<GridPoint> ps)
         {
-            List<double> ds = new List<double>();
+            List<float> ds = new List<float>();
             foreach (GridPoint p in ps)
             {
                 ds.Add( ps.Select(p1 => (p.x - p1.x) * (p.x - p1.x) + (p.y - p1.y) * (p.y - p1.y)).Sum());
             }
             return ps.ElementAt(ds.IndexOf(ds.Min()));
         }
-        public RandomBuilding(double area, int requiredGridPoints, double maxLength, double maxWidth, double minimumEdgeLength)
+        public RandomBuilding(float area, int requiredGridPoints, float maxLength, float maxWidth, float minimumEdgeLength)
         {
             RequiredGridPoints = requiredGridPoints;
-            EdgeSize = Math.Max(Math.Round(Math.Sqrt(area / requiredGridPoints)), minimumEdgeLength);
+            EdgeSize = (float) Math.Max(Math.Round(Math.Sqrt(area / requiredGridPoints)), minimumEdgeLength);
 
             RequiredGridPoints = (int)(area / (EdgeSize * EdgeSize));
             Area = RequiredGridPoints * EdgeSize * EdgeSize;
@@ -103,7 +104,7 @@ namespace IDFObjects
                 }
             }
             BuildingGrid = new List<GridPoint> { };
-            StartPoint = new GridPoint(Math.Ceiling((double)(maxX - minX) / 2), Math.Ceiling((double)(maxX - minX) / 2));
+            StartPoint = new GridPoint((float) Math.Ceiling((float)(maxX - minX) / 2), (float)Math.Ceiling((float)(maxX - minX) / 2));
             BuildingGrid.Add(StartPoint);
         }
         public bool GenerateBuilding(Random random)
@@ -206,22 +207,22 @@ namespace IDFObjects
                 item.GetAllNeighbours();
                 if (!(BuildingGrid.Contains(item.Left)))
                 {
-                    List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5, item.y - 0.5), new GridPoint(item.x - 0.5, item.y + 0.5) };
+                    List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5f, item.y - 0.5f), new GridPoint(item.x - 0.5f, item.y + 0.5f) };
                     Edges.Add(ToAdd);
                 }
                 if (!(BuildingGrid.Contains(item.Right)))
                 {
-                    List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x + 0.5, item.y - 0.5), new GridPoint(item.x + 0.5, item.y + 0.5) };
+                    List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x + 0.5f, item.y - 0.5f), new GridPoint(item.x + 0.5f, item.y + 0.5f) };
                     Edges.Add(ToAdd);
                 }
                 if (!(BuildingGrid.Contains(item.Up)))
                 {
-                    List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5, item.y + 0.5), new GridPoint(item.x + 0.5, item.y + 0.5) };
+                    List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5f, item.y + 0.5f), new GridPoint(item.x + 0.5f, item.y + 0.5f) };
                     Edges.Add(ToAdd);
                 }
                 if (!(BuildingGrid.Contains(item.Down)))
                 {
-                    List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5, item.y - 0.5), new GridPoint(item.x + 0.5, item.y - 0.5) };
+                    List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5f, item.y - 0.5f), new GridPoint(item.x + 0.5f, item.y - 0.5f) };
                     Edges.Add(ToAdd);
                 }
             }

@@ -14,7 +14,7 @@ namespace IDFObjects
     public class ProbabilityDistributionFunction
     {
         //'unif','triang','norm','lognorm'
-        public double Mean, VariationOrSD, Sensitivity;
+        public float Mean, VariationOrSD, Sensitivity;
         public string Label, Unit;
         public PDF Distribution;
         public ProbabilityDistributionFunction() { }
@@ -22,7 +22,7 @@ namespace IDFObjects
             Label = label;
             Unit = unit;
         }
-        public ProbabilityDistributionFunction(string label, string unit, double mean, double variation)
+        public ProbabilityDistributionFunction(string label, string unit, float mean, float variation)
         {
             Mean = mean; VariationOrSD = variation;
             Distribution = PDF.unif;
@@ -49,13 +49,13 @@ namespace IDFObjects
     }
 
     public class PDFValues{
-        public double Mean, VariationOrSD; public PDF Distribution;
+        public float Mean, VariationOrSD; public PDF Distribution;
 
         public PDFValues()
         {
 
         }
-        public PDFValues(double Mean, double VariationOrSD, PDF Distribution)
+        public PDFValues(float Mean, float VariationOrSD, PDF Distribution)
         {
             this.Mean = Mean;
             this.VariationOrSD = VariationOrSD;

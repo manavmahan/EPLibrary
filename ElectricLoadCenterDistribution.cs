@@ -12,7 +12,7 @@ namespace IDFObjects
         public string Name = "Electric Load Center";
         public ElectricLoadCenterGenerators GeneratorList;
         public string GeneratorOperationSchemeType = "DemandLimit";
-        public double DemandLimitSchemePurchasedElectricDemandLimit = 100000;
+        public float DemandLimitSchemePurchasedElectricDemandLimit = 100000;
         public string TrackScheduleNameSchemeScheduleName = " ";
         public string TrackMeterSchemeMeterName = " ";
         public string ElectricalBussType = "AlternatingCurrent";

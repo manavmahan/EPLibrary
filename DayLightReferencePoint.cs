@@ -12,8 +12,8 @@ namespace IDFObjects
         public string Name;
         public XYZ Point;
         public string ZoneName;
-        public double PartControlled;
-        public double Illuminance;
+        public float PartControlled;
+        public float Illuminance;
         public DayLightReferencePoint() { }
         public List<string> WriteInfo()
         {

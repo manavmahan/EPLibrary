@@ -11,9 +11,9 @@ namespace IDFObjects
     {
         public string Name = "Simple Flat PV";
         public string Type = "PhotovoltaicPerformance:Simple";
-        public double FractionSurface = 0.7;
+        public float FractionSurface = 0.7f;
         public string ConversionEff = "FIXED";
-        public double CellEff = 0.12;
+        public float CellEff = 0.12f;
         public PhotovoltaicPerformanceSimple() { }
         public List<string> WriteInfo()
         {

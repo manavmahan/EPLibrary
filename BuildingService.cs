@@ -9,10 +9,10 @@ namespace IDFObjects
     [Serializable]
     public class BuildingService
     {      
-        public double BoilerEfficiency, HeatingCOP, CoolingCOP;
+        public float BoilerEfficiency, HeatingCOP, CoolingCOP;
         public HVACSystem HVACSystem;
         public BuildingService() { }
-        public BuildingService(double BoilerEfficiency, double HeatingCOP, double CoolingCOP) 
+        public BuildingService(float BoilerEfficiency, float HeatingCOP, float CoolingCOP) 
         {
             this.BoilerEfficiency = BoilerEfficiency; this.HeatingCOP = HeatingCOP;  this.CoolingCOP = CoolingCOP;
         }

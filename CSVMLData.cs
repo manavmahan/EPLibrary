@@ -93,7 +93,7 @@ namespace IDFObjects
                         buildingConstruction.GWindow, s.SolarRadiation,
                         s.HeatFlow));
 
-                    double wallHeatFlow = s.HeatFlow, solarRadiation = s.SolarRadiation;
+                    float wallHeatFlow = s.HeatFlow, solarRadiation = s.SolarRadiation;
                     if (s.Fenestrations != null && s.Fenestrations.Count > 0)
                     {
                         foreach (Fenestration f in s.Fenestrations)
@@ -115,7 +115,8 @@ namespace IDFObjects
                     s => RoofData.Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.URoof, buildingConstruction.hcRoof,
                     s.HeatFlow)));
                 InfiltrationData.Add(string.Join(",", idfFile, z.Name, z.Name, z.Area, z.Height, z.Volume, 
-                    buildingConstruction.Infiltration, buildingConstruction.Permeability, zList.Conditions.LHG, zList.Conditions.EHG, zList.Conditions.Occupancy, z.TotalHeatCapacity, z.infiltrationFlow));
+                    buildingConstruction.Infiltration, buildingConstruction.Permeability, zList.Conditions.LHG, zList.Conditions.EHG, 
+                    zList.Conditions.Occupancy, z.TotalHeatCapacity, z.infiltrationFlow));
                 string zString = string.Join(",", idfFile, z.Name, string.Join(",", spaChr),
                     z.WallHeatFlow, z.WindowHeatFlow, z.wallWindowHeatFlow, z.gFloorHeatFlow, z.roofHeatFlow, z.infiltrationFlow, z.SolarRadiation,
                     z.EP.ToString("")); 
@@ -135,6 +136,7 @@ namespace IDFObjects
             BuildingConstruction buildingConstruction = building.Parameters.Construction;
             foreach (Zone z in building.zones)
             {
+                ZoneList zList = building.ZoneLists.First(zL => zL.ZoneNames.Contains(z.Name));
                 object[] spaChr = GetSpaceChr(building, z);
                 foreach (Surface s in z.Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors"))
                 {
@@ -150,14 +152,17 @@ namespace IDFObjects
                     s => RoofData.Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.URoof, buildingConstruction.hcRoof,
                     s.h_HeatFlow.ToCSVString())));
                 InfiltrationData.Add(string.Join(",", idfFile, z.Name, z.Name, z.Area, z.Height, z.Volume,
-                    buildingConstruction.Infiltration, buildingConstruction.Permeability, spaChr[8], spaChr[24], z.h_infiltrationFlow.ToCSVString()));
+                    buildingConstruction.Infiltration, buildingConstruction.Permeability, zList.Conditions.LHG, zList.Conditions.EHG,
+                    zList.Conditions.Occupancy, z.TotalHeatCapacity, z.h_infiltrationFlow.ToCSVString()));
 
                 ZoneData.Add(string.Join(",", idfFile, z.Name, string.Join(",", spaChr),
-                    z.h_wallwindowHeatFlow.ToCSVString(), z.h_gFloorHeatFlow.ToCSVString(), z.h_roofHeatFlow.ToCSVString(), z.h_infiltrationFlow.ToCSVString(), z.h_SolarRadiation.ToCSVString(),
+                    0, 0,
+                    z.h_wallwindowHeatFlow.ToCSVString(), z.h_gFloorHeatFlow.ToCSVString(),
+                    z.h_roofHeatFlow.ToCSVString(), z.h_infiltrationFlow.ToCSVString(), z.h_SolarRadiation.ToCSVString(),
                     z.EP.ToString(time)));
             }
             BuildingData.Add(string.Join(",", idfFile,
-                            string.Join(",", GetBuildingChr(building)), building.EP.ToString(time)));
+                            string.Join(",", GetBuildingChr(building)) , building.EP.ToString(time)));
         }
     }
 }

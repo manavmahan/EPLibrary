@@ -19,7 +19,7 @@ namespace IDFObjects
 
         public string shadingControlType = "OnIfHighZoneAirTemperature";
         public string scehduleName = "";
-        public double setPoint = 23;
+        public float setPoint = 23;
         public string scheduled = "NO";
         public string glareControl = "NO";
 

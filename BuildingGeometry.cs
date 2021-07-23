@@ -11,7 +11,7 @@ namespace IDFObjects
     [Serializable]
     public class BuildingGeometry
     {
-        public double Length, Width, Height, rLenA, rWidA, BasementDepth,  FloorArea, ARatio, Orientation;
+        public float Length, Width, Height, rLenA, rWidA, BasementDepth,  FloorArea, ARatio, Orientation;
         public int Shape;
         public int NFloors;
         public BuildingGeometry() { }

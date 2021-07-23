@@ -9,11 +9,11 @@ namespace IDFObjects
     [Serializable]
     public class ProbabilisticEmbeddedEnergyParameters
     {
-        public double[] th_ExtWall, th_IntWall, th_GFloor, th_IFloor, th_Roof, Reinforcement;
+        public float[] th_ExtWall, th_IntWall, th_GFloor, th_IFloor, th_Roof, Reinforcement;
 
         public ProbabilisticEmbeddedEnergyParameters() { }
 
-        public ProbabilisticEmbeddedEnergyParameters(double[] th_ExtWall, double[] th_IntWall, double[] th_GFloor, double[] th_IFloor, double[] th_Roof, double[] Reinforcement)
+        public ProbabilisticEmbeddedEnergyParameters(float[] th_ExtWall, float[] th_IntWall, float[] th_GFloor, float[] th_IFloor, float[] th_Roof, float[] Reinforcement)
         {
             this.th_ExtWall = th_ExtWall;
             this.th_IntWall = th_IntWall;

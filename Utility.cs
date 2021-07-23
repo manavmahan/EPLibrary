@@ -19,6 +19,11 @@ namespace IDFObjects
         [Description("Level 2")] LOD2 = 2,
         [Description("Level 3")] LOD3 = 3,
     }
+    public enum OutputFrequency
+    {
+        [Description("Hourly")] Hourly = 1,
+        [Description("Annual")] Annual = 2,
+    }
     public enum LevelExposure
     {
         Ground, Intermediate, Top
@@ -79,10 +84,10 @@ namespace IDFObjects
         }
         public static List<XYZList> FindTopRoof(List<XYZList> allRoofs)
         {
-            double topRoofBase = 0;
+            float topRoofBase = 0;
             foreach (XYZList roof in allRoofs)
             {
-                double mi = roof.xyzs.Select(p => p.Z).Min();
+                float mi = roof.xyzs.Select(p => p.Z).Min();
                 if (mi > topRoofBase)
                     topRoofBase = mi;
             }
@@ -111,27 +116,27 @@ namespace IDFObjects
         {
             return typeof(T).GetFields().First(x => x.Name == fieldInfo.Name + "Monthly");
         }
-        public static string ToCSVString(this double[] array)
+        public static string ToCSVString(this float[] array)
         {
-            return string.Join(";", array.Select(x=>x));
+            return string.Join("; ", array.Select(x=>x));
         }
         public static void SumAverageMonthlyValues<T>(this T obj)
         {
-            foreach(FieldInfo x in typeof(T).GetFields().Where(f => f.FieldType == typeof(double)))
+            foreach(FieldInfo x in typeof(T).GetFields().Where(f => f.FieldType == typeof(float)))
             {
                 if (x.Name.Contains("Load"))
-                     x.SetValue(obj, (GetMonthlyFieldInfo<T> (x).GetValue(obj) as double[]).Average());
+                     x.SetValue(obj, (GetMonthlyFieldInfo<T> (x).GetValue(obj) as float[]).Average());
                 else
-                     x.SetValue(obj, (GetMonthlyFieldInfo<T>(x).GetValue(obj) as double[]).Sum());
+                     x.SetValue(obj, (GetMonthlyFieldInfo<T>(x).GetValue(obj) as float[]).Sum());
             }
             
         }
         public static T GetAverage<T>(this List<T> obj) where T : new()
         {
             T val = new T();
-            typeof(T).GetFields().Where(x=>x.FieldType == typeof(double)).ToList().ForEach(x=>
+            typeof(T).GetFields().Where(x=>x.FieldType == typeof(float)).ToList().ForEach(x=>
             {
-                x.SetValue(val, obj.Select(o => (double)x.GetValue(o)).ToArray().Average());               
+                x.SetValue(val, obj.Select(o => (float)x.GetValue(o)).ToArray().Average());               
             });
             
             return val;
@@ -211,7 +216,7 @@ namespace IDFObjects
                     e.Dispose();
             }
         }
-        public static List<Line> GetOffset(List<Line> perimeterLines, double offsetDist)
+        public static List<Line> GetOffset(List<Line> perimeterLines, float offsetDist)
         {
             List<Line> offsetLines = new List<Line>();
             for (int i = 0; i < perimeterLines.Count(); i++)
@@ -229,7 +234,7 @@ namespace IDFObjects
             }
             return offsetLines;
         }
-        public static List<XYZ> GetOffset(List<XYZ> perimeterPoints, double offsetDist)
+        public static List<XYZ> GetOffset(List<XYZ> perimeterPoints, float offsetDist)
         {
             return GetOffset(GetExternalEdges(perimeterPoints), offsetDist).Select(l => l.P0).ToList();          
         }
@@ -238,31 +243,31 @@ namespace IDFObjects
             XYZ point = line.GetCorner(corner);
             XYZ centerPoint = corner == 0 ? line.GetCorner(1) : line.GetCorner(0);
             XYZ translatePoint = point.Subtract(centerPoint);
-            XYZ rotatedTranslatePoint = new XYZ(translatePoint.X * Math.Cos(Math.PI / 2) - translatePoint.Y * Math.Sin(Math.PI / 2),
-                                                translatePoint.X * Math.Sin(Math.PI / 2) + translatePoint.Y * Math.Cos(Math.PI / 2),
+            XYZ rotatedTranslatePoint = new XYZ(translatePoint.X * (float) Math.Cos(Math.PI / 2) - translatePoint.Y * (float) Math.Sin(Math.PI / 2),
+                                                translatePoint.X * (float) Math.Sin(Math.PI / 2) + translatePoint.Y * (float) Math.Cos(Math.PI / 2),
                                                 translatePoint.Z);
             return rotatedTranslatePoint.Add(centerPoint);
         }
         
-        public static double GetAngle(Line c1, Line c2)
+        public static float GetAngle(Line c1, Line c2)
         {
-            return c1.Direction().AngleOnPlaneTo(c2.Direction(), new XYZ(0, 0, -1))*(Math.PI/180);
+            return c1.Direction().AngleOnPlaneTo(c2.Direction(), new XYZ(0, 0, -1))*((float) Math.PI/180);
         }
-        public static Line GetOffset(Line line, Line prevLine, Line nextLine, double offsetDistance)
+        public static Line GetOffset(Line line, Line prevLine, Line nextLine, float offsetDistance)
         {
             XYZ p0 = line.P0.MovePoint(RotateToNormal(line, 1), (-1) * offsetDistance),
             p1 = line.P1.MovePoint(RotateToNormal(line, 0), offsetDistance);
 
             XYZ dir1 = new Line(p0, p1).Direction();
 
-            p0 = p0.MovePoint( p1, Math.Sin(GetAngle(prevLine, line)) * offsetDistance);
-            p1 = p1.MovePoint( p0, Math.Sin(GetAngle(line, nextLine)) * offsetDistance);
+            p0 = p0.MovePoint( p1, (float) Math.Sin(GetAngle(prevLine, line)) * offsetDistance);
+            p1 = p1.MovePoint( p0, (float) Math.Sin(GetAngle(line, nextLine)) * offsetDistance);
 
             try
             {
                 Line l1 = new Line (p0, p1);
                 XYZ x = l1.Direction();
-                return l1.Direction().IsAlmostEqual(dir1) ? l1 : null;
+                return l1.Direction() == dir1 ? l1 : null;
             }
             catch
             {
@@ -275,7 +280,7 @@ namespace IDFObjects
             Dictionary<ZoneGeometryInformation, List<Line>> allRoomSegment = new Dictionary<ZoneGeometryInformation, List<Line>>();
             foreach (ZoneGeometryInformation zone in zones)
             {
-                double baseZ = zone.FloorPoints.xyzs.First().Z;
+                float baseZ = zone.FloorPoints.xyzs.First().Z;
                 string cRoom = zone.Name.Remove(zone.Name.LastIndexOf(":"));
                 List<Line> walls = rooms.First(ro => ro.Key == cRoom).Value;
                 allRoomSegment.Add(zone, walls.Select(l=>l.ChangeZValue(baseZ)).ToList());
@@ -381,7 +386,7 @@ namespace IDFObjects
                 flPointList.RemoveCollinearPoints();
                 zInfo.FloorPoints = flPointList;
 
-                double heightFl = ceiling.xyzs.First().Z - floorPoints.First().Z;
+                float heightFl = ceiling.xyzs.First().Z - floorPoints.First().Z;
                 zInfo.Height = heightFl;
                             
                 zInfo.CeilingPoints = new List<XYZList>();
@@ -434,8 +439,8 @@ namespace IDFObjects
         }
         public static XYZ GetDirection(Line Line)
         {
-            double x = Line.P1.X - Line.P0.X, y = Line.P1.Y - Line.P0.Y, z = Line.P1.Z - Line.P0.Z;
-            double dist = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2) + Math.Pow(z, 2));
+            float x = Line.P1.X - Line.P0.X, y = Line.P1.Y - Line.P0.Y, z = Line.P1.Z - Line.P0.Z;
+            float dist = (float) Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2) + Math.Pow(z, 2));
             return new XYZ(x / dist, y / dist, z / dist);
         }
         public static XYZList GetDayLightPointsXYZList(List<XYZList> FloorFacePoints, List<XYZ[]> ExWallEdges)
@@ -447,7 +452,7 @@ namespace IDFObjects
                 List<Line> WallEdges = GetExternalEdges(floorPoints);
                 List<XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
                 DLList = new XYZList(CentersOfMass.Where(p => PointInsideLoopExceptZ(WallEdges, p) &&
-                CheckMinimumDistance(ExWallEdges, p, 0.2)).Distinct().ToList());
+                CheckMinimumDistance(ExWallEdges, p, 0.2f)).Distinct().ToList());
             }
             else
             {
@@ -457,13 +462,13 @@ namespace IDFObjects
                     List<Line> WallEdges = GetExternalEdges(floorPoints);
                     List<XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
                     DLList = new XYZList(CentersOfMass.Where(p => PointInsideLoopExceptZ(WallEdges, p) &&
-                    CheckMinimumDistance(ExWallEdges, p, 0.2)).Distinct().ToList());
+                    CheckMinimumDistance(ExWallEdges, p, 0.2f)).Distinct().ToList());
                 }
             }
             return DLList;
         }
         public static Dictionary<string, List<Line>> GetAllRooms(List<XYZ> groundPoints,
-            double offsetDistance, string zoneName)
+            float offsetDistance, string zoneName)
         {
             Dictionary<string, List<Line>> roomSegments = new Dictionary<string, List<Line>>();
             if (offsetDistance == 0)
@@ -511,10 +516,10 @@ namespace IDFObjects
             int intersections = 0;
             foreach (Line edge in WallEdges)
             {
-                double r = (point.Y - edge.P1.Y) / (edge.P0.Y - edge.P1.Y);
+                float r = (point.Y - edge.P1.Y) / (edge.P0.Y - edge.P1.Y);
                 if (r >= 0 && r < 1)
                 {
-                    double Xvalue = r * (edge.P0.X - edge.P1.X) + edge.P1.X;
+                    float Xvalue = r * (edge.P0.X - edge.P1.X) + edge.P1.X;
                     if (point.X < Xvalue)
                     {
                         intersections++;
@@ -523,15 +528,15 @@ namespace IDFObjects
             }
             return intersections % 2 != 0;
         }
-        public static bool CheckMinimumDistance(List<IDFObjects.XYZ[]> WallEdges, IDFObjects.XYZ point, double distance)
+        public static bool CheckMinimumDistance(List<IDFObjects.XYZ[]> WallEdges, IDFObjects.XYZ point, float distance)
         {
             
             return WallEdges.All(wEdge => GetPerpendicularDistance(wEdge, point) > distance);
         }
-        public static double GetPerpendicularDistance(XYZ[] WallEdge, XYZ p3)
+        public static float GetPerpendicularDistance(XYZ[] WallEdge, XYZ p3)
         {
             XYZ p1 = WallEdge[0], p2 = WallEdge[1];
-            double d = p2.Subtract(p1).CrossProduct(p1.Subtract(p3)).AbsoluteValue() / p2.DistanceTo(p1);
+            float d = p2.Subtract(p1).CrossProduct(p1.Subtract(p3)).AbsoluteValue() / p2.DistanceTo(p1);
             return d;
         }
         public static XYZ CentroidOfTriangle(List<IDFObjects.XYZ> points)
@@ -543,17 +548,9 @@ namespace IDFObjects
         public static List<Line> GetExternalEdges(List<IDFObjects.XYZ> groundPoints)
         {
             List<Line> wallEdges = new List<Line>();
+            int n = groundPoints.Count();
             for (int i = 0; i < groundPoints.Count; i++)
-            {
-                try
-                {
-                    wallEdges.Add(new Line( groundPoints[i], groundPoints[i + 1] ));
-                }
-                catch
-                {
-                    wallEdges.Add(new Line(groundPoints[i], groundPoints[0] ));
-                }
-            }
+                wallEdges.Add(new Line(groundPoints[i], groundPoints[(i + 1) % n]));
             return wallEdges;
         }
         public static List<IDFObjects.XYZ> TriangleAndCentroid(List<IDFObjects.XYZ> AllPoints)
@@ -576,17 +573,17 @@ namespace IDFObjects
         }       
         public static GridPoint GetDirection(List<GridPoint> Line)
         {
-            double x = Line[1].x - Line[0].x; double y = Line[1].y - Line[0].y;
-            double dist = Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
+            float x = Line[1].x - Line[0].x; float y = Line[1].y - Line[0].y;
+            float dist = (float) Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2));
             return new GridPoint(x / dist, y / dist);
         }
         public static bool IsCounterClockWise(List<GridPoint> points)
         {
-            double area = 0;
+            float area = 0;
             for (int i = 0; i < points.Count; i++)
             {
                 GridPoint point = points[i];
-                double x1 = point.x, y1 = point.y;
+                float x1 = point.x, y1 = point.y;
                 GridPoint nextPoint = new GridPoint();
                 try
                 {
@@ -596,27 +593,27 @@ namespace IDFObjects
                 {
                     nextPoint = points[0];
                 }
-                double x2 = nextPoint.x, y2 = nextPoint.y;
+                float x2 = nextPoint.x, y2 = nextPoint.y;
                 area += (x2 - x1) * (y2 + y1);
             }
             bool returnVal = area < 0;
             return returnVal;
         }      
-        public static double FtToM(double value)
+        public static float FtToM(float value)
         {
-            return (Math.Round(value * 0.3048, 4));
+            return ((float) Math.Round(value * 0.3048, 4));
         }
-        public static double MToFt(double value)
+        public static float MToFt(float value)
         {
-            return (Math.Round(value * 3.2808399, 4));
+            return ((float) Math.Round(value * 3.2808399, 4));
         }
-        public static double SqFtToSqM(double value)
+        public static float SqFtToSqM(float value)
         {
-            return (Math.Round(value * 0.092903, 4));
+            return ((float) Math.Round(value * 0.092903, 4));
         }
-        public static double SqMToSqFt(double value)
+        public static float SqMToSqFt(float value)
         {
-            return (Math.Round(value / 0.092903, 4));
+            return ((float) Math.Round(value / 0.092903, 4));
         }
         public static XYZ GetVerticalProjection(this XYZ point, List<XYZList> faces)
         {
@@ -635,7 +632,7 @@ namespace IDFObjects
                 XYZ p1 = wallDataValue[i].P0, p2 = wallDataValue[i].P1,
                     p3 = p2.GetVerticalProjection(roofCeilings), p4 = p1.GetVerticalProjection(roofCeilings);
                 XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
-                double area = p1.DistanceTo(p2) * p2.DistanceTo(p3);
+                float area = p1.DistanceTo(p2) * p2.DistanceTo(p3);
                 Surface wall = new Surface(z, wallPoints, area, SurfaceType.Wall);
                 if (wallDataKey[i] != "Outdoors")
                 {
@@ -657,13 +654,13 @@ namespace IDFObjects
         {
             return typeof(T).GetFields().First(a => a.Name == name);
         }
-        public static void AdjustPDF(this ProbabilityDistributionFunction pdf, double fractionToKeep)
+        public static void AdjustPDF(this ProbabilityDistributionFunction pdf, float fractionToKeep)
         {
             var sign = pdf.Sensitivity > 0 ? -1 : 1;
             pdf.Mean += sign * (1-fractionToKeep) * pdf.VariationOrSD;
             pdf.VariationOrSD *= fractionToKeep;
         }
-        public static ProbabilisticBuildingDesignParameters GetProbabilisticParametersReduced(this ProbabilisticBuildingDesignParameters pars, double lim, double fractionToKeep)
+        public static ProbabilisticBuildingDesignParameters GetProbabilisticParametersReduced(this ProbabilisticBuildingDesignParameters pars, float lim, float fractionToKeep)
         {
             ProbabilisticBuildingDesignParameters p = DeepClone(pars);
             typeof(ProbabilisticBuildingGeometry).GetFields().Where(a => a.FieldType == typeof(ProbabilityDistributionFunction)).ToList().
@@ -710,9 +707,9 @@ namespace IDFObjects
                     ProbabilityDistributionFunction pdf = a.GetValue(pars.pGeometry) as ProbabilityDistributionFunction;
                     if (pdf.VariationOrSD != 0 && pdf.Distribution != PDF.norm)
                     {
-                        double[] values = samples.Select(s => (double)GetFieldByName<BuildingGeometry>(a.Name).GetValue(s.Geometry)).ToArray();
-                        pdf.Mean = 0.5*(values.Max() + values.Min()) ;
-                        pdf.VariationOrSD = 0.5*(values.Max() - values.Min());
+                        float[] values = samples.Select(s => (float)GetFieldByName<BuildingGeometry>(a.Name).GetValue(s.Geometry)).ToArray();
+                        pdf.Mean = 0.5f * (values.Max() + values.Min()) ;
+                        pdf.VariationOrSD = 0.5f * (values.Max() - values.Min());
                     }
                 });
 
@@ -721,9 +718,9 @@ namespace IDFObjects
                     ProbabilityDistributionFunction pdf = a.GetValue(pars.pConstruction) as ProbabilityDistributionFunction;
                     if (pdf.VariationOrSD != 0 && pdf.Distribution != PDF.norm)
                     {
-                        double[] values = samples.Select(s => (double)GetFieldByName<BuildingConstruction>(a.Name).GetValue(s.Construction)).ToArray();
-                        pdf.Mean = 0.5 * (values.Max() + values.Min());
-                        pdf.VariationOrSD = 0.5 * (values.Max() - values.Min());
+                        float[] values = samples.Select(s => (float)GetFieldByName<BuildingConstruction>(a.Name).GetValue(s.Construction)).ToArray();
+                        pdf.Mean = 0.5f * (values.Max() + values.Min());
+                        pdf.VariationOrSD = 0.5f * (values.Max() - values.Min());
                     }
                 });
 
@@ -732,9 +729,9 @@ namespace IDFObjects
                     ProbabilityDistributionFunction pdf = a.GetValue(pars.pWWR) as ProbabilityDistributionFunction;
                     if (pdf.VariationOrSD != 0 && pdf.Distribution != PDF.norm)
                     {
-                        double[] values = samples.Select(s => (double)GetFieldByName<BuildingWWR>(a.Name).GetValue(s.WWR)).ToArray();
-                        pdf.Mean = 0.5 * (values.Max() + values.Min());
-                        pdf.VariationOrSD = 0.5 * (values.Max() - values.Min());
+                        float[] values = samples.Select(s => (float)GetFieldByName<BuildingWWR>(a.Name).GetValue(s.WWR)).ToArray();
+                        pdf.Mean = 0.5f * (values.Max() + values.Min());
+                        pdf.VariationOrSD = 0.5f * (values.Max() - values.Min());
                     }
                 });
 
@@ -743,9 +740,9 @@ namespace IDFObjects
                     ProbabilityDistributionFunction pdf = a.GetValue(pars.pService) as ProbabilityDistributionFunction;
                     if (pdf.VariationOrSD != 0 && pdf.Distribution != PDF.norm)
                     {
-                        double[] values = samples.Select(s => (double)GetFieldByName<BuildingService>(a.Name).GetValue(s.Service)).ToArray();
-                        pdf.Mean = 0.5 * (values.Max() + values.Min());
-                        pdf.VariationOrSD = 0.5 * (values.Max() - values.Min());
+                        float[] values = samples.Select(s => (float)GetFieldByName<BuildingService>(a.Name).GetValue(s.Service)).ToArray();
+                        pdf.Mean = 0.5f * (values.Max() + values.Min());
+                        pdf.VariationOrSD = 0.5f * (values.Max() - values.Min());
                     }
                 });
 
@@ -757,23 +754,23 @@ namespace IDFObjects
                        ProbabilityDistributionFunction pdf = a.GetValue(pars.zConditions[i]) as ProbabilityDistributionFunction;
                        if (pdf.VariationOrSD != 0 && pdf.Distribution != PDF.norm)
                        {
-                           double[] values = samples.Select(s => (double)GetFieldByName<ZoneConditions>(a.Name).
+                           float[] values = samples.Select(s => (float)GetFieldByName<ZoneConditions>(a.Name).
                                                 GetValue(s.ZConditions.First(zo=>zo.Name== pars.zConditions[i].Name))).ToArray();
-                           pdf.Mean = 0.5 * (values.Max() + values.Min());
-                           pdf.VariationOrSD = 0.5 * (values.Max() - values.Min());
+                           pdf.Mean = 0.5f * (values.Max() + values.Min());
+                           pdf.VariationOrSD = 0.5f * (values.Max() - values.Min());
                        }
                    });
             }
         }
-        public static Dictionary<string, double[]> ConvertToDataframe(IEnumerable<string> csvFile)
+        public static Dictionary<string, float[]> ConvertToDataframe(IEnumerable<string> csvFile, int round)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             IEnumerable<string> header = csvFile.ElementAt(0).Split(',').Skip(1);
-            Dictionary<string, double[]> data = new Dictionary<string, double[]>();
+            Dictionary<string, float[]> data = new Dictionary<string, float[]>();
 
             for (int i = 0; i < header.Count(); i++)
             {
-                data.Add(header.ElementAt(i), new double[csvFile.Count() - 1]);
+                data.Add(header.ElementAt(i), new float[csvFile.Count() - 1]);
             }
 
             int r = 0;
@@ -782,29 +779,29 @@ namespace IDFObjects
                 string[] row = s.Split(',').Skip(1).ToArray();
                 for (int c = 0; c < header.Count(); c++)
                 {
-                    data.ElementAt(c).Value[r] = Math.Round(double.Parse(row[c]),10);
+                    data.ElementAt(c).Value[r] = (float) Math.Round(float.Parse(row[c]), round);
                 }
                 r++;
             }
             return data;
         }
-        public static Dictionary<string, double[]> ReadSampleFile(string parFile, out int count)
+        public static Dictionary<string, float[]> ReadSampleFile(string parFile, out int count)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             List<string> rawFile = File.ReadAllLines(parFile).Where(s => s[0] != '#').ToList();
 
             int nSamples = rawFile.Count;
             count = nSamples - 1;
-            Dictionary<string, double[]> returnData = new Dictionary<string, double[]>();
+            Dictionary<string, float[]> returnData = new Dictionary<string, float[]>();
 
             IEnumerable<string> header = rawFile[0].Split(',').ToList();
 
             for (int i = 0; i < header.Count(); i++)
             {
-                double[] sampleData = new double[nSamples - 1];
+                float[] sampleData = new float[nSamples - 1];
                 for (int s = 1; s < nSamples; s++)
                 {
-                    sampleData[s - 1] = double.Parse(rawFile[s].Split(',').ElementAt(i));
+                    sampleData[s - 1] = float.Parse(rawFile[s].Split(',').ElementAt(i));
                 }
                 returnData.Add(header.ElementAt(i), sampleData);
             }
@@ -812,7 +809,7 @@ namespace IDFObjects
         }
         public static PDFValues GetPDF(string[] data)
         { 
-            return new PDFValues(double.Parse(data[0]), double.Parse(data[1]), GetValue<PDF>( data[2]));
+            return new PDFValues(float.Parse(data[0]), float.Parse(data[1]), GetValue<PDF>( data[2]));
         } 
         public static PDFValues GetProbabilisticParameter(this Dictionary<string, string[]> DataDictionary, string Parameter)
         {
@@ -825,7 +822,7 @@ namespace IDFObjects
                 return new PDFValues();
             }
         }
-        public static double GetSensitivityValueForParameter(this Dictionary<string, double[]> DataDictionary, string Parameter)
+        public static float GetSensitivityValueForParameter(this Dictionary<string, float[]> DataDictionary, string Parameter)
         {
             if (DataDictionary.ContainsKey(Parameter))
                 return DataDictionary[Parameter][0];
@@ -931,7 +928,7 @@ namespace IDFObjects
             }
             return schedules;
         }
-        public static double GetSamplesValues(this Dictionary<string, double[]> DataDictionary, string Parameter, int Number)
+        public static float GetSamplesValues(this Dictionary<string, float[]> DataDictionary, string Parameter, int Number)
         {
             if (DataDictionary.ContainsKey(Parameter))
             {
@@ -944,7 +941,7 @@ namespace IDFObjects
         }
         public static List<BuildingDesignParameters> ReadBuildingDesignParameters(string dataFile)
         {
-            Dictionary<string, double[]> samples = ReadSampleFile(dataFile, out int Count);
+            Dictionary<string, float[]> samples = ReadSampleFile(dataFile, out int Count);
             List<string> zoneListNames = samples.Keys.Where(z => z.Contains(':'))
                 .Select(s => s.Split(':')[0]).Distinct().ToList();
 
@@ -1045,51 +1042,51 @@ namespace IDFObjects
             tR.Close();
             return val;
         }
-        public static double ConvertKWhfromJoule(this double d) { return d * 2.7778E-7; }
-        public static double ConvertWfromJoule(this double d) { return d * 2.7778E-4 / 8760; }
-        public static double[] ConvertWfromJoule(this double[] dArray) { return dArray.Select(d => d.ConvertWfromJoule()).ToArray(); }
-        public static double[] ConvertKWhfromJoule(this double[] dArray) { return dArray.Select(d => d.ConvertKWhfromJoule()).ToArray(); }
-        public static double[] FillZeroes(this double[] Array, int length)
+        public static float ConvertKWhfromJoule(this float d) { return d * 2.7778E-7f; }
+        public static float ConvertWfromJoule(this float d) { return d * 2.7778E-4f / 8760; }
+        public static float[] ConvertWfromJoule(this float[] dArray) { return dArray.Select(d => d.ConvertWfromJoule()).ToArray(); }
+        public static float[] ConvertKWhfromJoule(this float[] dArray) { return dArray.Select(d => d.ConvertKWhfromJoule()).ToArray(); }
+        public static float[] FillZeroes(this float[] Array, int length)
         {
             int count = Array.Count();
-            IEnumerable<double> newList = Array;
+            IEnumerable<float> newList = Array;
 
             for (int i = count; i < length; i++) { newList = newList.Append(0); }
             return newList.ToArray();
         }
-        public static double ConvertKWhafromW(this double d)
+        public static float ConvertKWhafromW(this float d)
         {
-            return d*8.76;
+            return d*8.76f;
         }
-        public static double ConvertKWhafromWm(this double d)
+        public static float ConvertKWhafromWm(this float d)
         {
-            return d * 8.76/12;
+            return d * 8.76f/12f;
         }
 
-        public static double[] ConvertKWhafromW(this double[] dArray)
+        public static float[] ConvertKWhafromW(this float[] dArray)
         {
             return dArray.Select(d => d.ConvertKWhafromW()).ToArray();
         }
-        public static double[] ConvertKWhafromWm(this double[] dArray)
+        public static float[] ConvertKWhafromWm(this float[] dArray)
         {
             return dArray.Select(d => d.ConvertKWhafromWm()).ToArray();
         }
-        public static double[] MultiplyBy(this double[] dArray, double factor)
+        public static float[] MultiplyBy(this float[] dArray, float factor)
         {
             return dArray.Select(d => d*factor).ToArray();
         }
-        public static double[] AddArrayElementWise(this List<double[]> AllArrays)
+        public static float[] AddArrayElementWise(this List<float[]> AllArrays)
         {
             AllArrays = AllArrays.Where(a => a != null).ToList();
             List<int> counts = AllArrays.Select(a => a.Count()).ToList();
-            if (counts.Count == 0) { return new double[] { 0 }; }
+            if (counts.Count == 0) { return new float[] { 0 }; }
             else
             {
                 int n = counts.Max();
 
                 AllArrays = AllArrays.Select(a => a.FillZeroes(n)).ToList();
 
-                double[] array = new double[n];
+                float[] array = new float[n];
 
                 for (int i = 0; i < n; i++)
                 {
@@ -1099,14 +1096,14 @@ namespace IDFObjects
             }
 
         }
-        public static double[] SubtractArrayElementWise(this double[] FirstArray, double[] SecondArray)
+        public static float[] SubtractArrayElementWise(this float[] FirstArray, float[] SecondArray)
         {
             List<int> counts = new List<int>() { FirstArray.Count(), SecondArray.Count() };
             int n = counts.Max();
 
             FirstArray = FirstArray.FillZeroes(n); SecondArray = SecondArray.FillZeroes(n);
 
-            double[] array = new double[n];
+            float[] array = new float[n];
             for (int i = 0; i < n; i++)
             {
                 array[i] = FirstArray[i] - SecondArray[i];
@@ -1139,41 +1136,41 @@ namespace IDFObjects
             {
                 case Location.MUNICH_DEU:
                     winterday = new SizingPeriodDesignDay("MUNICH Ann Htg 99.6% Condns DB", 2, 21, "WinterDesignDay",
-                        -12.8, 0.0, -13.9, 0.0, 95900.0, 1.0, 130.0, "No", "No", "No", "AshraeClearSky", 0.0);
+                        -12.8f, 0.0f, -13.9f, 0.0f, 95900.0f, 1.0f, 130.0f, "No", "No", "No", "AshraeClearSky", 0.0f);
 
                     summerday = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns Enth=>MDB", 7, 21, "SummerDesignDay",
-                        31.5, 10.9, 17.8, 0.0, 95300.0, 1.5, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+                        31.5f, 10.9f, 17.8f, 0.0f, 95300.0f, 1.5f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
 
                     summerday1 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 6)", 6, 21, "SummerDesignDay",
-                        29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+                        29.0f, 10.9f, 13.9f, 0.0f, 95200.0f, 1.0f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
 
                     summerday2 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 7)", 7, 21, "SummerDesignDay",
-                        29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+                        29.0f, 10.9f, 13.9f, 0.0f, 95200.0f, 1.0f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
 
                     summerday3 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 8)", 8, 21, "SummerDesignDay",
-                        29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+                        29.0f, 10.9f, 13.9f, 0.0f, 95200.0f, 1.0f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
 
                     summerday4 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 9)", 9, 21, "SummerDesignDay",
-                        29.0, 10.9, 13.9, 0.0, 95200.0, 1.0, 240.0, "No", "No", "No", "AshraeClearSky", 1.0);
+                        29.0f, 10.9f, 13.9f, 0.0f, 95200.0f, 1.0f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
                     return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
                 case Location.BRUSSELS_BEL:
                     winterday = new SizingPeriodDesignDay("BRUSSELS Ann Htg 99.6% Condns DB", 1, 21, "WinterDesignDay",
-                        -4.9, 0.0, -6.2, 0.0, 102600.0, 1.0, 70.0, "No", "No", "No", "AshraeClearSky", 0.0);
+                        -4.9f, 0.0f, -6.2f, 0.0f, 102600.0f, 1.0f, 70.0f, "No", "No", "No", "AshraeClearSky", 0.0f);
 
                     summerday = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4% Condns Enth=>MDB", 7, 21, "SummerDesignDay",
-                        33.6, 8.4, 19.5, 0.0, 100600.0, 4.4, 90.0, "No", "No", "No", "AshraeClearSky", 1.0);
+                        33.6f, 8.4f, 19.5f, 0.0f, 100600.0f, 4.4f, 90.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
 
                     summerday1 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 6)", 6, 21, "SummerDesignDay",
-                        28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
+                        28.7f, 8.4f, 13.6f, 0, 101300, 3.0f, 290, "No", "No", "No", "AshraeClearSky", 1.0f);
 
                     summerday2 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 7)", 7, 21, "SummerDesignDay",
-                        28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
+                        28.7f, 8.4f, 13.6f, 0, 101300, 3.0f, 290, "No", "No", "No", "AshraeClearSky", 1.0f);
 
                     summerday3 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 8)", 8, 21, "SummerDesignDay",
-                       28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
+                       28.7f, 8.4f, 13.6f, 0, 101300, 3.0f, 290, "No", "No", "No", "AshraeClearSky", 1.0f);
 
                     summerday4 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 9)", 9, 21, "SummerDesignDay",
-                       28.7, 8.4, 13.6, 0, 101300, 3.0, 290, "No", "No", "No", "AshraeClearSky", 1.0);
+                       28.7f, 8.4f, 13.6f, 0, 101300, 3.0f, 290, "No", "No", "No", "AshraeClearSky", 1.0f);
                     return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
                 case Location.BERLIN_DEU:
                 default:

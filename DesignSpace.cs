@@ -28,21 +28,21 @@ namespace IDFObjects
         public List<Building> GetSamples() => AllSamples;
         public void OrderByEUI() => AllSamples = AllSamples.OrderBy(b => b.EP.EUI).ToList();
 
-        public List<double[]> EnergyIntervals = new List<double[]>();
+        public List<float[]> EnergyIntervals = new List<float[]>();
         public void CreateEnergyIntervals(ProbabilityDistributionFunction EnergyTarget, int num, int count)
         {
-            EnergyIntervals = new List<double[]>();
-            double var = EnergyTarget.Distribution == PDF.norm ? 3 * EnergyTarget.VariationOrSD : EnergyTarget.VariationOrSD;
+            EnergyIntervals = new List<float[]>();
+            float var = EnergyTarget.Distribution == PDF.norm ? 3 * EnergyTarget.VariationOrSD : EnergyTarget.VariationOrSD;
             switch (EnergyTarget.Distribution)
             {
                 default:
                 case PDF.unif:
-                    double interval = 2 * var / count;
+                    float interval = 2 * var / count;
                     for (int i = 0; i < count; i++)
                     {
-                        double low = EnergyTarget.Mean + (i-count/2) * interval;
+                        float low = EnergyTarget.Mean + (i-count/2) * interval;
                         for (int m = 0; m < num/count; m++)
-                            EnergyIntervals.Add(new double[] { low, low + interval });
+                            EnergyIntervals.Add(new float[] { low, low + interval });
                     }
                     break;
             }
@@ -56,7 +56,7 @@ namespace IDFObjects
                 {
                     try
                     {
-                        double[] ei = EnergyIntervals.First(e => s.EP.EUI > e[0] && s.EP.EUI < e[1]);
+                        float[] ei = EnergyIntervals.First(e => s.EP.EUI > e[0] && s.EP.EUI < e[1]);
                         EnergyIntervals.Remove(ei);
                         AddSample(s);
                     }

@@ -11,8 +11,8 @@ namespace IDFObjects
     {
         public string name { get; set; }
         public List<WindowMaterial> layers { get; set; }
-        public double uValue { get; set; }
-        public double gValue { get; set; }
+        public float uValue { get; set; }
+        public float gValue { get; set; }
         public WindowConstruction() { }
         public WindowConstruction(string n, List<WindowMaterial> l)
         {

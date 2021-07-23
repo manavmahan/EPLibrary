@@ -14,21 +14,21 @@ namespace IDFObjects
         public List<DayLightReferencePoint> ReferencePoints = new List<DayLightReferencePoint>();
 
         public ControlType CType = ControlType.Continuous;
-        public double GlareCalcAngle = 180;
-        public double DiscomGlare = 22;
-        public double MinPower = 0.3;
-        public double MinLight = 0.3;
+        public float GlareCalcAngle = 180;
+        public float DiscomGlare = 22;
+        public float MinPower = 0.3f;
+        public float MinLight = 0.3f;
         public int NStep = 3;
-        public double ProbabilityManual = 1;
+        public float ProbabilityManual = 1;
         public string AvailabilitySchedule;
-        public double DELightGridResolution = 2;
+        public float DELightGridResolution = 2;
 
         public DayLighting() { }
-        public List<DayLightReferencePoint> CreateZoneDayLightReferencePoints(Zone zone, List<XYZ> points, double illuminance)
+        public List<DayLightReferencePoint> CreateZoneDayLightReferencePoints(Zone zone, List<XYZ> points, float illuminance)
         {
             List<DayLightReferencePoint> dlRefPoints = new List<DayLightReferencePoint>();
-            double totalPoints = points.Count();
-            double pControlled = Math.Floor(1000 / totalPoints) / 1000;
+            float totalPoints = points.Count();
+            float pControlled = (float) Math.Floor(1000 / totalPoints) / 1000;
             points.ForEach(p => dlRefPoints.Add(new DayLightReferencePoint()
             {
                 ZoneName = zone.Name,
@@ -39,7 +39,7 @@ namespace IDFObjects
             }));
             return dlRefPoints;
         }
-        public DayLighting(Zone zone, string schedule, List<XYZ> points, double illuminance)
+        public DayLighting(Zone zone, string schedule, List<XYZ> points, float illuminance)
         {
             if (points.Count > 0)
             {

@@ -11,15 +11,9 @@ namespace IDFObjects
     {
         public string name { get; set; }
         public string roughness { get; set; }
-        public double thickness { get; set; }
-        public double conductivity { get; set; }
-        public double density { get; set; }
-        public double sHC { get; set; }
-        public double tAbsorptance { get; set; }
-        public double sAbsorptance { get; set; }
-        public double vAbsorptance { get; set; }
+        public float thickness, conductivity, density, sHC, tAbsorptance, sAbsorptance, vAbsorptance;
         public Material() { }
-        public Material(string name, string rough, double th, double conduct, double dense, double sH, double tAbsorp, double sAbsorp, double vAbsorp)
+        public Material(string name, string rough, float th, float conduct, float dense, float sH, float tAbsorp, float sAbsorp, float vAbsorp)
         {
             this.name = name;
             roughness = rough;

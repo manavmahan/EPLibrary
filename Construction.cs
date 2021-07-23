@@ -14,18 +14,18 @@ namespace IDFObjects
         public string name { get; set; }
         public List<Material> layers { get; set; }
         public List<WindowMaterial> wLayers { get; set; }
-        public double heatCapacity { get; set; }
+        public float heatCapacity { get; set; }
         public Construction(string n, List<Material> layers)
         {
             name = n; this.layers = layers; wLayers = new List<WindowMaterial>();
             heatCapacity = layers.Select(la => la.thickness * la.sHC * la.density).Sum();
         }
-        public void AdjustInsulation(double requiredUValue, Material insulation)
+        public void AdjustInsulation(float requiredUValue, Material insulation)
         {
             if (requiredUValue != 0)
             {
-                double sum = layers.Where(l=>l.name!=insulation.name).Select(m=> m.thickness / m.conductivity).Sum();
-                insulation.thickness = Math.Round(insulation.conductivity * ((1 / requiredUValue) - sum),5);
+                float sum = layers.Where(l=>l.name!=insulation.name).Select(m=> m.thickness / m.conductivity).Sum();
+                insulation.thickness = (float) Math.Round(insulation.conductivity * ((1 / requiredUValue) - sum),5);
                 if (!(insulation.thickness > 0))
                 {
                     MessageBox.Show(string.Format("U-value of {0} for construction {1} requires an insulation thickness of {2}\n" +

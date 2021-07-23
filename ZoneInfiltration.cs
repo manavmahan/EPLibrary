@@ -10,18 +10,18 @@ namespace IDFObjects
     public class ZoneInfiltration
     {
         public string Name, ZoneName;
-        public double airChangesHour { get; set; }
-        public double constantTermCoeff { get; set; }
-        public double temperatureTermCoef { get; set; }
-        public double velocityTermCoef { get; set; }
-        public double velocitySquaredTermCoef { get; set; }
+        public float airChangesHour { get; set; }
+        public float constantTermCoeff { get; set; }
+        public float temperatureTermCoef { get; set; }
+        public float velocityTermCoef { get; set; }
+        public float velocitySquaredTermCoef { get; set; }
 
-        public ZoneInfiltration(double acH)
+        public ZoneInfiltration(float acH)
         {
             airChangesHour = acH;
-            constantTermCoeff = 0.606;
-            temperatureTermCoef = 0.036359996;
-            velocityTermCoef = 0.1177165;
+            constantTermCoeff = 0.606f;
+            temperatureTermCoef = 0.036359996f;
+            velocityTermCoef = 0.1177165f;
             velocitySquaredTermCoef = 0;
         }
         public List<string> WriteInfo()

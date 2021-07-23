@@ -14,13 +14,13 @@ namespace IDFObjects
         public string Name, ZoneName;
         public string scheduleName { get; set; }
         public string calculationMethod { get; set; }
-        //public double numberOfPeople { get; set; }
-        //public double peoplePerArea { get; set; }
-        public double areaPerPerson { get; set; }
-        public double fractionRadiant { get; set; }
-        public double sensibleHeatFraction { get; set; }
+        //public float numberOfPeople { get; set; }
+        //public float peoplePerArea { get; set; }
+        public float areaPerPerson { get; set; }
+        public float fractionRadiant { get; set; }
+        public float sensibleHeatFraction { get; set; }
         public string activityLvlSchedName { get; set; }
-        public double c02genRate { get; set; }
+        public float c02genRate { get; set; }
         public string enableComfortWarnings { get; set; }
         public string meanRadiantTempCalcType { get; set; }
         public string surfaceName { get; set; }
@@ -30,14 +30,14 @@ namespace IDFObjects
         public string clothingInsulationSchedName { get; set; }
         public string airVelSchedName { get; set; }
         public string thermalComfModel1t { get; set; }
-        public People(double aPP)
+        public People(float aPP)
         {
             areaPerPerson = aPP;
             calculationMethod = "Area/Person";
             scheduleName = "Occupancy Schedule";
-            fractionRadiant = 0.1;
+            fractionRadiant = 0.1f;
             activityLvlSchedName = "People Activity Schedule";
-            c02genRate = double.Parse("3.82E-8");
+            c02genRate = float.Parse("3.82E-8");
             enableComfortWarnings = "";
             meanRadiantTempCalcType = "ZoneAveraged";
             surfaceName = "";

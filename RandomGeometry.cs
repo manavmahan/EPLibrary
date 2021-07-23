@@ -8,6 +8,6 @@ namespace IDFObjects
 {
     public class RandomGeometry
     {
-        public int MaxBoxes; public double MinEdgeSize, MaxEdgeSize;
+        public int MaxBoxes; public float MinEdgeSize, MaxEdgeSize;
     }
 }

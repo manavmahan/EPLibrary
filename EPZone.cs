@@ -11,9 +11,9 @@ namespace IDFObjects
     [Serializable]
     public class EPZone
     {
-        public double HeatingLoad, CoolingLoad, LightsLoad;
-        public double[] HeatingLoadMonthly, CoolingLoadMonthly, LightsLoadMonthly;
-        public double[] HeatingLoadHourly, CoolingLoadHourly, LightsLoadHourly;
+        public float HeatingLoad, CoolingLoad, LightsLoad;
+        public float[] HeatingLoadMonthly, CoolingLoadMonthly, LightsLoadMonthly;
+        public float[] HeatingLoadHourly, CoolingLoadHourly, LightsLoadHourly;
         public EPZone()
         {
             

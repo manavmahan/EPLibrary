@@ -13,21 +13,21 @@ namespace IDFObjects
         public string scheduleName { get; set; }
         public Light() { }
         public string designLevelCalcMeth { get; set; }
-        //public double lightingLevel { get; set; }
-        public double wattsPerArea { get; set; }
-        public double returnAirFraction { get; set; }
-        public double fractionRadiant { get; set; }
-        public double fractionVisible { get; set; }
-        public double fractionReplaceable { get; set; }
+        //public float lightingLevel { get; set; }
+        public float wattsPerArea { get; set; }
+        public float returnAirFraction { get; set; }
+        public float fractionRadiant { get; set; }
+        public float fractionVisible { get; set; }
+        public float fractionReplaceable { get; set; }
 
-        public Light(double wPA)
+        public Light(float wPA)
         {
             wattsPerArea = wPA;
             designLevelCalcMeth = "Watts/area";
             scheduleName = "Electric Equipment and Lighting Schedule";
             returnAirFraction = 0;
-            fractionRadiant = 0.1;
-            fractionVisible = 0.18;
+            fractionRadiant = 0.1f;
+            fractionVisible = 0.18f;
         }
         public List<string> WriteInfo()
         {

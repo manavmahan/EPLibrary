@@ -10,8 +10,8 @@ namespace IDFObjects
     public class ScheduleLimits
     {
         public string name { get; set; }
-        public double lowerLimit { get; set; }
-        public double upperLimit { get; set; }
+        public float lowerLimit { get; set; }
+        public float upperLimit { get; set; }
         public string numericType { get; set; }
         public string unitType { get; set; }
 

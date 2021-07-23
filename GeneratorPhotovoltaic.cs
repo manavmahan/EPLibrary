@@ -16,9 +16,9 @@ namespace IDFObjects
         public PhotovoltaicPerformanceSimple pperformance;
         public string HeatTransferIntegrationMode = "Decoupled";
 
-        public double GeneratorPowerOutput = 50000;
+        public float GeneratorPowerOutput = 50000;
         public string Schedule;
-        public double RatedThermalElectricalPowerRatio = 0;
+        public float RatedThermalElectricalPowerRatio = 0;
 
 
         public GeneratorPhotovoltaic() { }

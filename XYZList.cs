@@ -58,7 +58,7 @@ namespace IDFObjects
             {
                 Line lastLine = Loop.Last();
                 Line currentLine = Edges[0];
-                if (lastLine.Direction().IsAlmostEqual(currentLine.Direction()))
+                if (lastLine.Direction() == currentLine.Direction())
                 {
                     lastLine.P1 = currentLine.P1;
                     Loop[Loop.Count - 1] = lastLine;
@@ -69,14 +69,14 @@ namespace IDFObjects
                 }
                 Edges.RemoveAt(0);
             }
-            if (Loop.Last().Direction().IsAlmostEqual(Loop.First().Direction()))
+            if (Loop.Last().Direction() == Loop.First().Direction())
             {
                 Loop[0].P0 = Loop.Last().P0;
                 Loop.RemoveAt(Loop.Count - 1);
             }
             xyzs = Loop.Select(l => l.P0).ToList();
         }
-        public XYZList OffsetHeight(double height)
+        public XYZList OffsetHeight(float height)
         {
             List<XYZ> newVertices = new List<XYZ>();
             foreach (XYZ v in xyzs)
@@ -96,9 +96,9 @@ namespace IDFObjects
             newList.xyzs.Reverse();
             return newList;
         }
-        public double CalculateArea()
+        public float CalculateArea()
         {
-            double Area = 0;
+            float Area = 0;
             for (int i = 0; i < xyzs.Count(); i++)
             {
                 XYZ point = xyzs[i], nextPoint;
@@ -106,7 +106,7 @@ namespace IDFObjects
                 Area += (point.X * nextPoint.Y) - (point.Y * nextPoint.X);
             }
             Area = Math.Abs(Area / 2);
-            return Math.Round(Area,2);
+            return (float) Math.Round(Area,2);
         }
         public List<string> WriteInfo()
         {
@@ -123,7 +123,7 @@ namespace IDFObjects
         {
             return string.Join(",", xyzs.Select(p=>p.To2DPointString()));
         }
-        public List<Surface> CreateZoneWallExternal(Zone zone, double height)
+        public List<Surface> CreateZoneWallExternal(Zone zone, float height)
         {
             List<Surface> walls = new List<Surface>();
             foreach (XYZ v1 in xyzs)
@@ -137,13 +137,13 @@ namespace IDFObjects
                 XYZ v4 = v1.OffsetHeight(height);
 
                 XYZList vList = new XYZList(new List<XYZ>() { v4, v3, v2, v1 });
-                double area = v1.DistanceTo(v2) * height;
+                float area = v1.DistanceTo(v2) * height;
                 Surface wall = new Surface(zone, vList, area, SurfaceType.Wall);
                 walls.Add(wall);
             }
             return walls;
         }
-        public void CreateZoneWallExternal(Zone zone, double height, List<string> exposures, List<string> constructions)
+        public void CreateZoneWallExternal(Zone zone, float height, List<string> exposures, List<string> constructions)
         {
             for (int i = 0; i < xyzs.Count; i++)
             {
@@ -155,7 +155,7 @@ namespace IDFObjects
                 XYZ v3 = v2.OffsetHeight(height), v4 = v1.OffsetHeight(height);
 
                 XYZList vList = new XYZList(new List<XYZ>() { v4, v3, v2, v1 });
-                double area = v1.DistanceTo(v2) * height;
+                float area = v1.DistanceTo(v2) * height;
                 Surface wall = new Surface(zone, vList, area, SurfaceType.Wall);
                 
                 if (exposures[i] == "Adiabatic")
@@ -171,7 +171,7 @@ namespace IDFObjects
 
             }
         }
-        public List<Surface> CreateZoneWallExternal(Zone z, double height, double basementDepth)
+        public List<Surface> CreateZoneWallExternal(Zone z, float height, float basementDepth)
         {
             List<Surface> walls = new List<Surface>();
             foreach (XYZ v1 in xyzs)
@@ -188,7 +188,7 @@ namespace IDFObjects
                 XYZ v6 = v1.OffsetHeight(height);
 
                 XYZList vList1 = new XYZList(new List<XYZ>() { v4, v3, v2, v1 });
-                double area = v1.DistanceTo(v2) * basementDepth;
+                float area = v1.DistanceTo(v2) * basementDepth;
 
                 Surface wall1 = new Surface(z, vList1, area, SurfaceType.Wall);
                 wall1.Fenestrations = new List<Fenestration>();
@@ -206,18 +206,18 @@ namespace IDFObjects
 
             return walls;
         }
-        public void Transform(double angle)
+        public void Transform(float angle)
         {
             List<XYZ> newXYZ = new List<XYZ>();
             xyzs.ForEach(v => newXYZ.Add(v.Transform(angle)));
             xyzs = newXYZ;
         }
-        public double GetWallOrientation(out Direction Direction)
+        public float GetWallOrientation(out Direction Direction)
         {
             XYZ v1 = xyzs[0]; XYZ v2 = xyzs[1]; XYZ v3 = xyzs[2];
             XYZ nVector1 = v2.Subtract(v1).CrossProduct(v3.Subtract(v1));
             
-            double Orientation = nVector1.AngleOnPlaneTo(new XYZ(0, 1, 0), new XYZ(0, 0, 1));
+            float Orientation = nVector1.AngleOnPlaneTo(new XYZ(0, 1, 0), new XYZ(0, 0, 1));
             Direction = Direction.North;
             if (Orientation < 45 || Orientation >= 315)
             {
@@ -237,7 +237,7 @@ namespace IDFObjects
             }
             return Orientation;
         }
-        public XYZList ChangeZValue(double newZ)
+        public XYZList ChangeZValue(float newZ)
         {
             List<XYZ> newVertices = new List<XYZ>();
             xyzs.ForEach(p => newVertices.Add(new XYZ(p.X, p.Y, newZ)));

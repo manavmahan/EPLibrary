@@ -14,7 +14,7 @@ namespace IDFObjects
         public string ZoneName;
         public string OccupancyScheduleName;
 
-		public double[] COP;
+		public float[] COP;
         public List<string> WriteInfo()
         {
 			return new List<string>()

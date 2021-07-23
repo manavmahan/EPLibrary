@@ -33,18 +33,18 @@ namespace IDFObjects
                     break;
             }
 
-            XYZList createShadingY(XYZList listVertices, double sl)
+            XYZList createShadingY(XYZList listVertices, float sl)
             {
                 XYZ P1 = listVertices.xyzs.ElementAt(0);
                 XYZ P2 = listVertices.xyzs.ElementAt(1);
                 XYZ P3 = listVertices.xyzs.ElementAt(2);
                 XYZ P4 = listVertices.xyzs.ElementAt(3);
 
-                double shadingLength = sl;
+                float shadingLength = sl;
 
                 XYZ pmid = new XYZ((P1.X + P3.X) / 2, P1.Y, (P1.Z + P3.Z) / 2);
-                double Y = pmid.Y;
-                double Z = P1.Z;
+                float Y = pmid.Y;
+                float Z = P1.Z;
 
                 XYZ Vertice1 = new XYZ(P2.X, Y, Z);
                 XYZ Vertice2 = new XYZ(P2.X + shadingLength, Y + shadingLength, Z);
@@ -54,18 +54,18 @@ namespace IDFObjects
                 return new XYZList(new List<XYZ>() { Vertice1, Vertice2, Vertice3, Vertice4 });
             }
 
-            XYZList createShadingX(XYZList listVertices, double sl)
+            XYZList createShadingX(XYZList listVertices, float sl)
             {
                 XYZ P1 = listVertices.xyzs.ElementAt(0);
                 XYZ P2 = listVertices.xyzs.ElementAt(1);
                 XYZ P3 = listVertices.xyzs.ElementAt(2);
                 XYZ P4 = listVertices.xyzs.ElementAt(3);
 
-                double shadingLength = sl;
+                float shadingLength = sl;
 
                 XYZ pmid = new XYZ((P1.X + P3.X) / 2, P1.Y, (P1.Z + P3.Z) / 2);
-                double X = pmid.X;
-                double Z = P1.Z;
+                float X = pmid.X;
+                float Z = P1.Z;
 
                 XYZ Vertice1 = new XYZ(X, P2.Y, Z);
                 XYZ Vertice2 = new XYZ(X + shadingLength, P2.Y - shadingLength, Z);

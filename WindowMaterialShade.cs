@@ -10,19 +10,19 @@ namespace IDFObjects
     public class WindowMaterialShade
     {
         public string name = "ROLL SHADE";
-        public double sTransmittance = 0.3;
-        public double sReflectance = 0.5;
-        public double vTransmittance = 0.3;
-        public double vReflectance = 0.5;
-        public double infraEmissivity = 0.9;
-        public double infraTransmittance = 0.05;
-        public double thickness = 0.003;
-        public double conductivity = 0.1;
-        public double disShades = 0.05;
-        public double tMultiplier = 0;
-        public double bMultiplier = 0.5;
-        public double lMultiplier = 0.5;
-        public double rMultiplier = 0;
+        public float sTransmittance = 0.3f;
+        public float sReflectance = 0.5f;
+        public float vTransmittance = 0.3f;
+        public float vReflectance = 0.5f;
+        public float infraEmissivity = 0.9f;
+        public float infraTransmittance = 0.05f;
+        public float thickness = 0.003f;
+        public float conductivity = 0.1f;
+        public float disShades = 0.05f;
+        public float tMultiplier = 0;
+        public float bMultiplier = 0.5f;
+        public float lMultiplier = 0.5f;
+        public float rMultiplier = 0;
         public string airPermeability = "";
 
         public WindowMaterialShade() { }

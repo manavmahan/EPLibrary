@@ -9,9 +9,9 @@ namespace IDFObjects
     [Serializable]
     public class GridPoint : IEquatable<GridPoint>
     {
-        public double x, y;
+        public float x, y;
         public GridPoint Left, Right, Up, Down;
-        public GridPoint(double Coordx, double Coordy)
+        public GridPoint(float Coordx, float Coordy)
         {
             x = Coordx;
             y = Coordy;

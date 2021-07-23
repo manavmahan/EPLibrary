@@ -10,10 +10,10 @@ namespace IDFObjects
     public class Chiller
     {
         public string name = "Main Chiller";
-        public double chillerCOP;
+        public float chillerCOP;
         public Chiller() { }
 
-        public Chiller(double COP)
+        public Chiller(float COP)
         {
             chillerCOP = COP;
         }

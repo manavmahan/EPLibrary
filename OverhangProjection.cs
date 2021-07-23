@@ -10,10 +10,10 @@ namespace IDFObjects
     public class OverhangProjection
     {
         public string windowName;
-        public double depthf;
+        public float depthf;
 
         public OverhangProjection() { }
-        public OverhangProjection(Fenestration win, double df)
+        public OverhangProjection(Fenestration win, float df)
         {
             windowName = win.Name;
             depthf = df;

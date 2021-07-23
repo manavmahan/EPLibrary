@@ -22,7 +22,7 @@ namespace IDFObjects
 
         public int NumSamples, NumSamplesOption; 
         
-        public double OffsetDistance;
+        public float OffsetDistance;
         
         public RandomGeometry RandomGeometry;
         public List<Building> AllPossibleOptions;

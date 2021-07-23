@@ -11,7 +11,7 @@ namespace IDFObjects
     public class ZoneGeometryInformation
     {
         public string Name;
-        public double Height;
+        public float Height;
         public XYZList FloorPoints;
         public List<XYZList> CeilingPoints = new List<XYZList>();
         public List<XYZList> RoofPoints = new List<XYZList>();

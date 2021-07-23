@@ -11,13 +11,13 @@ namespace IDFObjects
     [Serializable]
     public class EPBuilding
     {
-        public double ThermalEnergy, OperationalEnergy,
+        public float ThermalEnergy, OperationalEnergy,
             ZoneHeatingLoad, ZoneCoolingLoad, ZoneLightsLoad, EUI;
         
-        public double[] ThermalEnergyMonthly, OperationalEnergyMonthly,
+        public float[] ThermalEnergyMonthly, OperationalEnergyMonthly,
             ZoneHeatingLoadMonthly, ZoneCoolingLoadMonthly, ZoneLightsLoadMonthly, EUIMonthly;
 
-        public double[] ThermalEnergyHourly, OperationalEnergyHourly,
+        public float[] ThermalEnergyHourly, OperationalEnergyHourly,
             ZoneHeatingLoadHourly, ZoneCoolingLoadHourly, ZoneLightsLoadHourly, EUIHourly;
         public EPBuilding() { }
         public static string Header ()

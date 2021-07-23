@@ -10,13 +10,13 @@ namespace IDFObjects
     public class WindowMaterial
     {
         public string name { get; set; }
-        public double uValue { get; set; }
-        public double gValue { get; set; }
-        public double vTransmittance { get; set; }
+        public float uValue { get; set; }
+        public float gValue { get; set; }
+        public float vTransmittance { get; set; }
         public WindowMaterial()
         {
         }
-        public WindowMaterial(string n, double u, double g, double transmittance)
+        public WindowMaterial(string n, float u, float g, float transmittance)
         {
             name = n; uValue = u; gValue = g; vTransmittance = transmittance;
         }

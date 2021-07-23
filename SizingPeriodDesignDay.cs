@@ -15,29 +15,29 @@ namespace IDFObjects
         public int day { get; set; }
         public string dayType { get; set; }
 
-        public double maxDryBulbT { get; set; }
-        public double dailyDryBulbTR { get; set; }
+        public float maxDryBulbT { get; set; }
+        public float dailyDryBulbTR { get; set; }
         public string dryBulbTRModifierType { get; set; }
 
         public string humidityConditionType { get; set; }
-        public double wetbulbOrDawPointAtMaxDryBulb { get; set; }
+        public float wetbulbOrDawPointAtMaxDryBulb { get; set; }
 
-        public double enthalpyAtMaxDryBulb { get; set; }
+        public float enthalpyAtMaxDryBulb { get; set; }
 
-        public double baromPress { get; set; }
-        public double windspeed { get; set; }
-        public double windDir { get; set; }
+        public float baromPress { get; set; }
+        public float windspeed { get; set; }
+        public float windDir { get; set; }
 
         public string rainInd { get; set; }
         public string snowInd { get; set; }
         public string daylightSavTimeInd { get; set; }
         public string solarModelInd { get; set; }
 
-        public double skyClearness { get; set; }
+        public float skyClearness { get; set; }
 
         public List<string> strData;
-        public SizingPeriodDesignDay(string name, int month, int day, string dayType, double maxDryBulbT, double dailyDryBulbTR, double wetbulbOrDawPointAtMaxDryBulb, double enthalpyAtMaxDryBulb, double baromPress,
-            double windspeed, double windDir, string rainInd, string snowInd, string daylightSavTimeInd, string solarModelInd, double skyClearness)
+        public SizingPeriodDesignDay(string name, int month, int day, string dayType, float maxDryBulbT, float dailyDryBulbTR, float wetbulbOrDawPointAtMaxDryBulb, float enthalpyAtMaxDryBulb, float baromPress,
+            float windspeed, float windDir, string rainInd, string snowInd, string daylightSavTimeInd, string solarModelInd, float skyClearness)
         {
             this.name = name;
             this.month = month;

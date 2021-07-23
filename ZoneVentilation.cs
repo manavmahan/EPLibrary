@@ -13,23 +13,23 @@ namespace IDFObjects
         public string ZoneName;
         public string scheduleName = "Ventilation Schedule";
         public string CalculationMethod = "AirChanges/Hour";
-        public double DesignFlowRate = 0;
-        public double FlowRateZoneArea = 0.001;
-        public double FlowRatePerson = 0.00944;
-        public double airChangesHour = 0;
+        public float DesignFlowRate = 0;
+        public float FlowRateZoneArea = 0.001f;
+        public float FlowRatePerson = 0.00944f;
+        public float airChangesHour = 0;
         public string VentilationType = "Balanced";
-        public double FanPressure = 1;
-        public double FanEfficiency = 1;
-        public double ConstantCoefficient = 1;
-        public double TemperatureCoefficient = 0;
-        public double VelocityCoefficient = 0;
-        public double VelocitySqCoefficient = 0;
-        public double minIndoorTemp = -100;
-        public double maxIndoorTemp = 100;
+        public float FanPressure = 1;
+        public float FanEfficiency = 1;
+        public float ConstantCoefficient = 1;
+        public float TemperatureCoefficient = 0;
+        public float VelocityCoefficient = 0;
+        public float VelocitySqCoefficient = 0;
+        public float minIndoorTemp = -100;
+        public float maxIndoorTemp = 100;
         public string minIndoorTempSchedule = " ";
         public string maxIndoorTempSchedule = " ";
-        public double deltaC = 1;
-        public ZoneVentilation(double acH)
+        public float deltaC = 1;
+        public ZoneVentilation(float acH)
         {
             scheduleName = "Ventilation Schedule";
             airChangesHour = acH;

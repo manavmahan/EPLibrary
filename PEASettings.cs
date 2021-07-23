@@ -12,7 +12,7 @@ namespace IDFObjects
         public Location Location;
         public LevelOfDevelopment LevelOfDevelopment;
         public SimulationTool SimulationTool;
-        public double OffsetDistance;
+        public float OffsetDistance;
         public int NumSamplesDS, NumSamplesOp;
         public SamplingScheme SamplingDS, SamplingOp;
         public RandomGeometry RandomGeometry = new RandomGeometry();

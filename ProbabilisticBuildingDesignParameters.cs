@@ -89,7 +89,7 @@ namespace IDFObjects
         }
         public void UpdateSenstivityResults(string sensData)
         {
-            Dictionary<string, double[]> dataDict = Utility.ConvertToDataframe(File.ReadAllLines(sensData).Where(s => s.First() != '#'));
+            Dictionary<string, float[]> dataDict = Utility.ConvertToDataframe(File.ReadAllLines(sensData).Where(s => s.First() != '#'), 5);
 
             List<string> parameters = dataDict.Keys.ToList();
             List<string> zoneListNames = parameters.Where(p => p.Contains(':'))

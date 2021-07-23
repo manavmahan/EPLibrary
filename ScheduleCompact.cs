@@ -12,8 +12,8 @@ namespace IDFObjects
         public ScheduleCompact() { }
         public string name { get; set; }
         public string scheduleLimitName { get; set; }
-        public double value { get; set; }
-        public Dictionary<string, Dictionary<string, double>> daysTimeValue;
+        public float value { get; set; }
+        public Dictionary<string, Dictionary<string, float>> daysTimeValue;
 
         public List<string> allData = new List<string>();
 
@@ -31,10 +31,10 @@ namespace IDFObjects
             if (daysTimeValue!=null)
             {
                 info.Add(Utility.IDFLineFormatter("Through: 12/31", "Field1"));
-                foreach (KeyValuePair<string, Dictionary<string, double>> kV in daysTimeValue)
+                foreach (KeyValuePair<string, Dictionary<string, float>> kV in daysTimeValue)
                 {
                     info.Add("For: " + kV.Key + ",");
-                    foreach (KeyValuePair<string, double> tValue in kV.Value)
+                    foreach (KeyValuePair<string, float> tValue in kV.Value)
                     {
                         info.Add("Until: " + tValue.Key + "," + tValue.Value + ",");
                     }

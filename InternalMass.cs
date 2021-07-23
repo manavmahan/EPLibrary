@@ -11,11 +11,11 @@ namespace IDFObjects
     {
         public string name, construction;
         
-        public double area;
+        public float area;
         public bool IsWall = false;
         public string ZoneName;
         public InternalMass() { }
-        public InternalMass(Zone z, double area, string construction, bool IsWall)
+        public InternalMass(Zone z, float area, string construction, bool IsWall)
         {
             this.construction = construction; this.area = area; ZoneName = z.Name;
             name = z.Name + ":InternalMass:" + z.iMasses.Count + 1;

@@ -11,11 +11,11 @@ namespace IDFObjects
     {
         public string Name = "Building";
 
-        public double StartTime, OperatingHours, LHG, EHG, Occupancy, HeatingSetpoint, CoolingSetpoint; 
+        public float StartTime, OperatingHours, LHG, EHG, Occupancy, HeatingSetpoint, CoolingSetpoint; 
         public ZoneConditions() { }
 
-        public ZoneConditions(double StartTime, double OperatingHours, double LHG, double EHG, double AreaPerPerson,
-            double HeatingSP, double CoolingSP)
+        public ZoneConditions(float StartTime, float OperatingHours, float LHG, float EHG, float AreaPerPerson,
+            float HeatingSP, float CoolingSP)
         {
             this.StartTime = StartTime;
             this.OperatingHours = OperatingHours; 
@@ -25,13 +25,13 @@ namespace IDFObjects
             this.HeatingSetpoint = HeatingSP;
             this.CoolingSetpoint = CoolingSP;
         }
-        public int[] GetStartEndTime(double midHour)
+        public int[] GetStartEndTime(float midHour)
         {
             int hour1, hour2, minutes1, minutes2;
-            double endTime;
+            float endTime;
             if (StartTime == 0)
             {
-                StartTime = midHour - .5 * OperatingHours; endTime = midHour + .5 * OperatingHours;
+                StartTime = midHour - .5f * OperatingHours; endTime = midHour + .5f * OperatingHours;
             }
             else
             {
@@ -51,7 +51,7 @@ namespace IDFObjects
             {
                 minutes2 = 0; hour2++;
             }
-            double hours = hour2 - hour1, min = minutes2 - minutes1;
+            float hours = hour2 - hour1, min = minutes2 - minutes1;
             if (min > 0)
             {
                 hours += min / 60;

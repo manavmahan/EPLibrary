@@ -10,12 +10,9 @@ namespace IDFObjects
     public class BuildingWWR
     {
         public bool EachWallSeparately;
-        public double North;
-        public double East;
-        public double West;
-        public double South;
+        public float North,  East, West, South;
         public BuildingWWR() { }
-        public BuildingWWR(double north, double east, double west, double south)
+        public BuildingWWR(float north, float east, float west, float south)
         {
             North = north;
             East = east;

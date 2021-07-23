@@ -14,24 +14,24 @@ namespace IDFObjects
     public class Building
     {
         public string name = "Building1";
-        public double northAxis = 0;
+        public float northAxis = 0;
         public string terrain = String.Empty;
-        public double loadConvergenceTolerance = 0.04;
-        public double tempConvergenceTolerance = 0.4;
+        public float loadConvergenceTolerance = 0.04f;
+        public float tempConvergenceTolerance = 0.4f;
         public string solarDistribution = "FullExterior";
-        public double maxNWarmUpDays = 25;
-        public double minNWarmUpDays = 6;
+        public float maxNWarmUpDays = 25;
+        public float minNWarmUpDays = 6;
 
 
         //EnergyPlus Output
         public EPBuilding EP = new EPBuilding();
 
         //Probabilistic Embedded Energy Output
-        public double[] p_EmbeddedEnergy, p_PERT_EmbeddedEnergy, p_PENRT_EmbeddedEnergy,
+        public float[] p_EmbeddedEnergy, p_PERT_EmbeddedEnergy, p_PENRT_EmbeddedEnergy,
             p_LCE_PERT, p_LCE_PENRT, p_LifeCycleEnergy;
-        public double EmbeddedEnergy, PERT_EmbeddedEnergy, PENRT_EmbeddedEnergy,
+        public float EmbeddedEnergy, PERT_EmbeddedEnergy, PENRT_EmbeddedEnergy,
             LCE_PERT, LCE_PENRT, LifeCycleEnergy;
-        public double life, PERTFactor, PENRTFactor;
+        public float life, PERTFactor, PENRTFactor;
 
         //Deterministic Attributes
         public BuildingDesignParameters Parameters;
@@ -65,7 +65,7 @@ namespace IDFObjects
         public Chiller chiller;
         public Tower tower;
 
-        public double totalExposedSurfaceArea, totalVolume;
+        public float totalExposedSurfaceArea, totalVolume;
         public void GetSurfaceAreaVolume()
         {
             totalExposedSurfaceArea = zones.SelectMany(z => z.Surfaces
@@ -133,7 +133,7 @@ namespace IDFObjects
         {
             zones.ForEach(z => z.CalcAreaVolumeHeatCapacity(this));
         }
-        public void CreateInternalMass(double percentArea, bool IsWall)
+        public void CreateInternalMass(float percentArea, bool IsWall)
         {
             zones.ForEach(z =>
             {
@@ -144,12 +144,12 @@ namespace IDFObjects
         }
         public void CreateInternalMass()
         {
-            double hcIWall = Parameters.Construction.hcInternalMass;
+            float hcIWall = Parameters.Construction.hcInternalMass;
             if (Parameters.Construction.InternalMass > 0) { 
                 zones.ForEach(z =>
                 {
                     z.CalcAreaVolume();
-                    InternalMass mass = new InternalMass(z, 1000 * Parameters.Construction.InternalMass * 
+                    InternalMass mass = new InternalMass(z, 1000f * Parameters.Construction.InternalMass * 
                         z.Area / hcIWall, "InternalMass", false);
                 });
             }
@@ -193,32 +193,32 @@ namespace IDFObjects
             {
                 name = "No Cooling",
                 scheduleLimitName = temp.name,
-                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
-                { "AllDays", new Dictionary<string, double>() {{"24:00", 35} } } }
+                daysTimeValue = new Dictionary<string, Dictionary<string, float>>() {
+                { "AllDays", new Dictionary<string, float>() {{"24:00", 35} } } }
             };
 
             ScheduleCompact activity = new ScheduleCompact()
             {
                 name = "People Activity Schedule",
                 scheduleLimitName = activityLevel.name,
-                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
-                { "AllDays", new Dictionary<string, double>() {{"24:00", 125} } } }
+                daysTimeValue = new Dictionary<string, Dictionary<string, float>>() {
+                { "AllDays", new Dictionary<string, float>() {{"24:00", 125} } } }
             };
 
             ScheduleCompact workEff = new ScheduleCompact()
             {
                 name = "Work Eff Sch",
                 scheduleLimitName = fractional.name,
-                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
-                { "AllDays", new Dictionary<string, double>() {{"24:00", 1} } } }
+                daysTimeValue = new Dictionary<string, Dictionary<string, float>>() {
+                { "AllDays", new Dictionary<string, float>() {{"24:00", 1} } } }
             };
 
             ScheduleCompact airVelo = new ScheduleCompact()
             {
                 name = "Air Velo Sch",
                 scheduleLimitName = fractional.name,
-                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
-                { "AllDays", new Dictionary<string, double>() {{"24:00", .1} } } }
+                daysTimeValue = new Dictionary<string, Dictionary<string, float>>() {
+                { "AllDays", new Dictionary<string, float>() {{"24:00", .1f} } } }
             };
 
             //infiltration
@@ -226,15 +226,15 @@ namespace IDFObjects
             {
                 name = "Space Infiltration Schedule",
                 scheduleLimitName = fractional.name,
-                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
-                { "AllDays", new Dictionary<string, double>() {{"24:00", 1} } } }
+                daysTimeValue = new Dictionary<string, Dictionary<string, float>>() {
+                { "AllDays", new Dictionary<string, float>() {{"24:00", 1} } } }
             };
             ScheduleCompact alwaysOn = new ScheduleCompact()
             {
                 name = "AlwaysOn",
                 scheduleLimitName = fractional.name,
-                daysTimeValue = new Dictionary<string, Dictionary<string, double>>() {
-                { "AllDays", new Dictionary<string, double>() {{"24:00", 1} } } }
+                daysTimeValue = new Dictionary<string, Dictionary<string, float>>() {
+                { "AllDays", new Dictionary<string, float>() {{"24:00", 1} } } }
             };
             schedulescomp.Add(alwaysOn);
             schedulescomp.Add(workEff);
@@ -243,44 +243,44 @@ namespace IDFObjects
         }
         void GenerateConstructionMunich()
         {
-            double uWall = Parameters.Construction.UWall, uGFloor = Parameters.Construction.UGFloor,
+            float uWall = Parameters.Construction.UWall, uGFloor = Parameters.Construction.UGFloor,
                 uIFloor = Parameters.Construction.UIFloor,
                 uRoof = Parameters.Construction.URoof, uIWall = Parameters.Construction.UIWall, uWindow = Parameters.Construction.UWindow,
                 gWindow = Parameters.Construction.GWindow, hcSlab = Parameters.Construction.HCSlab;
 
-            double lambda_insulation = 0.035;
+            float lambda_insulation = 0.035f;
 
             //wall plaster layer
-            Material wall_plasterlayer = new Material("wall_plasterlayer", "Smooth", 0.02, 0.7, 1400, 1000, 0.9, 0.4, 0.7);
+            Material wall_plasterlayer = new Material("wall_plasterlayer", "Smooth", 0.02f, 0.7f, 1400, 1000, 0.9f, 0.4f, 0.7f);
 
             //wall0 layers
-            Material wall_structure = new Material("wall_structure", "Smooth", 0.18, 2.3, 2300, 1100, 0.9, 0.7, 0.7);
-            Material wall_insulation = new Material("wall_insulation", "Smooth", 0.18, lambda_insulation, 25, 1000, 0.9, 0.7, 0.7);
+            Material wall_structure = new Material("wall_structure", "Smooth", 0.18f, 2.3f, 2300, 1100, 0.9f, 0.7f, 0.7f);
+            Material wall_insulation = new Material("wall_insulation", "Smooth", 0.18f, lambda_insulation, 25, 1000, 0.9f, 0.7f, 0.7f);
 
             //wall1 layers
-            Material wall1_structure = new Material("wall1_structure", "Smooth", 0.3, 0.09, 650, 1100, 0.9, 0.7, 0.7);
-            Material wall1_insulation = new Material("wall1_insulation", "Smooth", 0.06, lambda_insulation, 25, 1000, 0.9, 0.7, 0.7);
+            Material wall1_structure = new Material("wall1_structure", "Smooth", 0.3f, 0.09f, 650, 1100, 0.9f, 0.7f, 0.7f);
+            Material wall1_insulation = new Material("wall1_insulation", "Smooth", 0.06f, lambda_insulation, 25, 1000, 0.9f, 0.7f, 0.7f);
 
             //wall2 layers
-            Material wall2_structure = new Material("wall2_structure", "Smooth", 0.175, 1.4, 2000, 1100, 0.9, 0.7, 0.7);
-            Material wall2_insulation = new Material("wall2_insulation", "Smooth", 0.18, lambda_insulation, 25, 1000, 0.9, 0.7, 0.7);
+            Material wall2_structure = new Material("wall2_structure", "Smooth", 0.175f, 1.4f, 2000, 1100, 0.9f, 0.7f, 0.7f);
+            Material wall2_insulation = new Material("wall2_insulation", "Smooth", 0.18f, lambda_insulation, 25, 1000, 0.9f, 0.7f, 0.7f);
 
             //internal wall layers
-            Material plasterboard = new Material("plasterboard", "Rough", 0.05, 0.16, 800, 800, 0.9, 0.6, 0.6);
-            Material iwall_insulation = new Material("iwall_insulation", "Rough", 0.025, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
+            Material plasterboard = new Material("plasterboard", "Rough", 0.05f, 0.16f, 800, 800, 0.9f, 0.6f, 0.6f);
+            Material iwall_insulation = new Material("iwall_insulation", "Rough", 0.025f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
 
             //gFloor & iFloor layers
-            Material pInsulation = new Material("pInsulation", "Smooth", 0.05, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
-            Material floor_structure = new Material("floor_structure", "Smooth", 0.2, 2.3, 2300, hcSlab, 0.9, 0.7, 0.7);
-            Material gfloor_insulation = new Material("gfloor_insulation", "Smooth", 0.053, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
-            Material floor_cementscreed = new Material("floor_cementscreed", "Smooth", 0.08, 1.4, 2000, 1000, 0.9, 0.7, 0.7);
+            Material pInsulation = new Material("pInsulation", "Smooth", 0.05f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
+            Material floor_structure = new Material("floor_structure", "Smooth", 0.2f, 2.3f, 2300, hcSlab, 0.9f, 0.7f, 0.7f);
+            Material gfloor_insulation = new Material("gfloor_insulation", "Smooth", 0.053f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
+            Material floor_cementscreed = new Material("floor_cementscreed", "Smooth", 0.08f, 1.4f, 2000, 1000, 0.9f, 0.7f, 0.7f);
 
-            Material ifloor_insulation = new Material("ifloor_insulation", "Smooth", 0.025, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
+            Material ifloor_insulation = new Material("ifloor_insulation", "Smooth", 0.025f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
 
             //Roof layers
-            Material roof_insulation = new Material("roof_insulation", "Smooth", 0.23, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
-            Material roof_structure = new Material("roof_structure", "Smooth", 0.25, 2.3, 2300, hcSlab, 0.9, 0.7, 0.7);
-            Material roof_plaster = new Material("roof_plaster", "Smooth", 0.02, 0.7, 1400, 1000, 0.9, 0.7, 0.7);
+            Material roof_insulation = new Material("roof_insulation", "Smooth", 0.23f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
+            Material roof_structure = new Material("roof_structure", "Smooth", 0.25f, 2.3f, 2300, hcSlab, 0.9f, 0.7f, 0.7f);
+            Material roof_plaster = new Material("roof_plaster", "Smooth", 0.02f, 0.7f, 1400, 1000, 0.9f, 0.7f, 0.7f);
 
             List<Material> layerListRoof = new List<Material>() { pInsulation, roof_insulation, roof_structure, roof_plaster };
             Parameters.Construction.hcRoof = layerListRoof.Select(l => l.thickness * l.sHC * l.density).Sum();
@@ -302,7 +302,7 @@ namespace IDFObjects
             Construction construction_ifloor = new Construction("Floor_Ceiling", layerListIFloor);
             Parameters.Construction.hcIFloor = layerListIFloor.Select(l => l.thickness * l.sHC * l.density).Sum();
 
-            Material InternalMaterial = new Material(name: "InternalMaterial", rough: "Smooth", th: 0.12, conduct: 2.3, dense: 500, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
+            Material InternalMaterial = new Material(name: "InternalMaterial", rough: "Smooth", th: 0.12f, conduct: 2.3f, dense: 500, sH: 1000, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
             Construction InternalMass = new Construction("InternalMass", new List<Material>() { InternalMaterial });
             Parameters.Construction.hcInternalMass = new List<Material>() { InternalMaterial }.Select(l => l.thickness * l.sHC * l.density).Sum();
 
@@ -317,7 +317,7 @@ namespace IDFObjects
                 .Select(n => constructions.SelectMany(c => c.layers).First(l => l.name == n)).ToList();
 
             //window construction
-            WindowMaterial windowLayer = new WindowMaterial("Glazing Material", uWindow, gWindow, 0.1);
+            WindowMaterial windowLayer = new WindowMaterial("Glazing Material", uWindow, gWindow, 0.1f);
             windowMaterials = new List<WindowMaterial>() { windowLayer };
             Construction window = new Construction("Glazing", new List<WindowMaterial>() { windowLayer });
             constructions.Add(window);
@@ -327,45 +327,45 @@ namespace IDFObjects
         }
         void GenerateConstructionTausendpfund()
         {
-            double uWall = Parameters.Construction.UWall, uGFloor = Parameters.Construction.UGFloor,
+            float uWall = Parameters.Construction.UWall, uGFloor = Parameters.Construction.UGFloor,
                 uIFloor = Parameters.Construction.UIFloor,
                 uRoof = Parameters.Construction.URoof, uIWall = Parameters.Construction.UIWall, uWindow = Parameters.Construction.UWindow,
                 gWindow = Parameters.Construction.GWindow, hcSlab = Parameters.Construction.HCSlab;
 
-            double lambda_insulation = 0.035;
+            float lambda_insulation = 0.035f;
 
             //wall plaster layer
-            Material wall_plasterlayer = new Material("wall_plasterlayer", "Smooth", 0.02, 0.7, 1400, 900, 0.9, 0.4, 0.7);
+            Material wall_plasterlayer = new Material("wall_plasterlayer", "Smooth", 0.02f, 0.7f, 1400, 900, 0.9f, 0.4f, 0.7f);
 
             //wall0 layers
-            Material wall_structure = new Material("wall_structure", "Smooth", 0.18, 2.3, 2300, 1100, 0.9, 0.7, 0.7);
-            Material wall_insulation = new Material("wall_insulation", "Smooth", 0.18, lambda_insulation, 25, 1000, 0.9, 0.7, 0.7);         
+            Material wall_structure = new Material("wall_structure", "Smooth", 0.18f, 2.3f, 2300, 1100, 0.9f, 0.7f, 0.7f);
+            Material wall_insulation = new Material("wall_insulation", "Smooth", 0.18f, lambda_insulation, 25, 1000, 0.9f, 0.7f, 0.7f);         
             
             //wall1 layers
-            Material wall1_structure = new Material("wall1_structure", "Smooth", 0.3, 0.09, 650, 1100, 0.9, 0.7, 0.7);
-            Material wall1_insulation = new Material("wall1_insulation", "Smooth", 0.06, lambda_insulation, 25, 1000, 0.9, 0.7, 0.7);
+            Material wall1_structure = new Material("wall1_structure", "Smooth", 0.3f, 0.09f, 650, 1100, 0.9f, 0.7f, 0.7f);
+            Material wall1_insulation = new Material("wall1_insulation", "Smooth", 0.06f, lambda_insulation, 25, 1000, 0.9f, 0.7f, 0.7f);
 
             //wall2 layers
-            Material wall2_structure = new Material("wall2_structure", "Smooth", 0.175, 1.4, 2000, 1100, 0.9, 0.7, 0.7);
-            Material wall2_insulation = new Material("wall2_insulation", "Smooth", 0.18, lambda_insulation, 25, 1000, 0.9, 0.7, 0.7);
+            Material wall2_structure = new Material("wall2_structure", "Smooth", 0.175f, 1.4f, 2000, 1100, 0.9f, 0.7f, 0.7f);
+            Material wall2_insulation = new Material("wall2_insulation", "Smooth", 0.18f, lambda_insulation, 25, 1000, 0.9f, 0.7f, 0.7f);
 
             //internal wall layers
-            Material plasterboard = new Material("plasterboard", "Rough", 0.05, 0.16, 800, 800, 0.9, 0.6, 0.6);
-            Material iwall_insulation = new Material("iwall_insulation", "Rough", 0.025, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
+            Material plasterboard = new Material("plasterboard", "Rough", 0.05f, 0.16f, 800, 800, 0.9f, 0.6f, 0.6f);
+            Material iwall_insulation = new Material("iwall_insulation", "Rough", 0.025f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
 
             //gFloor & iFloor layers
-            Material pInsulation = new Material("pInsulation", "Smooth", 0.12, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
-            Material floor_structure = new Material("floor_structure", "Smooth", 0.2, 2.3, 2300, hcSlab, 0.9, 0.7, 0.7);
-            Material gfloor_insulation = new Material("gfloor_insulation", "Smooth", 0.053, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
-            Material floor_cementscreed = new Material("floor_cementscreed", "Smooth", 0.08, 1.4, 2000, 2500, 0.9, 0.7, 0.7);
-            
-            Material ifloor_insulation = new Material("ifloor_insulation", "Smooth", 0.025, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
+            Material pInsulation = new Material("pInsulation", "Smooth", 0.12f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
+            Material floor_structure = new Material("floor_structure", "Smooth", 0.2f, 2.3f, 2300, hcSlab, 0.9f, 0.7f, 0.7f);
+            Material gfloor_insulation = new Material("gfloor_insulation", "Smooth", 0.053f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
+            Material floor_cementscreed = new Material("floor_cementscreed", "Smooth", 0.08f, 1.4f, 2000, 2500, 0.9f, 0.7f, 0.7f);
+
+            Material ifloor_insulation = new Material("ifloor_insulation", "Smooth", 0.025f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
 
             //Roof layers
-            Material roof_insulation = new Material("roof_insulation", "Smooth", 0.23, lambda_insulation, 20, 1000, 0.9, 0.7, 0.7);
-            Material roof_structure = new Material("roof_structure", "Smooth", 0.25, 2.3, 2300, hcSlab, 0.9, 0.7, 0.7);
-            Material roof_plaster = new Material("roof_plaster", "Smooth", 0.02, 0.7, 1400, 2500, 0.9, 0.7, 0.7);
-         
+            Material roof_insulation = new Material("roof_insulation", "Smooth", 0.23f, lambda_insulation, 20, 1000, 0.9f, 0.7f, 0.7f);
+            Material roof_structure = new Material("roof_structure", "Smooth", 0.25f, 2.3f, 2300, hcSlab, 0.9f, 0.7f, 0.7f);
+            Material roof_plaster = new Material("roof_plaster", "Smooth", 0.02f, 0.7f, 1400, 2500, 0.9f, 0.7f, 0.7f);
+
             List<Material> layerListRoof = new List<Material>() { pInsulation, roof_insulation, roof_structure, roof_plaster };
             Parameters.Construction.hcRoof = layerListRoof.Select(l => l.thickness * l.sHC * l.density).Sum();
             Construction construction_Roof = new Construction("Up Roof Concrete", layerListRoof);
@@ -394,7 +394,7 @@ namespace IDFObjects
             Construction construction_ifloor = new Construction("General_Floor_Ceiling", layerListIFloor);
             Parameters.Construction.hcIFloor = layerListIFloor.Select(l => l.thickness * l.sHC * l.density).Sum();
 
-            Material InternalMaterial = new Material(name: "InternalMaterial", rough: "Smooth", th: 0.12, conduct: 2.3, dense: 500, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
+            Material InternalMaterial = new Material(name: "InternalMaterial", rough: "Smooth", th: 0.12f, conduct: 2.3f, dense: 500, sH: 1000, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
             Construction InternalMass = new Construction("InternalMass", new List<Material>() { InternalMaterial });
             Parameters.Construction.hcInternalMass = new List<Material>() { InternalMaterial }.Select(l => l.thickness * l.sHC * l.density).Sum();
 
@@ -410,7 +410,7 @@ namespace IDFObjects
                 .Select(n => constructions.SelectMany(c => c.layers).First(l => l.name == n)).ToList();
 
             //window construction
-            WindowMaterial windowLayer = new WindowMaterial("Glazing Material", uWindow, gWindow, 0.1);
+            WindowMaterial windowLayer = new WindowMaterial("Glazing Material", uWindow, gWindow, 0.1f);
             windowMaterials = new List<WindowMaterial>() { windowLayer };
             Construction window = new Construction("Glazing", new List<WindowMaterial>() { windowLayer });
             constructions.Add(window);
@@ -420,7 +420,7 @@ namespace IDFObjects
         }
         public void GenerateConstructionBelgium()
         {
-            double uWall = Parameters.Construction.UWall,
+            float uWall = Parameters.Construction.UWall,
                 uCWall = Parameters.Construction.UCWall,
                 uGFloor = Parameters.Construction.UGFloor,
                 uIFloor = Parameters.Construction.UIFloor,
@@ -430,48 +430,48 @@ namespace IDFObjects
                 gWindow = Parameters.Construction.GWindow,
                 hcSlab = Parameters.Construction.HCSlab;
             //InternalMass
-            Material InternalMaterial = new Material(name: "InternalMaterial", rough: "Smooth", th: 0.12, conduct: 2.3, dense: 2300, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
+            Material InternalMaterial = new Material(name: "InternalMaterial", rough: "Smooth", th: 0.12f, conduct: 2.3f, dense: 2300, sH: 1000, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
             Construction InternalMass = new Construction("InternalMass", new List<Material>() { InternalMaterial });
             Parameters.Construction.hcInternalMass = new List<Material>() { InternalMaterial }.Select(l => l.thickness * l.sHC * l.density).Sum();
             //Roof
-            Material Bitumen = new Material(name: "Bitumen", rough: "Smooth", th: 0.01, conduct: 0.230, dense: 1100, sH: 1000, tAbsorp: 0.9, sAbsorp: 0.9, vAbsorp: 0.7);
-            Material PUR_Roof = new Material(name: "PUR_Roof", rough: "Smooth", th: 0.06, conduct: 0.026, dense: 35, sH: 1400, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
-            Material Screed = new Material(name: "Screed", rough: "Smooth", th: 0.06, conduct: 1.3, dense: 1600, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
-            Material RConcrete1 = new Material(name: "RConcrete1", rough: "Smooth", th: 0.12, conduct: 2.3, dense: 2300, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
-            Material Gypsum1 = new Material(name: "Gypsum1", rough: "Smooth", th: 0.01, conduct: 0.4, dense: 800, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.4, vAbsorp: 0.7);
+            Material Bitumen = new Material(name: "Bitumen", rough: "Smooth", th: 0.01f, conduct: 0.230f, dense: 1100, sH: 1000, tAbsorp: 0.9f, sAbsorp: 0.9f, vAbsorp: 0.7f);
+            Material PUR_Roof = new Material(name: "PUR_Roof", rough: "Smooth", th: 0.06f, conduct: 0.026f, dense: 35, sH: 1400, tAbsorp: 0.9f, sAbsorp: 0.9f, vAbsorp: 0.7f);
+            Material Screed = new Material(name: "Screed", rough: "Smooth", th: 0.06f, conduct: 1.3f, dense: 1600, sH: 1000, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
+            Material RConcrete1 = new Material(name: "RConcrete1", rough: "Smooth", th: 0.12f, conduct: 2.3f, dense: 2300, sH: 1000, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
+            Material Gypsum1 = new Material(name: "Gypsum1", rough: "Smooth", th: 0.01f, conduct: 0.4f, dense: 800, sH: 1000, tAbsorp: 0.85f, sAbsorp: 0.4f, vAbsorp: 0.7f);
             Construction Roof = new Construction("Roof", new List<Material>(){
                 Bitumen, PUR_Roof, Screed, RConcrete1, Gypsum1});
 
             //Exterior Wall
-            Material Brick = new Material(name: "Brick", rough: "Smooth", th: 0.1, conduct: 0.75, dense: 1400, sH: 840, tAbsorp: 0.88, sAbsorp: 0.55, vAbsorp: 0.7);
-            Material Cavity = new Material(name: "Cavity", rough: "Smooth", th: 0.03, conduct: 0.0258, dense: 1.2, sH: 1006, tAbsorp: 0.9, sAbsorp: 0.9, vAbsorp: 0.7);
-            Material MWool_ExWall = new Material(name: "MWool_ExWall", rough: "Smooth", th: 0.05, conduct: 0.05, dense: 100, sH: 1030, tAbsorp: 0.9, sAbsorp: 0.7, vAbsorp: 0.7);
-            Material Brickwork1 = new Material(name: "Brickwork1", rough: "Smooth", th: 0.14, conduct: 0.32, dense: 840, sH: 1300, tAbsorp: 0.88, sAbsorp: 0.55, vAbsorp: 0.7);
-            Material Gypsum2 = new Material(name: "Gypsum2", rough: "Smooth", th: 0.02, conduct: 0.4, dense: 800, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.4, vAbsorp: 0.7);
+            Material Brick = new Material(name: "Brick", rough: "Smooth", th: 0.1f, conduct: 0.75f, dense: 1400, sH: 840, tAbsorp: 0.88f, sAbsorp: 0.55f, vAbsorp: 0.7f);
+            Material Cavity = new Material(name: "Cavity", rough: "Smooth", th: 0.03f, conduct: 0.0258f, dense: 1.2f, sH: 1006, tAbsorp: 0.9f, sAbsorp: 0.9f, vAbsorp: 0.7f);
+            Material MWool_ExWall = new Material(name: "MWool_ExWall", rough: "Smooth", th: 0.05f, conduct: 0.05f, dense: 100, sH: 1030, tAbsorp: 0.9f, sAbsorp: 0.7f, vAbsorp: 0.7f);
+            Material Brickwork1 = new Material(name: "Brickwork1", rough: "Smooth", th: 0.14f, conduct: 0.32f, dense: 840, sH: 1300, tAbsorp: 0.88f, sAbsorp: 0.55f, vAbsorp: 0.7f);
+            Material Gypsum2 = new Material(name: "Gypsum2", rough: "Smooth", th: 0.02f, conduct: 0.4f, dense: 800, sH: 1000, tAbsorp: 0.85f, sAbsorp: 0.4f, vAbsorp: 0.7f);
             Construction ExWall = new Construction("ExternalWall", new List<Material>(){
                 Brick, Cavity, MWool_ExWall, Brickwork1, Gypsum2});
 
             //InWall
-            Material MWool_InWall = new Material(name: "MWool_InWall", rough: "Smooth", th: 0.05, conduct: 0.05, dense: 100, sH: 1030, tAbsorp: 0.9, sAbsorp: 0.7, vAbsorp: 0.7);
-            Material Brickwork2 = new Material(name: "Brickwork2", rough: "Smooth", th: 0.14, conduct: 0.27, dense: 850, sH: 840, tAbsorp: 0.85, sAbsorp: 0.55, vAbsorp: 0.7);
+            Material MWool_InWall = new Material(name: "MWool_InWall", rough: "Smooth", th: 0.05f, conduct: 0.05f, dense: 100, sH: 1030, tAbsorp: 0.9f, sAbsorp: 0.7f, vAbsorp: 0.7f);
+            Material Brickwork2 = new Material(name: "Brickwork2", rough: "Smooth", th: 0.14f, conduct: 0.27f, dense: 850, sH: 840, tAbsorp: 0.85f, sAbsorp: 0.55f, vAbsorp: 0.7f);
             Construction InWall = new Construction("InternalWall", new List<Material>(){
                  Gypsum1, MWool_InWall, Brickwork2, Gypsum1 });
 
             //GFloor
-            Material FloorTiles = new Material(name: "FloorTiles", rough: "Smooth", th: 0.04, conduct: 0.44, dense: 1500, sH: 733, tAbsorp: 0.85, sAbsorp: 0.55, vAbsorp: 0.6);
-            Material PUR_GFloor = new Material(name: "PUR_GFloor", rough: "Smooth", th: 0.06, conduct: 0.026, dense: 35, sH: 1400, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
-            Material RConcrete2 = new Material(name: "RConcrete2", rough: "Smooth", th: 0.15, conduct: 2.3, dense: 2300, sH: 1000, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
+            Material FloorTiles = new Material(name: "FloorTiles", rough: "Smooth", th: 0.04f, conduct: 0.44f, dense: 1500, sH: 733, tAbsorp: 0.85f, sAbsorp: 0.55f, vAbsorp: 0.6f);
+            Material PUR_GFloor = new Material(name: "PUR_GFloor", rough: "Smooth", th: 0.06f, conduct: 0.026f, dense: 35, sH: 1400, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
+            Material RConcrete2 = new Material(name: "RConcrete2", rough: "Smooth", th: 0.15f, conduct: 2.3f, dense: 2300, sH: 1000, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
             Construction GFloor = new Construction("GroundFloor", new List<Material>(){
                  FloorTiles, Screed, PUR_GFloor, RConcrete2 });
 
 
             //Ceiling
-            Material PUR_Ceiling = new Material(name: "PUR_Ceiling", rough: "Smooth", th: 0.06, conduct: 0.026, dense: 35, sH: 1400, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
+            Material PUR_Ceiling = new Material(name: "PUR_Ceiling", rough: "Smooth", th: 0.06f, conduct: 0.026f, dense: 35, sH: 1400, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
             Construction Ceiling = new Construction("Floor_Ceiling", new List<Material>(){
                  FloorTiles, Screed, PUR_Ceiling, RConcrete1, Gypsum1 });
 
             //CommonWall
-            Material EPS_CommonWall = new Material(name: "EPS", rough: "Smooth", th: 0.02, conduct: 0.035, dense: 20, sH: 1450, tAbsorp: 0.85, sAbsorp: 0.85, vAbsorp: 0.7);
+            Material EPS_CommonWall = new Material(name: "EPS", rough: "Smooth", th: 0.02f, conduct: 0.035f, dense: 20, sH: 1450, tAbsorp: 0.85f, sAbsorp: 0.85f, vAbsorp: 0.7f);
             Construction CommonWall = new Construction("CommonWall", new List<Material>(){
                  Gypsum2, Brickwork2, EPS_CommonWall, Brickwork2, Gypsum2 });
 
@@ -487,7 +487,7 @@ namespace IDFObjects
             materials.AddRange(constructions.SelectMany(c => c.layers).Select(l=>l.name).Distinct()
                 .Select(n=> constructions.SelectMany(c => c.layers).First(l=>l.name==n)));
             //window construction
-            WindowMaterial windowLayer = new WindowMaterial("Glazing Material", uWindow, gWindow, 0.1);
+            WindowMaterial windowLayer = new WindowMaterial("Glazing Material", uWindow, gWindow, 0.1f);
             windowMaterials = new List<WindowMaterial>() { windowLayer };
             Construction window = new Construction("Glazing", new List<WindowMaterial>() { windowLayer });
             constructions.Add(window);
@@ -498,7 +498,7 @@ namespace IDFObjects
         public void GeneratePeopleLightEquipmentInfiltrationVentilationThermostat()
         {
             if (Parameters.Construction.Permeability != 0)
-                Parameters.Construction.Infiltration = Math.Round(0.1 + Parameters.Construction.Permeability * 0.07 * 1.25 * totalExposedSurfaceArea / totalVolume,3);
+                Parameters.Construction.Infiltration = (float) Math.Round(0.1 + Parameters.Construction.Permeability * 0.07 * 1.25 * totalExposedSurfaceArea / totalVolume, 3);
             foreach (ZoneList zList in ZoneLists)
             {
                 zList.GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(this);
@@ -518,7 +518,7 @@ namespace IDFObjects
                     {
                         ZoneName = z.Name,
                         ThermostatName = z.ThermostatName,
-                        COP = new double[2] { Parameters.Service.HeatingCOP,Parameters.Service.CoolingCOP}
+                        COP = new float[2] { Parameters.Service.HeatingCOP,Parameters.Service.CoolingCOP}
                     });
                     GenerateWaterLoopsAndSystem();
                     break;
@@ -546,7 +546,7 @@ namespace IDFObjects
         }
         private void GenerateWaterLoopsAndSystem() 
         {
-            Parameters.Service.BoilerEfficiency = Math.Min(0.98, Parameters.Service.BoilerEfficiency);
+            Parameters.Service.BoilerEfficiency = Math.Min(0.98f, Parameters.Service.BoilerEfficiency);
             if (Parameters.Service.HVACSystem == HVACSystem.HeatPumpWBoiler) 
             {
                 mWaterLoop = new MixedWaterLoop();
@@ -564,7 +564,7 @@ namespace IDFObjects
             }
         }
         public Building() { }
-        public void AssociateEnergyResultsAnnual(Dictionary<string, double[]> data)
+        public void AssociateEnergyResultsAnnual(Dictionary<string, float[]> data)
         {
             try
             {
@@ -603,7 +603,7 @@ namespace IDFObjects
                 ZoneCoolingLoad = zones.Select(z => z.EP.CoolingLoad).Sum(),
                 ZoneLightsLoad = zones.Select(z => z.EP.LightsLoad).Sum()
             };
-            double BoilerEnergy = 0, ChillerEnergy = 0, TowerEnergy = 0, HeatPumpEnergy = 0;
+            float BoilerEnergy = 0, ChillerEnergy = 0, TowerEnergy = 0, HeatPumpEnergy = 0;
 
             if (data.Keys.Any(k => k.Contains("Boiler")))
                 BoilerEnergy = data[data.Keys.First(a => a.Contains("Boiler"))].Sum().ConvertKWhfromJoule();
@@ -631,7 +631,7 @@ namespace IDFObjects
             EP.EUI = EP.OperationalEnergy / zones.Select(z => z.Area).Sum();
         }
 
-        public void AssociateEnergyResultsHourly(Dictionary<string, double[]> data)
+        public void AssociateEnergyResultsHourly(Dictionary<string, float[]> data)
         {
             List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
             foreach (Surface surf in bSurfaces)
@@ -644,7 +644,7 @@ namespace IDFObjects
                     {
                         Fenestration win = surf.Fenestrations[0];
                         win.h_SolarRadiation = data[data.Keys.First(a => a.Contains(win.Name.ToUpper()) && a.Contains("Surface Outside Face Incident Solar Radiation Rate per Area"))];
-                        surf.h_HeatFlow = new List<double[]> { surf.h_HeatFlow, data[data.Keys.First(s => s.Contains(win.Name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Rate"))] }.AddArrayElementWise();
+                        surf.h_HeatFlow = new List<float[]> { surf.h_HeatFlow, data[data.Keys.First(s => s.Contains(win.Name.ToUpper()) && s.Contains("Surface Window Net Heat Transfer Rate"))] }.AddArrayElementWise();
                     }
                     surf.h_SolarRadiation = data[data.Keys.First(s => s.Contains(surf.Name.ToUpper()) && s.Contains("Surface Outside Face Incident Solar Radiation Rate per Area") && !s.Contains("WINDOW"))];
                 }
@@ -661,7 +661,7 @@ namespace IDFObjects
                 ZoneCoolingLoadHourly = zones.Select(z => z.EP.CoolingLoadHourly.ToArray()).ToList().AddArrayElementWise(),
                 ZoneLightsLoadHourly = zones.Select(z => z.EP.LightsLoadHourly.ToArray()).ToList().AddArrayElementWise(),
             };
-            double[] BoilerEnergy = new double[8760], ChillerEnergy = new double[8760], TowerEnergy = new double[8760], HeatPumpEnergy = new double[8760];
+            float[] BoilerEnergy = new float[8760], ChillerEnergy = new float[8760], TowerEnergy = new float[8760], HeatPumpEnergy = new float[8760];
 
             if (data.Keys.Any(k => k.Contains("Boiler")))
                 BoilerEnergy = data[data.Keys.First(a => a.Contains("Boiler"))].ConvertKWhfromJoule();
@@ -672,20 +672,20 @@ namespace IDFObjects
             if (data.Keys.Any(k => k.Contains("Heat Pump")))
                 TowerEnergy = data.Keys.Where(a => a.Contains("Heat Pump")).Select(k => data[k]).ToList().AddArrayElementWise().ConvertKWhfromJoule();
 
-            EP.ThermalEnergyHourly = new List<double[]> { BoilerEnergy, ChillerEnergy, TowerEnergy, HeatPumpEnergy }.AddArrayElementWise();
-            EP.OperationalEnergyHourly = new List<double[]>() { EP.ThermalEnergyHourly, EP.ZoneLightsLoadHourly.MultiplyBy(0.001) }.AddArrayElementWise();
+            EP.ThermalEnergyHourly = new List<float[]> { BoilerEnergy, ChillerEnergy, TowerEnergy, HeatPumpEnergy }.AddArrayElementWise();
+            EP.OperationalEnergyHourly = new List<float[]>() { EP.ThermalEnergyHourly, EP.ZoneLightsLoadHourly.MultiplyBy(0.001f) }.AddArrayElementWise();
             EP.EUIHourly = EP.OperationalEnergyHourly.MultiplyBy(1 / zones.Select(z => z.Area).Sum());
         }
 
-        public void AssociateProbabilisticEmbeddedEnergyResults(Dictionary<string, double[]> resultsDF)
+        public void AssociateProbabilisticEmbeddedEnergyResults(Dictionary<string, float[]> resultsDF)
         {
             //p_PERT_EmbeddedEnergy = resultsDF["PERT"];
             //p_PENRT_EmbeddedEnergy = resultsDF["PENRT"];
-            //p_EmbeddedEnergy = new List<double[]>() { p_PENRT_EmbeddedEnergy, p_PENRT_EmbeddedEnergy }.AddArrayElementWise();
+            //p_EmbeddedEnergy = new List<float[]>() { p_PENRT_EmbeddedEnergy, p_PENRT_EmbeddedEnergy }.AddArrayElementWise();
 
-            //p_LCE_PENRT = new List<double[]>() { p_PENRT_EmbeddedEnergy, ProbablisticBEnergyPerformance.OperationalEnergy.Select((double x) => x * life * PENRTFactor).ToArray() }.AddArrayElementWise();
-            //p_LCE_PERT = new List<double[]>() { p_PERT_EmbeddedEnergy, ProbablisticBEnergyPerformance.OperationalEnergy.Select(x => x * life * PERTFactor).ToArray() }.AddArrayElementWise();
-            //p_LifeCycleEnergy = new List<double[]>() { p_LCE_PENRT, p_LCE_PERT }.AddArrayElementWise();
+            //p_LCE_PENRT = new List<float[]>() { p_PENRT_EmbeddedEnergy, ProbablisticBEnergyPerformance.OperationalEnergy.Select((float x) => x * life * PENRTFactor).ToArray() }.AddArrayElementWise();
+            //p_LCE_PERT = new List<float[]>() { p_PERT_EmbeddedEnergy, ProbablisticBEnergyPerformance.OperationalEnergy.Select(x => x * life * PERTFactor).ToArray() }.AddArrayElementWise();
+            //p_LifeCycleEnergy = new List<float[]>() { p_LCE_PENRT, p_LCE_PERT }.AddArrayElementWise();
 
             //PERT_EmbeddedEnergy = p_PERT_EmbeddedEnergy.Average();
             //PENRT_EmbeddedEnergy = p_PENRT_EmbeddedEnergy.Average();
@@ -694,7 +694,7 @@ namespace IDFObjects
             //LCE_PERT = p_LCE_PERT.Average();
             //LifeCycleEnergy = p_LifeCycleEnergy.Average();
         }
-        public void AssociateEmbeddedEnergyResults(Dictionary<string, double> resultsDF)
+        public void AssociateEmbeddedEnergyResults(Dictionary<string, float> resultsDF)
         {
             PERT_EmbeddedEnergy = resultsDF["PERT"];
             PENRT_EmbeddedEnergy = resultsDF["PENRT"];
@@ -829,7 +829,7 @@ namespace IDFObjects
             }
         }
         public void InitialiseBuilding(List<ZoneGeometryInformation> zonesInformation, 
-           BuildingDesignParameters parameters, Location location, double offsetDistance)
+           BuildingDesignParameters parameters, Location location, float offsetDistance)
         {
             if (zonesInformation == null)
             {

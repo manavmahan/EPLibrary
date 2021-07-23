@@ -9,14 +9,14 @@ namespace IDFObjects
     [Serializable]
     public class ShadingLength
     {
-        public double north;
-        public double east;
-        public double south;
-        public double west;
+        public float north;
+        public float east;
+        public float south;
+        public float west;
 
         public ShadingLength() { }
 
-        public ShadingLength(double north, double east, double south, double west)
+        public ShadingLength(float north, float east, float south, float west)
         {
             this.north = north;
             this.east = east;

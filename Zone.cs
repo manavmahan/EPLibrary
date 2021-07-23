@@ -10,7 +10,7 @@ namespace IDFObjects
     [Serializable]
     public class Zone
     {
-        public double Area, Volume, Height;
+        public float Area, Volume, Height;
         
         public EPZone EP = new EPZone();
         public List<EPZone> EPP;
@@ -28,16 +28,16 @@ namespace IDFObjects
         public string Name { get; set; }
         public int Level { get; set; }
 
-        public double totalWallArea, totalWindowArea, totalGFloorArea, totalRoofArea, totalIFloorArea, totalIWallArea, 
+        public float totalWallArea, totalWindowArea, totalGFloorArea, totalRoofArea, totalIFloorArea, totalIWallArea, 
             totalIFloorAreaExOther, totalIWallAreaExOther, 
             TotalHeatCapacity, TotalHeatCapacityDeDuplicatingIntSurfaces,            
             WallHeatFlow,WindowHeatFlow,wallWindowHeatFlow, gFloorHeatFlow, roofHeatFlow, infiltrationFlow, 
             SolarRadiation;
 
-        public double[] h_wallwindowHeatFlow, h_windowHeatFlow, h_gFloorHeatFlow, h_roofHeatFlow, h_infiltrationFlow, h_SolarRadiation;
+        public float[] h_wallwindowHeatFlow, h_wallHeatFlow, h_windowHeatFlow, h_gFloorHeatFlow, h_roofHeatFlow, h_infiltrationFlow, h_SolarRadiation;
         internal string OccupancyScheduleName;
 
-        public void CreateDaylighting(double lightingLux)
+        public void CreateDaylighting(float lightingLux)
         {
             List<XYZ[]> exWallPoints = Surfaces.Where(s => s.surfaceType == SurfaceType.Wall &&
                        s.OutsideCondition == "Outdoors").Select(w => w.VerticesList.xyzs.Take(2).ToArray()).ToList();
@@ -46,7 +46,7 @@ namespace IDFObjects
             if (exWallPoints != null && exWallPoints.Count > 0)
             {
                 XYZList dlPoint = Utility.GetDayLightPointsXYZList(floorPoints, exWallPoints);
-                new DayLighting(this, "Occupancy Schedule", dlPoint.ChangeZValue(floorPoints[0].xyzs[0].Z+0.9).xyzs, lightingLux);
+                new DayLighting(this, "Occupancy Schedule", dlPoint.ChangeZValue(floorPoints[0].xyzs[0].Z+0.9f).xyzs, lightingLux);
             }
         }
         internal void CalcAreaVolume()
@@ -84,7 +84,7 @@ namespace IDFObjects
                 totalIWallAreaExOther * building.Parameters.Construction.hcIWall + totalRoofArea * building.Parameters.Construction.hcRoof +
                 iMasses.Select(m => m.area * building.Parameters.Construction.hcInternalMass).Sum();          
         }
-        public void AssociateEnergyResultsAnnual(Dictionary<string, double[]> resultsDF)
+        public void AssociateEnergyResultsAnnual(Dictionary<string, float[]> resultsDF)
         {
             WindowHeatFlow = 0;
             wallWindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.HeatFlow).Sum();
@@ -128,14 +128,14 @@ namespace IDFObjects
                 EP.LightsLoad = resultsDF[resultsDF.Keys.First(a => a.ToUpper().Contains(Name.ToUpper()) && a.Contains("Lights"))].Average();
             }
         } 
-        public void AssociateHourlyEnergyResults(Dictionary<string, double[]> resultsDF)
+        public void AssociateHourlyEnergyResults(Dictionary<string, float[]> resultsDF)
         {
             h_wallwindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").
                 Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
-            h_gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground")==null? new double[8760]:
+            h_gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground")==null? new float[8760]:
                 Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
             
-            h_roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof) == null ? new double[8760] :
+            h_roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof) == null ? new float[8760] :
                 Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
             h_SolarRadiation = Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f =>  f.h_SolarRadiation.MultiplyBy(f.Area)).ToList().AddArrayElementWise();
 
@@ -157,7 +157,7 @@ namespace IDFObjects
             
         }
         public Zone() { }
-        public Zone(double height, string name, int level)
+        public Zone(float height, string name, int level)
         {
             Name = name;
             Level = level;

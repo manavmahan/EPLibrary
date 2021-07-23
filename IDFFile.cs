@@ -336,8 +336,9 @@ namespace IDFObjects
 
             return info;
         }
-        public void GenerateOutput(string frequency)
+        public void GenerateOutput(OutputFrequency outputFrequency)
         {
+            string frequency = outputFrequency.ToString();
             Dictionary<string, string> outputvars = new Dictionary<string, string>();
             outputvars.Add("Zone Air System Sensible Heating Rate", frequency);
             outputvars.Add("Zone Air System Sensible Cooling Rate", frequency);

@@ -10,11 +10,11 @@ namespace IDFObjects
     public class Boiler
     {
         public string name;
-        public double boilerEfficiency;
+        public float boilerEfficiency;
         public string fuelType;
 
         public Boiler() { }
-        public Boiler(double efficiency, string fuelType)
+        public Boiler(float efficiency, string fuelType)
         {
             name = "Main Boiler";
             boilerEfficiency = efficiency;

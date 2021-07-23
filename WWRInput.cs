@@ -12,7 +12,7 @@ namespace IDFObjects
 {
     public partial class WWR_Input : Form
     {
-        public double WWR;
+        public float WWR;
         List<Label> labels;
         List<NumericUpDown> vals;
         List<IDFObjects.Surface> walls;
@@ -48,7 +48,7 @@ namespace IDFObjects
         {
             for (int n = 0; n < walls.Count; n++)
             {
-                walls[n].WWR = (double)vals[n].Value;
+                walls[n].WWR = (float)vals[n].Value;
             }
         }
         private void WWR_Input_Load(object sender, EventArgs e)
@@ -65,7 +65,7 @@ namespace IDFObjects
         {
             for (int n = 0; n < walls.Count; n++)
             {
-               walls[n].WWR = (double)vals[n].Value;
+               walls[n].WWR = (float)vals[n].Value;
             }
             Close();
 

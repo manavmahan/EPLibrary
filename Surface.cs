@@ -10,7 +10,7 @@ namespace IDFObjects
     public class Surface
     {
         public string Name, ConstructionName, OutsideCondition, OutsideObject, SunExposed, WindExposed;
-        public double Orientation, GrossArea, Area, WWR = 0, ShadingLength = 0;
+        public float Orientation, GrossArea, Area, WWR = 0, ShadingLength = 0;
 
         public XYZList VerticesList;
 
@@ -18,8 +18,8 @@ namespace IDFObjects
         public Direction Direction;
         public List<Fenestration> Fenestrations;
         public List<ShadingOverhang> Shading;
-        public double SolarRadiation, HeatFlow;
-        public double[] h_SolarRadiation, h_HeatFlow;
+        public float SolarRadiation, HeatFlow;
+        public float[] h_SolarRadiation, h_HeatFlow;
 
         //[NonSerialized]
         //public Zone Zone;
@@ -89,7 +89,7 @@ namespace IDFObjects
                 }
             }
         }
-        public Surface(Zone zone, XYZList verticesList, double area, SurfaceType surfaceType)
+        public Surface(Zone zone, XYZList verticesList, float area, SurfaceType surfaceType)
         {
             Area = area;
             GrossArea = area;
@@ -150,7 +150,7 @@ namespace IDFObjects
         internal void CreateFenestration(int count)
         {
             List<Fenestration> fenestrationList = new List<Fenestration>();
-            double fenArea = GrossArea * WWR / count;
+            float fenArea = GrossArea * WWR / count;
             if (fenArea > 0.1)
             {                
                 for (int i = 0; i < count; i++)
@@ -160,7 +160,7 @@ namespace IDFObjects
                     XYZ P2 = VerticesList.xyzs.ElementAt(1);
                     XYZ P3 = VerticesList.xyzs.ElementAt(2);
                     XYZ P4 = VerticesList.xyzs.ElementAt(3);
-                    double openingFactor = Math.Sqrt(WWR / count);
+                    float openingFactor = (float) Math.Sqrt(WWR / count);
 
                     XYZ pMid = new XYZ((P1.X + P3.X) / (count - i + 1), (P1.Y + P3.Y) / (count - i + 1), (P1.Z + P3.Z) / 2);
 
