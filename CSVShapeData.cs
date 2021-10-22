@@ -10,7 +10,7 @@ namespace IDFObjects
     public class CSVShapeData
     {
         public XYZList GroundPoints;
-        public Dictionary<string, XYZList> ZonePoints = new Dictionary<string, XYZList>();
+        public Dictionary<string, List<XYZList>> ZonePoints = new Dictionary<string, List<XYZList>>();
         public Dictionary<string, XYZList> WallPoints = new Dictionary<string, XYZList>();
 
         public string BuildingShape="", ZoneShape="", WallShape="";
@@ -18,17 +18,23 @@ namespace IDFObjects
         public CSVShapeData(Building building)
         {
             string File = building.name;
-            GroundPoints = building.GroundPoints;
+            if(building.GroundPoints!=null)
+                GroundPoints = building.GroundPoints;
+            else
+                GroundPoints = building.zones.First().Surfaces.First(s => s.SurfaceType == SurfaceType.Floor).XYZList;
+            
             building.zones.ForEach(z => ZonePoints.Add(z.Name,
-                new XYZList(z.Surfaces.Where(s => s.surfaceType == SurfaceType.Floor).SelectMany(s => s.VerticesList.xyzs).ToList())));
-            building.zones.SelectMany(z => z.Surfaces.Where(s => s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors")).ToList().
-            ForEach(w=>WallPoints.Add(w.Name, w.VerticesList));
+                z.Surfaces.Where(s => s.SurfaceType == SurfaceType.Floor).Select(s => 
+                s.XYZList).ToList()));
+            building.zones.SelectMany(z => z.Surfaces.Where(s => s.SurfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors")).ToList().
+            ForEach(w=>WallPoints.Add(w.Name, w.XYZList));
             
             BuildingShapeData = new List<string>() { string.Join(",", File, GroundPoints.To2DPointString()) };
             ZoneShapeData = new List<string>();
-            foreach (KeyValuePair<string, XYZList> z in ZonePoints)
+            foreach (KeyValuePair<string, List<XYZList>> z in ZonePoints)
             {
-                ZoneShapeData.Add(string.Join(",", File, z.Key, z.Value.To2DPointString()));
+                ZoneShapeData.Add(string.Join(",", File, z.Key, string.Join(";", z.Value.Select(
+                    v=>v.ToCSVString()))));
             }
             WallShapeData = new List<string>();
             foreach (KeyValuePair<string, XYZList> w in WallPoints)

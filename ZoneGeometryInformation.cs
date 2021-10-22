@@ -12,7 +12,8 @@ namespace IDFObjects
     {
         public string Name;
         public float Height;
-        public XYZList FloorPoints;
+        public List<XYZList> FloorPoints = new List<XYZList>();
+        public List<XYZList> OverhangPoints = new List<XYZList>();
         public List<XYZList> CeilingPoints = new List<XYZList>();
         public List<XYZList> RoofPoints = new List<XYZList>();
         public int Level;

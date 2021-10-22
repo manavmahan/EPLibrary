@@ -112,7 +112,7 @@ namespace IDFObjects
         {
             List<string> info = new List<string>();
             info.Add("\t" + ",\t\t\t\t\t\t!- Number of Vertices");
-            xyzs.ForEach(xyz => info.Add(string.Join(",", xyz.X, xyz.Y, xyz.Z) + ", !- X Y Z of Point"));
+            xyzs.ForEach(xyz => info.Add("\t" + string.Join(",", xyz.X, xyz.Y, xyz.Z) + ", !- X Y Z of Point"));
             return info.ReplaceLastComma();
         }
         public string ToCSVString()
@@ -210,6 +210,12 @@ namespace IDFObjects
         {
             List<XYZ> newXYZ = new List<XYZ>();
             xyzs.ForEach(v => newXYZ.Add(v.Transform(angle)));
+            xyzs = newXYZ;
+        }
+        public void Transform(XYZ origin)
+        {
+            List<XYZ> newXYZ = new List<XYZ>();
+            xyzs.ForEach(v => newXYZ.Add(v.Subtract(origin)));
             xyzs = newXYZ;
         }
         public float GetWallOrientation(out Direction Direction)

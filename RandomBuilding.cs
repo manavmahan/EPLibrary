@@ -1,6 +1,7 @@
 ﻿using IDFObjects;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
@@ -12,19 +13,59 @@ namespace IDFObjects
 {
     public class RandomBuilding
     {
-        public GridPoint StartPoint;
-        public List<GridPoint> BuildingGrid;
+        GridPoint StartPoint;
+        List<GridPoint> BuildingGrid;
 
-        public float EdgeSize;
+        float EdgeSize;
+        List<GridPoint> AllowedPoints = new List<GridPoint>();
+
+        public int NFloors = 0;
+        public float Orientation = 0;
+        int RequiredGridPoints;
+
+        public List<XYZList>[] Floors, Ceilings, Roofs, OverhangFloors;
+        public List<XYZList>[] Walls;
+        public List<XYZ> ScaledLoop;
         public float Area;
-        public int RequiredGridPoints;
 
-        public List<GridPoint> AllowedPoints = new List<GridPoint>();
-
-        List<List<GridPoint>> Edges, Loop; public List<IDFObjects.XYZ> ScaledLoop;
-        
         public RandomBuilding() { }
-        public RandomBuilding(float area, float minimumEdgeLength, float maxEdgeLength, int maxBoxes, XYZList SitePoints, float Orientation, Random random)
+        public RandomBuilding(float totalFloorArea, GridPointGeometry geometry, float orientation)
+        {
+            RequiredGridPoints = geometry.NPoints;
+            Orientation = orientation;
+            EdgeSize = (float)Math.Round(Math.Sqrt(totalFloorArea / RequiredGridPoints), 2);
+            NFloors = geometry.NFloor;
+            
+            Floors = new List<XYZList>[NFloors];
+            Roofs = new List<XYZList>[NFloors];
+            Ceilings = new List<XYZList>[NFloors];
+            OverhangFloors = new List<XYZList>[NFloors];
+            Walls = new List<XYZList>[NFloors];
+
+            for (int f=0; f<NFloors; f++)
+            {
+                Floors[f] = geometry.Floors[f].Select(p => LoopEdgesScaleRotate(p)).ToList();
+                Roofs[f] = geometry.Roofs[f].Select(p => LoopEdgesScaleRotate(p)).ToList();
+                Ceilings[f] = geometry.Ceilings[f].Select(p => LoopEdgesScaleRotate(p)).ToList();
+                OverhangFloors[f] = geometry.OverhangFloors[f].Select(p => LoopEdgesScaleRotate(p)).ToList();
+                Walls[f] = geometry.Walls[f].Select(p => LoopEdgesScaleRotate(p)).ToList();
+            }
+            float minX = Floors.Concat(OverhangFloors).SelectMany(
+                x => x.SelectMany(p => p.xyzs.Select(p1 => p1.X))).Min();
+            float minY = Floors.Concat(OverhangFloors).SelectMany(
+                x => x.SelectMany(p => p.xyzs.Select(p1 => p1.Y))).Min();
+
+            XYZ origin = new XYZ(minX, minY);
+            for (int f=0; f<NFloors; f++)
+            {
+                Floors[f].ForEach(l => l.Transform(origin));
+                Roofs[f].ForEach(l => l.Transform(origin));
+                Ceilings[f].ForEach(l => l.Transform(origin));
+                OverhangFloors[f].ForEach(l => l.Transform(origin));
+                Walls[f].ForEach(l => l.Transform(origin));
+            }
+        }
+        public RandomBuilding(float area, float minimumEdgeLength, float maxEdgeLength, uint maxBoxes, XYZList SitePoints, float Orientation, Random random)
         {
             int minPoints = (int) Math.Ceiling(area / (maxEdgeLength * maxEdgeLength));
             int maxPoints = (int) Math.Floor(area / (minimumEdgeLength * minimumEdgeLength));
@@ -32,7 +73,7 @@ namespace IDFObjects
             try { RequiredGridPoints = random.Next(minPoints, maxPoints); }
             catch { RequiredGridPoints = maxPoints; }
 
-            RequiredGridPoints = Math.Min(maxBoxes, RequiredGridPoints);
+            RequiredGridPoints = (int) Math.Min(maxBoxes, RequiredGridPoints);
 
             EdgeSize = (float) Math.Round(Math.Sqrt(area / RequiredGridPoints),2);
             
@@ -77,7 +118,6 @@ namespace IDFObjects
             StartPoint = GetCenter(AllowedPoints);
             BuildingGrid.Add(StartPoint);
         }
-
         public GridPoint GetCenter(List<GridPoint> ps)
         {
             List<float> ds = new List<float>();
@@ -86,36 +126,16 @@ namespace IDFObjects
                 ds.Add( ps.Select(p1 => (p.x - p1.x) * (p.x - p1.x) + (p.y - p1.y) * (p.y - p1.y)).Sum());
             }
             return ps.ElementAt(ds.IndexOf(ds.Min()));
-        }
-        public RandomBuilding(float area, int requiredGridPoints, float maxLength, float maxWidth, float minimumEdgeLength)
-        {
-            RequiredGridPoints = requiredGridPoints;
-            EdgeSize = (float) Math.Max(Math.Round(Math.Sqrt(area / requiredGridPoints)), minimumEdgeLength);
-
-            RequiredGridPoints = (int)(area / (EdgeSize * EdgeSize));
-            Area = RequiredGridPoints * EdgeSize * EdgeSize;
-
-            int minX = 0, minY = 0, maxX = (int)Math.Ceiling(maxLength / EdgeSize), maxY = (int)Math.Ceiling(maxWidth / EdgeSize);
-            for (int x = minX; x<maxX; x++)
-            {
-                for (int y = minY; y < maxY; y++)
-                {
-                    AllowedPoints.Add(new GridPoint(x, y));
-                }
-            }
-            BuildingGrid = new List<GridPoint> { };
-            StartPoint = new GridPoint((float) Math.Ceiling((float)(maxX - minX) / 2), (float)Math.Ceiling((float)(maxX - minX) / 2));
-            BuildingGrid.Add(StartPoint);
-        }
-        public bool GenerateBuilding(Random random)
+        }        
+        public XYZList GenerateBuilding(Random random)
         {
             if (AllowedPoints.Count() < RequiredGridPoints)
-                return false;
+                return null;
             else
             {
                 while (BuildingGrid.Count < RequiredGridPoints)
                 {
-                    List<GridPoint> Candidates = ExtractGridPointsLRUD();
+                    List<GridPoint> Candidates = ExtractGridPointsLRUD(BuildingGrid);
                     Candidates = Candidates.FindAll(x => AllowedPoints.Contains(x));
 
                     List<GridPoint> ToRemoveGrid = GetCrossTranslation();
@@ -123,53 +143,49 @@ namespace IDFObjects
                     int pnttoadd = random.Next(Candidates.Count());
                     BuildingGrid.Add(Candidates[pnttoadd]);
                 }
-                ReturnEdges();
-                GetLoop();
-                ScaleBuilding();
-                return true;
+                return LoopEdgesScaleRotate(BuildingGrid);
             }
         }
-        public List<GridPoint> ExtractGridPointsLRUD()
+        public List<GridPoint> ExtractGridPointsLRUD(List<GridPoint> grids)
         {
-            List<GridPoint> ReturnArr = new List<GridPoint> { };
-            foreach (GridPoint Grid in BuildingGrid)
+            List<GridPoint> returnArr = new List<GridPoint> { };
+            foreach (GridPoint Grid in grids)
             {
                 List<GridPoint> GridNeighbours = Grid.GetAllNeighbours();
-                GridNeighbours.RemoveAll(x => (BuildingGrid.Contains(x)));
+                GridNeighbours.RemoveAll(x => (grids.Contains(x)));
                 if (GridNeighbours.Count() == 4)
                 {
-                    ReturnArr = ReturnArr.Concat(GridNeighbours).ToList();
+                    returnArr = returnArr.Concat(GridNeighbours).ToList();
                 }
                 else
                 {
                     foreach (GridPoint Square in GridNeighbours)
                     {
                         List<GridPoint> Squares = Square.GetAllNeighbours();
-                        Squares.RemoveAll(x => !(BuildingGrid.Contains(x)));
+                        Squares.RemoveAll(x => !(grids.Contains(x)));
                         if (Squares.Count() == 1)
                         {
-
-                            ReturnArr.Add(Square);
+                            returnArr.Add(Square);
                         }
                         if (Squares.Count() == 2)
                         {
                             if ((Math.Abs(Squares[1].x - Squares[0].x) != 2) & (Math.Abs(Squares[1].x - Squares[0].x) != 0))
                             {
-                                ReturnArr.Add(Square);
+                                returnArr.Add(Square);
                             }
                             if ((Math.Abs(Squares[1].y - Squares[0].y) != 2) & (Math.Abs(Squares[1].y - Squares[0].y) != 0))
                             {
-                                ReturnArr.Add(Square);
+                                returnArr.Add(Square);
                             }
                         }
                         if (Squares.Count() == 3)
                         {
-                            ReturnArr.Add(Square);
+                            returnArr.Add(Square);
                         }
                     }
                 }
             }
-            return ReturnArr;
+            return returnArr;
         }
         public List<GridPoint> GetCrossTranslation()
         {
@@ -199,79 +215,106 @@ namespace IDFObjects
             }
             return AllPointsToOutputAndRemove;
         }
-        public void ReturnEdges()
+        public List<List<GridPoint>> ReturnEdges(List<GridPoint> buildingGrid)
         {
-            Edges = new List<List<GridPoint>> { };
-            foreach (GridPoint item in BuildingGrid)
+            List<List<GridPoint>>  edges = new List<List<GridPoint>> { };
+            foreach (GridPoint item in buildingGrid)
             {
                 item.GetAllNeighbours();
-                if (!(BuildingGrid.Contains(item.Left)))
+                if (!(buildingGrid.Contains(item.Left)))
                 {
                     List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5f, item.y - 0.5f), new GridPoint(item.x - 0.5f, item.y + 0.5f) };
-                    Edges.Add(ToAdd);
+                    edges.Add(ToAdd);
                 }
-                if (!(BuildingGrid.Contains(item.Right)))
+                if (!(buildingGrid.Contains(item.Right)))
                 {
                     List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x + 0.5f, item.y - 0.5f), new GridPoint(item.x + 0.5f, item.y + 0.5f) };
-                    Edges.Add(ToAdd);
+                    edges.Add(ToAdd);
                 }
-                if (!(BuildingGrid.Contains(item.Up)))
+                if (!(buildingGrid.Contains(item.Up)))
                 {
                     List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5f, item.y + 0.5f), new GridPoint(item.x + 0.5f, item.y + 0.5f) };
-                    Edges.Add(ToAdd);
+                    edges.Add(ToAdd);
                 }
-                if (!(BuildingGrid.Contains(item.Down)))
+                if (!(buildingGrid.Contains(item.Down)))
                 {
                     List<GridPoint> ToAdd = new List<GridPoint> { new GridPoint(item.x - 0.5f, item.y - 0.5f), new GridPoint(item.x + 0.5f, item.y - 0.5f) };
-                    Edges.Add(ToAdd);
+                    edges.Add(ToAdd);
                 }
             }
-            Edges = Edges.Distinct().ToList();
+            edges = edges.Distinct().ToList();
+            return edges;
         }
-        public void GetLoop()
+        public List<List<GridPoint>> GetLoop(List<List<GridPoint>> edges)
         {
-            Loop = new List<List<GridPoint>> { Edges[0] };
-            Edges.RemoveAt(0);
-            while (Edges.Count() > 0)
+            List<List<GridPoint>> loop = new List<List<GridPoint>> { edges[0] };
+            edges.RemoveAt(0);
+            while (edges.Count() > 0)
             {
-                List<GridPoint> lastLine = Loop.Last();
+                List<GridPoint> lastLine = loop.Last();
                 List<GridPoint> ContinuousLineFound;
                 try
                 {
-                    ContinuousLineFound = Edges.First(line => line[0].x == lastLine[1].x && line[0].y == lastLine[1].y);
-                    Edges.Remove(ContinuousLineFound);
+                    ContinuousLineFound = edges.First(line => line[0].x == lastLine[1].x && line[0].y == lastLine[1].y);
+                    edges.Remove(ContinuousLineFound);
                 }
                 catch
                 {
-                    ContinuousLineFound = Edges.First(line => line[1].x == lastLine[1].x && line[1].y == lastLine[1].y);
-                    Edges.Remove(ContinuousLineFound);
+                    ContinuousLineFound = edges.First(line => line[1].x == lastLine[1].x && line[1].y == lastLine[1].y);
+                    edges.Remove(ContinuousLineFound);
                     ContinuousLineFound.Reverse();
                 }
 
                 if (!IDFObjects.Utility.GetDirection(lastLine).Equals(IDFObjects.Utility.GetDirection(ContinuousLineFound)))
                 {
-                    Loop.Add(ContinuousLineFound);
+                    loop.Add(ContinuousLineFound);
                 }
                 else
                 {
                     lastLine[1] = ContinuousLineFound[1];
-                    Loop[Loop.Count - 1] = lastLine;
+                    loop[loop.Count - 1] = lastLine;
                 }
             }
-            if (IDFObjects.Utility.GetDirection(Loop.Last()).Equals(IDFObjects.Utility.GetDirection(Loop.First())))
+            if (IDFObjects.Utility.GetDirection(loop.Last()).Equals(IDFObjects.Utility.GetDirection(loop.First())))
             {
-                Loop[0][0] = Loop.Last()[0];
-                Loop.RemoveAt(Loop.Count - 1);
+                loop[0][0] = loop.Last()[0];
+                loop.RemoveAt(loop.Count - 1);
             }
-            if (!IDFObjects.Utility.IsCounterClockWise(Loop.Select(l => l[0]).ToList()))
+            if (!IDFObjects.Utility.IsCounterClockWise(loop.Select(l => l[0]).ToList()))
             {
-                Loop.Reverse();
+                loop.Reverse();
             }
+            return loop;
         }
-        public void ScaleBuilding()
+        public XYZList ScaleBuilding(List<List<GridPoint>> Loop)
         {
-            ScaledLoop = new List<IDFObjects.XYZ>();
-            Loop.ForEach(line => ScaledLoop.Add(new IDFObjects.XYZ(EdgeSize * line[0].x, EdgeSize * line[0].y, 0)));
+            List<XYZ> scaledLoop = new List<XYZ>();
+            Loop.ForEach(line => scaledLoop.Add(new XYZ(EdgeSize * line[0].x, EdgeSize * line[0].y, 0)));
+            return new XYZList(scaledLoop);
         }
+
+        public XYZList LoopEdgesScaleRotate(List<GridPoint> points)
+        {
+            if (points.Count > 0)
+            {
+                XYZList rVal = ScaleBuilding(GetLoop(ReturnEdges(points)));
+                rVal.Transform(Orientation);
+               
+                return rVal;
+            } 
+            else
+                return null;
+        }
+
+        public XYZList ScaleBuilding(XYZList loop)
+        {
+            return new XYZList(loop.xyzs.Select(p => new XYZ(p.X * EdgeSize, p.Y * EdgeSize, 0)).ToList());
+        }
+        public List<XYZList> ScaleBuilding(List<XYZList> loops)
+        {
+            return loops.Select(l => ScaleBuilding(l)).ToList();
+        }
+        
     }
+
 }

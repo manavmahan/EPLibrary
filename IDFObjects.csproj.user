@@ -2,6 +2,6 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <StartAction>Program</StartAction>
-    <StartProgram>C:\Users\manav.singh\Documents\GitHub\WriteReadIDFJSON\bin\Debug\WriteReadIDFJSON.exe</StartProgram>
+    <StartProgram>C:\Users\manav\Documents\GitHub\IDFWrite\IDFWrite\bin\Debug\IDFWrite.exe</StartProgram>
   </PropertyGroup>
 </Project>

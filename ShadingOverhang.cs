@@ -20,16 +20,16 @@ namespace IDFObjects
             switch (face.Direction)
             {
                 case Direction.North:
-                    listVertice = createShadingY(face.VerticesList, face.ShadingLength).Reverse();
+                    listVertice = createShadingY(face.XYZList, face.ShadingLength).Reverse();
                     break;
                 case Direction.South:
-                    listVertice = createShadingY(face.VerticesList, -face.ShadingLength).Reverse();
+                    listVertice = createShadingY(face.XYZList, -face.ShadingLength).Reverse();
                     break;
                 case Direction.East:
-                    listVertice = createShadingX(face.VerticesList, face.ShadingLength).Reverse();
+                    listVertice = createShadingX(face.XYZList, face.ShadingLength).Reverse();
                     break;
                 case Direction.West:
-                    listVertice = createShadingX(face.VerticesList, -face.ShadingLength).Reverse();
+                    listVertice = createShadingX(face.XYZList, -face.ShadingLength).Reverse();
                     break;
             }
 

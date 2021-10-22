@@ -12,9 +12,9 @@ namespace IDFObjects
         public string Name, ConstructionName, OutsideCondition, OutsideObject, SunExposed, WindExposed;
         public float Orientation, GrossArea, Area, WWR = 0, ShadingLength = 0;
 
-        public XYZList VerticesList;
+        public XYZList XYZList;
 
-        public SurfaceType surfaceType;
+        public SurfaceType SurfaceType;
         public Direction Direction;
         public List<Fenestration> Fenestrations;
         public List<ShadingOverhang> Shading;
@@ -28,8 +28,8 @@ namespace IDFObjects
         private void AddName(string zoneName, int sCount)
         {
             ZoneName = zoneName;
-            Name = surfaceType == SurfaceType.Wall  ? ZoneName + ":" + Direction + ":" + surfaceType + ":" + (sCount + 1)
-                                                        : ZoneName + ":" + surfaceType + ":" + (sCount + 1);          
+            Name = SurfaceType == SurfaceType.Wall  ? ZoneName + ":" + Direction + ":" + SurfaceType + ":" + (sCount + 1)
+                                                        : ZoneName + ":" + SurfaceType + ":" + (sCount + 1);          
         }
         public void CreateWindowsShadingControlShadingOverhang(Zone zone, BuildingWWR wWR, ShadingLength shadingLength)
         {
@@ -93,9 +93,9 @@ namespace IDFObjects
         {
             Area = area;
             GrossArea = area;
-            VerticesList = verticesList;
-            this.surfaceType = surfaceType;
-            switch (this.surfaceType)
+            XYZList = verticesList;
+            this.SurfaceType = surfaceType;
+            switch (this.SurfaceType)
             {
                 case (SurfaceType.Floor):
                     ConstructionName = "GroundFloor";
@@ -135,7 +135,7 @@ namespace IDFObjects
             List<string> info = new List<string>();
             info.Add("BuildingSurface:Detailed,");
             info.Add("\t" + Name + ",\t\t!- Name");
-            info.Add("\t" + surfaceType + ",\t\t\t\t\t!-Surface Type");
+            info.Add("\t" + SurfaceType + ",\t\t\t\t\t!-Surface Type");
             info.Add("\t" + ConstructionName + ",\t\t\t\t!-Construction Name");
             info.Add("\t" + ZoneName + ",\t\t\t\t\t\t!-Zone Name");
             info.Add("\t" + OutsideCondition + ",\t\t\t\t\t!-Outside Boundary Condition");
@@ -143,7 +143,7 @@ namespace IDFObjects
             info.Add("\t" + SunExposed + ",\t\t\t\t\t\t!-Sun Exposure");
             info.Add("\t" + WindExposed + ",\t\t\t\t\t\t!-Wind Exposure");
             info.Add("\t" + ",\t\t\t\t\t\t!-View Factor to Ground");
-            info.AddRange(VerticesList.WriteInfo());
+            info.AddRange(XYZList.WriteInfo());
             return info;
         }
 
@@ -156,15 +156,15 @@ namespace IDFObjects
                 for (int i = 0; i < count; i++)
                 {
                     Fenestration fen = new Fenestration(this);
-                    XYZ P1 = VerticesList.xyzs.ElementAt(0);
-                    XYZ P2 = VerticesList.xyzs.ElementAt(1);
-                    XYZ P3 = VerticesList.xyzs.ElementAt(2);
-                    XYZ P4 = VerticesList.xyzs.ElementAt(3);
+                    XYZ P1 = XYZList.xyzs.ElementAt(0);
+                    XYZ P2 = XYZList.xyzs.ElementAt(1);
+                    XYZ P3 = XYZList.xyzs.ElementAt(2);
+                    XYZ P4 = XYZList.xyzs.ElementAt(3);
                     float openingFactor = (float) Math.Sqrt(WWR / count);
 
                     XYZ pMid = new XYZ((P1.X + P3.X) / (count - i + 1), (P1.Y + P3.Y) / (count - i + 1), (P1.Z + P3.Z) / 2);
 
-                    fen.VerticesList = new XYZList(VerticesList.xyzs.Select(v => new XYZ(pMid.X + (v.X - pMid.X) * openingFactor,
+                    fen.VerticesList = new XYZList(XYZList.xyzs.Select(v => new XYZ(pMid.X + (v.X - pMid.X) * openingFactor,
                                                                 pMid.Y + (v.Y - pMid.Y) * openingFactor,
                                                                 pMid.Z + (v.Z - pMid.Z) * openingFactor)).ToList());
                     fen.Area = fenArea;

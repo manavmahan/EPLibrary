@@ -28,10 +28,10 @@ namespace IDFObjects
         public string Name { get; set; }
         public int Level { get; set; }
 
-        public float totalWallArea, totalWindowArea, totalGFloorArea, totalRoofArea, totalIFloorArea, totalIWallArea, 
+        public float totalWallArea, totalWindowArea, totalFloorArea, totalRoofArea, totalIFloorArea, totalIWallArea, 
             totalIFloorAreaExOther, totalIWallAreaExOther, 
             TotalHeatCapacity, TotalHeatCapacityDeDuplicatingIntSurfaces,            
-            WallHeatFlow,WindowHeatFlow,wallWindowHeatFlow, gFloorHeatFlow, roofHeatFlow, infiltrationFlow, 
+            WallHeatFlow,WindowHeatFlow,wallWindowHeatFlow, FloorHeatFlow, RoofHeatFlow, infiltrationFlow, 
             SolarRadiation;
 
         public float[] h_wallwindowHeatFlow, h_wallHeatFlow, h_windowHeatFlow, h_gFloorHeatFlow, h_roofHeatFlow, h_infiltrationFlow, h_SolarRadiation;
@@ -39,10 +39,10 @@ namespace IDFObjects
 
         public void CreateDaylighting(float lightingLux)
         {
-            List<XYZ[]> exWallPoints = Surfaces.Where(s => s.surfaceType == SurfaceType.Wall &&
-                       s.OutsideCondition == "Outdoors").Select(w => w.VerticesList.xyzs.Take(2).ToArray()).ToList();
-            List<XYZList> floorPoints = Surfaces.Where(s => s.surfaceType == SurfaceType.Floor).
-                Select(f=>f.VerticesList).ToList();
+            List<XYZ[]> exWallPoints = Surfaces.Where(s => s.SurfaceType == SurfaceType.Wall &&
+                       s.OutsideCondition == "Outdoors").Select(w => w.XYZList.xyzs.Take(2).ToArray()).ToList();
+            List<XYZList> floorPoints = Surfaces.Where(s => s.SurfaceType == SurfaceType.Floor).
+                Select(f=>f.XYZList).ToList();
             if (exWallPoints != null && exWallPoints.Count > 0)
             {
                 XYZList dlPoint = Utility.GetDayLightPointsXYZList(floorPoints, exWallPoints);
@@ -51,7 +51,7 @@ namespace IDFObjects
         }
         internal void CalcAreaVolume()
         {
-            IEnumerable<Surface> floors = Surfaces.Where(a => a.surfaceType == SurfaceType.Floor);
+            IEnumerable<Surface> floors = Surfaces.Where(a => a.SurfaceType == SurfaceType.Floor);
             Area = floors.Select(a => a.Area).Sum();
             Volume = Area * Height;
         }
@@ -59,27 +59,27 @@ namespace IDFObjects
         {
             CalcAreaVolume();
             List<Surface> bSurfaces = building.zones.SelectMany(z => z.Surfaces).ToList();
-            totalWallArea = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(w => w.Area).Sum();
-            totalGFloorArea = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(gF => gF.Area).Sum();
+            totalWallArea = Surfaces.Where(w => w.SurfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(w => w.Area).Sum();
+            totalFloorArea = Surfaces.Where(w => w.SurfaceType == SurfaceType.Floor).Select(gF => gF.Area).Sum();
 
-            totalIFloorAreaExOther = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").Select(iF => iF.Area).Sum();
+            totalIFloorAreaExOther = Surfaces.Where(w => w.SurfaceType == SurfaceType.Floor && w.OutsideCondition != "Ground").Select(iF => iF.Area).Sum();
             totalIFloorArea = totalIFloorAreaExOther +
-                bSurfaces.Where(iF => iF.surfaceType == SurfaceType.Floor && iF.OutsideCondition != "Ground" && iF.OutsideObject == Name).Select(iF => iF.Area).Sum();
+                bSurfaces.Where(iF => iF.SurfaceType == SurfaceType.Floor && iF.OutsideCondition != "Ground" && iF.OutsideObject == Name).Select(iF => iF.Area).Sum();
 
-            totalIWallAreaExOther = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition != "Outdoors").Select(iF => iF.Area).Sum() + iMasses.Where(i => i.IsWall).Select(i => i.area).Sum();
+            totalIWallAreaExOther = Surfaces.Where(w => w.SurfaceType == SurfaceType.Wall && w.OutsideCondition != "Outdoors").Select(iF => iF.Area).Sum() + iMasses.Where(i => i.IsWall).Select(i => i.area).Sum();
             totalIWallArea = totalIWallAreaExOther +
-            bSurfaces.Where(iF => iF.surfaceType == SurfaceType.Wall && iF.OutsideCondition != "Outdoors" && iF.OutsideObject == Name).Select(iF => iF.Area).Sum() +
+            bSurfaces.Where(iF => iF.SurfaceType == SurfaceType.Wall && iF.OutsideCondition != "Outdoors" && iF.OutsideObject == Name).Select(iF => iF.Area).Sum() +
                 iMasses.Where(i => i.IsWall).Select(i => i.area).Sum();
 
-            totalRoofArea = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(r => r.Area).Sum();
+            totalRoofArea = Surfaces.Where(w => w.SurfaceType == SurfaceType.Roof).Select(r => r.Area).Sum();
             totalWindowArea = Surfaces.Where(w => w.Fenestrations != null).Select(wi => wi.Fenestrations.Select(f=>f.Area).Sum()).Sum();
 
-            TotalHeatCapacity = totalWallArea * building.Parameters.Construction.hcWall + totalGFloorArea * building.Parameters.Construction.hcGFloor +
+            TotalHeatCapacity = totalWallArea * building.Parameters.Construction.hcWall + totalFloorArea * building.Parameters.Construction.hcGFloor +
                 totalIFloorArea * building.Parameters.Construction.hcIFloor +
                 totalIWallArea * building.Parameters.Construction.hcIWall + totalRoofArea * building.Parameters.Construction.hcRoof +
                 iMasses.Select(m => m.area * building.Parameters.Construction.hcInternalMass).Sum();
 
-            TotalHeatCapacityDeDuplicatingIntSurfaces = totalWallArea * building.Parameters.Construction.hcWall + totalGFloorArea * building.Parameters.Construction.hcGFloor +
+            TotalHeatCapacityDeDuplicatingIntSurfaces = totalWallArea * building.Parameters.Construction.hcWall + totalFloorArea * building.Parameters.Construction.hcGFloor +
                 totalIFloorAreaExOther * building.Parameters.Construction.hcIFloor +
                 totalIWallAreaExOther * building.Parameters.Construction.hcIWall + totalRoofArea * building.Parameters.Construction.hcRoof +
                 iMasses.Select(m => m.area * building.Parameters.Construction.hcInternalMass).Sum();          
@@ -87,16 +87,18 @@ namespace IDFObjects
         public void AssociateEnergyResultsAnnual(Dictionary<string, float[]> resultsDF)
         {
             WindowHeatFlow = 0;
-            wallWindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").Select(s => s.HeatFlow).Sum();
+            wallWindowHeatFlow = Surfaces.Where(w => w.SurfaceType == SurfaceType.Wall 
+                && w.OutsideCondition == "Outdoors").Select(s => s.HeatFlow).Sum();
             try
             {
-                WindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors" && w.Fenestrations.Count > 0)
+                WindowHeatFlow = Surfaces.Where(w => w.SurfaceType == SurfaceType.Wall 
+                    && w.OutsideCondition == "Outdoors" && w.Fenestrations.Count > 0)
                     .SelectMany(s => s.Fenestrations).Select(w => w.HeatFlow).Sum();
             }
             catch { }
             WallHeatFlow = wallWindowHeatFlow - WindowHeatFlow;
-            gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.HeatFlow).Sum();
-            roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.HeatFlow).Sum();
+            FloorHeatFlow = Surfaces.Where(w => w.SurfaceType == SurfaceType.Floor).Select(s => s.HeatFlow).Sum();
+            RoofHeatFlow = Surfaces.Where(w => w.SurfaceType == SurfaceType.Roof).Select(s => s.HeatFlow).Sum();
             SolarRadiation = Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f => f.Area * f.SolarRadiation).Sum();
             try
             {
@@ -130,13 +132,13 @@ namespace IDFObjects
         } 
         public void AssociateHourlyEnergyResults(Dictionary<string, float[]> resultsDF)
         {
-            h_wallwindowHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").
+            h_wallwindowHeatFlow = Surfaces.Where(w => w.SurfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors").
                 Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
-            h_gFloorHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground")==null? new float[8760]:
-                Surfaces.Where(w => w.surfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
+            h_gFloorHeatFlow = Surfaces.Where(w => w.SurfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground")==null? new float[8760]:
+                Surfaces.Where(w => w.SurfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
             
-            h_roofHeatFlow = Surfaces.Where(w => w.surfaceType == SurfaceType.Roof) == null ? new float[8760] :
-                Surfaces.Where(w => w.surfaceType == SurfaceType.Roof).Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
+            h_roofHeatFlow = Surfaces.Where(w => w.SurfaceType == SurfaceType.Roof) == null ? new float[8760] :
+                Surfaces.Where(w => w.SurfaceType == SurfaceType.Roof).Select(s => s.h_HeatFlow).ToList().AddArrayElementWise();
             h_SolarRadiation = Surfaces.Where(w => w.Fenestrations != null).SelectMany(w => w.Fenestrations).Select(f =>  f.h_SolarRadiation.MultiplyBy(f.Area)).ToList().AddArrayElementWise();
 
             try

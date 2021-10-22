@@ -280,7 +280,7 @@ namespace IDFObjects
             Dictionary<ZoneGeometryInformation, List<Line>> allRoomSegment = new Dictionary<ZoneGeometryInformation, List<Line>>();
             foreach (ZoneGeometryInformation zone in zones)
             {
-                float baseZ = zone.FloorPoints.xyzs.First().Z;
+                float baseZ = zone.FloorPoints[0].xyzs.First().Z;
                 string cRoom = zone.Name.Remove(zone.Name.LastIndexOf(":"));
                 List<Line> walls = rooms.First(ro => ro.Key == cRoom).Value;
                 allRoomSegment.Add(zone, walls.Select(l=>l.ChangeZValue(baseZ)).ToList());
@@ -303,7 +303,7 @@ namespace IDFObjects
                     List<XYZ> floorPoints = thisRoomSegments.Select(x => x.P0).ToList();
                     XYZList flPointList = new XYZList(floorPoints);
                     flPointList.RemoveCollinearPoints();
-                    zInfo.FloorPoints = flPointList.ChangeZValue(floors[f].xyzs.First().Z);
+                    zInfo.FloorPoints.Add(flPointList.ChangeZValue(floors[f].xyzs.First().Z));
                     List<XYZList> ceilingOrRoof = new List<XYZList>();
                     try
                     {
@@ -324,7 +324,7 @@ namespace IDFObjects
                     zInfo.Level = f;
 
                     zInfo.Height =
-                        rOrc.SelectMany(ro => ro.xyzs.Select(p => p.Z)).Average() - zInfo.FloorPoints.xyzs.First().Z;
+                        rOrc.SelectMany(ro => ro.xyzs.Select(p => p.Z)).Average() - zInfo.FloorPoints[0].xyzs.First().Z;
                     zoneInfoList.Add(zInfo);
                 }
             }
@@ -357,7 +357,7 @@ namespace IDFObjects
                             con = "Outdoors";
                     }
                     zone.WallCreationDataKey.Add(con);
-                    zone.WallCreationDataValue.Add(c.ChangeZValue(zone.FloorPoints.xyzs.First().Z));
+                    zone.WallCreationDataValue.Add(c.ChangeZValue(zone.FloorPoints[0].xyzs.First().Z));
                 }
             }
             return zoneInfoList;
@@ -384,7 +384,7 @@ namespace IDFObjects
                 List<XYZ> floorPoints = thisRoomSegments.Select(x => x.P0).ToList();
                 XYZList flPointList = new XYZList(floorPoints);
                 flPointList.RemoveCollinearPoints();
-                zInfo.FloorPoints = flPointList;
+                zInfo.FloorPoints.Add(flPointList);
 
                 float heightFl = ceiling.xyzs.First().Z - floorPoints.First().Z;
                 zInfo.Height = heightFl;
@@ -625,7 +625,7 @@ namespace IDFObjects
         }
         public static void CreateZoneWalls(Zone z, List<string> wallDataKey, List<Line> wallDataValue, List<XYZList> ceilings, List<XYZList> roofs)
         {
-            for (int i=0; i<wallDataKey.Count;i++)
+            for (int i=0; i<wallDataValue.Count;i++)
             {
                 List<XYZList> roofCeilings = new List<XYZList>();
                 roofCeilings.AddRange(ceilings); roofCeilings.AddRange(roofs);
@@ -634,19 +634,27 @@ namespace IDFObjects
                 XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
                 float area = p1.DistanceTo(p2) * p2.DistanceTo(p3);
                 Surface wall = new Surface(z, wallPoints, area, SurfaceType.Wall);
-                if (wallDataKey[i] != "Outdoors")
+
+                try
                 {
-                    if (wallDataKey[i] == "Adiabatic")
+                    if (wallDataKey[i] != "Outdoors")
                     {
-                        wall.OutsideCondition = "Adiabatic"; wall.OutsideObject = "";
+                        if (wallDataKey[i] == "Adiabatic")
+                        {
+                            wall.OutsideCondition = "Adiabatic"; wall.OutsideObject = "";
+                        }
+                        else
+                        {
+                            wall.OutsideCondition = "Zone"; wall.OutsideObject = wallDataKey[i];
+                        }
+                        wall.ConstructionName = "InternalWall";
+                        wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind";
+                        wall.Fenestrations = null;
                     }
-                    else
-                    {
-                        wall.OutsideCondition = "Zone"; wall.OutsideObject = wallDataKey[i];
-                    }
-                    wall.ConstructionName = "InternalWall";
-                    wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind"; wall.Fenestrations = new List<Fenestration>();
-                    wall.Fenestrations = null;
+                }
+                catch
+                {
+
                 }
             }
         }
@@ -917,6 +925,56 @@ namespace IDFObjects
                 }
             }
             return schedules;
+        }
+        public static List<List<List<GridPoint>>> ParseTextFileForGridPoints(string textFile)
+        {
+            List<List<List<GridPoint>>> rValues = new List<List<List<GridPoint>>>();
+
+            using (StreamReader reader = new StreamReader(textFile))
+            {
+                string line;
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (line == "start")
+                    {
+                        List<List<string>> pInfo = new List<List<string>>();
+                        while ((line = reader.ReadLine()) != "end")
+                        {
+                            pInfo.Add(line.Split('\t').Skip(1).ToList());
+                        }
+                        rValues.Add(GetPointInfo(pInfo));
+                    }
+                }
+            }
+
+            return rValues;
+        }
+
+        static List<List<GridPoint>> GetPointInfo(List<List<string>> text)
+        {
+            text.Reverse();
+            List<List<GridPoint>> points = new List<List<GridPoint>>();
+            for (int f = 0; f < text.First().Count; f++)
+                points.Add(new List<GridPoint>());
+
+            for (int r = 0; r < text.Count; r++)
+            {
+                List<string> line = text[r];
+
+                int f = 0;
+                foreach (string vals in line)
+                {
+                    int c = 0;
+                    foreach (char ch in vals)
+                    {
+                        if (ch == 'X')
+                            points[f].Add(new GridPoint(c, r));
+                        c++;
+                    }
+                    f++;
+                }
+            }
+            return points;
         }
         public static List<ScheduleCompact> GetSchedulesFromFolderWithZoneNames(string folder)
         { 

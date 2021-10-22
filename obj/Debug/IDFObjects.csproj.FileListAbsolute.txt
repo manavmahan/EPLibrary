@@ -23,7 +23,6 @@ C:\Users\manav\source\repos\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyRefere
 \\Mac\Home\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyReference.cache
 C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.dll
 C:\Users\manav\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.pdb
-C:\Users\manav\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csprojAssemblyReference.cache
 C:\Users\manav\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.dll
 C:\Users\manav\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.pdb
 C:\Users\abaku\Documents\GitHub\IDFObjects\bin\Debug\IDFObjects.dll
@@ -146,3 +145,4 @@ C:\Users\manav.singh\Documents\GitHub\IDFObjects\bin\Debug\System.Text.Encodings
 C:\Users\manav.singh\Documents\GitHub\IDFObjects\bin\Debug\System.Threading.Tasks.Extensions.xml
 C:\Users\manav.singh\Documents\GitHub\IDFObjects\bin\Debug\System.ValueTuple.xml
 C:\Users\manav.singh\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csproj.CopyComplete
+C:\Users\manav\Documents\GitHub\IDFObjects\obj\Debug\IDFObjects.csproj.AssemblyReference.cache

@@ -96,6 +96,7 @@
     <Compile Include="EPBuilding.cs" />
     <Compile Include="BuildingGeometry.cs" />
     <Compile Include="BuildingDesignParameters.cs" />
+    <Compile Include="GridPointGeometry.cs" />
     <Compile Include="Line.cs" />
     <Compile Include="PEASettings.cs" />
     <Compile Include="RandomBuilding.cs" />
@@ -196,7 +197,6 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
-if exist "$(AppData)\Autodesk\REVIT\Addins\2021" copy "$(ProjectDir)$(OutputPath)*.dll" "$(AppData)\Autodesk\REVIT\Addins\2021"
-copy "$(ProjectDir)$(OutputPath)*.dll" "C:\Users\u0115868a\Documents\GitHub\DesignAssistanceWeb\bin\Debug"</PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
 </Project>

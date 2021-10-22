@@ -34,6 +34,10 @@ namespace IDFObjects
         {
             return x.GetHashCode() * y.GetHashCode();
         }
+        public override string ToString()
+        {
+            return $"{x}, {y}; ";
+        }
     }
 
 }

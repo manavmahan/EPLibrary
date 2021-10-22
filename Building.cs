@@ -65,13 +65,13 @@ namespace IDFObjects
         public Chiller chiller;
         public Tower tower;
 
-        public float totalExposedSurfaceArea, totalVolume;
+        public float TotalExposedSurfaceArea, TotalVolume;
         public void GetSurfaceAreaVolume()
         {
-            totalExposedSurfaceArea = zones.SelectMany(z => z.Surfaces
+            TotalExposedSurfaceArea = zones.SelectMany(z => z.Surfaces
                                     .Where(s => s.OutsideCondition == "Ground" || s.OutsideCondition == "Outdoors")
                                     .Select(s => s.GrossArea)).Sum();
-            totalVolume = zones.Select(z => z.Volume).Sum();
+            TotalVolume = zones.Select(z => z.Volume).Sum();
         }
         public void CreateZoneLists()
         {
@@ -117,7 +117,7 @@ namespace IDFObjects
             {
                 foreach (Zone zone in zones)
                 {
-                    foreach (Surface toupdate in zone.Surfaces.Where(s => s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors"))
+                    foreach (Surface toupdate in zone.Surfaces.Where(s => s.SurfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors"))
                     {
                         toupdate.CreateWindowsShadingControlShadingOverhang(zone, Parameters.WWR, shadingLength);
                     }
@@ -159,7 +159,7 @@ namespace IDFObjects
             PhotovoltaicPerformanceSimple photovoltaicPerformanceSimple = new PhotovoltaicPerformanceSimple();
             List<GeneratorPhotovoltaic> listPVs = new List<GeneratorPhotovoltaic>();
             List<Surface> bSurfaces = zones.SelectMany(z => z.Surfaces).ToList();
-            List<Surface> roofs = bSurfaces.FindAll(s => s.surfaceType == SurfaceType.Roof);
+            List<Surface> roofs = bSurfaces.FindAll(s => s.SurfaceType == SurfaceType.Roof);
 
             roofs.ForEach(s => listPVs.Add(new GeneratorPhotovoltaic(s, photovoltaicPerformanceSimple, "AlwaysOn")));
             ElectricLoadCenterGenerators electricLoadCenterGenerators = new ElectricLoadCenterGenerators(listPVs);
@@ -498,7 +498,8 @@ namespace IDFObjects
         public void GeneratePeopleLightEquipmentInfiltrationVentilationThermostat()
         {
             if (Parameters.Construction.Permeability != 0)
-                Parameters.Construction.Infiltration = (float) Math.Round(0.1 + Parameters.Construction.Permeability * 0.07 * 1.25 * totalExposedSurfaceArea / totalVolume, 3);
+                Parameters.Construction.Infiltration = (float) Math.Round(0.1 + 
+                    Parameters.Construction.Permeability * 0.07 * 1.25 * TotalExposedSurfaceArea / TotalVolume, 3);
             foreach (ZoneList zList in ZoneLists)
             {
                 zList.GeneratePeopleLightEquipmentVentilationInfiltrationThermostat(this);
@@ -735,7 +736,7 @@ namespace IDFObjects
             if (Parameters.WWR.EachWallSeparately)
             {
                 List<Surface> allExWalls = zones.SelectMany(z => z.Surfaces).Where(s =>
-                 s.surfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors").ToList();
+                 s.SurfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors").ToList();
 
                 if (DialogResult.Yes == MessageBox.Show(string.Format(
                     "A total of {0} external walls found.\n" +
@@ -774,8 +775,8 @@ namespace IDFObjects
                         {
                             exZoneWalls = allExWalls.Where(s => s.ZoneName == zoneNameWLevelMatching).ToList();
                             wWR.AssociateWithCorrespondingWalls(exZoneWalls);
-                            IDFObjects.Zone zone = zones.First(z => z.Name == zoneNameWLevelMatching);
-                            foreach (IDFObjects.Surface toupdate in exZoneWalls)
+                            Zone zone = zones.First(z => z.Name == zoneNameWLevelMatching);
+                            foreach (Surface toupdate in exZoneWalls)
                             {
                                 toupdate.CreateWindows(zone);
                             }
@@ -814,15 +815,15 @@ namespace IDFObjects
         public bool intialised = false;
         public void MergeFloorCeiligs()
         {
-            List<Surface> ceilings = zones.Select(z => z.Surfaces.First(s => s.surfaceType == SurfaceType.Ceiling)).ToList();
+            List<Surface> ceilings = zones.Select(z => z.Surfaces.First(s => s.SurfaceType == SurfaceType.Ceiling)).ToList();
             foreach(Zone z in zones.Where(z => z.Level != 0))
             {
-                Surface fl = z.Surfaces.First(s => s.surfaceType == SurfaceType.Floor);
-                if (ceilings.Any(c => c.VerticesList == fl.VerticesList))
+                Surface fl = z.Surfaces.First(s => s.SurfaceType == SurfaceType.Floor);
+                if (ceilings.Any(c => c.XYZList == fl.XYZList))
                 {
                     fl.OutsideCondition = "Zone";
-                    fl.OutsideObject = ceilings.First(c => c.VerticesList == fl.VerticesList).ZoneName;
-                    Surface remove = ceilings.First(c => c.VerticesList == fl.VerticesList);
+                    fl.OutsideObject = ceilings.First(c => c.XYZList == fl.XYZList).ZoneName;
+                    Surface remove = ceilings.First(c => c.XYZList == fl.XYZList);
                     fl.OutsideObject = remove.ZoneName;
                     zones.First(zl => zl.Name == remove.ZoneName).Surfaces.Remove(remove);
                 }
@@ -847,23 +848,26 @@ namespace IDFObjects
             Parameters.Geometry = geometry;
 
             CreateZoneLists();
-
             foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
             {
                 Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name, zoneInfo.Level);
-                XYZList f = zoneInfo.FloorPoints;
-                if (zoneInfo.Level == 0)
-                    new Surface(zone, f.Reverse(), f.CalculateArea(), SurfaceType.Floor);
-                else
-                    new Surface(zone, f.Reverse(), f.CalculateArea(), SurfaceType.Floor)
-                    {
-                        ConstructionName = "Floor_Ceiling",
-                        OutsideCondition = "Adiabatic"
-                    };
+                zoneInfo.FloorPoints.ForEach(c => new Surface(zone, c.Reverse(), c.CalculateArea(), SurfaceType.Floor));
+
+                if (zoneInfo.Level != 0)
+                    zone.Surfaces.Where(s => s.SurfaceType == SurfaceType.Floor).AsParallel().ForAll(
+                        s => { s.ConstructionName = "Floor_Ceiling"; s.OutsideCondition = "Adiabatic"; } );
                 
-                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationDataKey, zoneInfo.WallCreationDataValue, zoneInfo.CeilingPoints, zoneInfo.RoofPoints);
+                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationDataKey, zoneInfo.WallCreationDataValue, 
+                    zoneInfo.CeilingPoints, zoneInfo.RoofPoints);
                 zoneInfo.CeilingPoints.ForEach(c => new Surface(zone, c, c.CalculateArea(), SurfaceType.Ceiling));
                 zoneInfo.RoofPoints.ForEach(c => new Surface(zone, c, c.CalculateArea(), SurfaceType.Roof));
+                
+                zoneInfo.OverhangPoints.ForEach(c => 
+                    new Surface(zone, c.Reverse(), c.CalculateArea(), SurfaceType.Floor) {
+                        OutsideCondition = "Outdoors",
+                        SunExposed = "SunExposed",
+                        WindExposed = "WindExposed"
+                    });
                 
                 zone.CreateDaylighting(500);
                 AddZone(zone);
