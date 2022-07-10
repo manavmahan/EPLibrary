@@ -138,6 +138,7 @@ namespace IDFObjects
             info.Add("\t" + SurfaceType + ",\t\t\t\t\t!-Surface Type");
             info.Add("\t" + ConstructionName + ",\t\t\t\t!-Construction Name");
             info.Add("\t" + ZoneName + ",\t\t\t\t\t\t!-Zone Name");
+            //info.Add("\t" + String.Empty + ",\t\t\t\t\t\t!-Space Name");
             info.Add("\t" + OutsideCondition + ",\t\t\t\t\t!-Outside Boundary Condition");
             info.Add("\t" + OutsideObject + ",\t\t\t\t\t\t!-Outside Boundary Condition Object");
             info.Add("\t" + SunExposed + ",\t\t\t\t\t\t!-Sun Exposure");

@@ -207,7 +207,8 @@ namespace IDFObjects
             info.Add("\r\n!-   ===========  ALL OBJECTS IN CLASS: ZONEVENTILATION:DESIGNFLOWRATE ===========\r\n");
             foreach (ZoneList zList in building.ZoneLists)
             {
-                info.AddRange(zList.ZoneVentilation.WriteInfo());
+                if (zList.ZoneVentilation != null)
+                    info.AddRange(zList.ZoneVentilation.WriteInfo());
             }
             return info;
         }

@@ -30,6 +30,7 @@ namespace IDFObjects
                 Utility.IDFLineFormatter(name, "Name"),
                 Utility.IDFLineFormatter(construction, "Construction Name"),
                 Utility.IDFLineFormatter(ZoneName, "Zone Name"),
+                //Utility.IDFLineFormatter(string.Empty, "Space or SpaceList Name"),
                 Utility.IDFLastLineFormatter(area, "Area")
             };
         }

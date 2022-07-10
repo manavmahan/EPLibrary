@@ -9,7 +9,7 @@ namespace IDFObjects
     [Serializable]
     public class Version
     {
-        public float VersionIdentifier = 9.2f;
+        public string VersionIdentifier = "22.1.0";
         public Version()
         {
 

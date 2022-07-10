@@ -182,13 +182,16 @@ namespace IDFObjects
                 scheduleName = Schedules.First(s=>s.name.Contains("Occupancy")).name,
                 activityLvlSchedName = Schedules.First(s => s.name.Contains("Activity")).name
             };
-            ZoneVentilation = new ZoneVentilation()
+            if (building.Parameters.Service.HVACSystem != HVACSystem.HeatPumpWBoiler)
             {
-                Name = "Ventilation_" + Name,
-                ZoneName = Name,
-                scheduleName = Schedules.First(s => s.name.Contains("Ventilation")).name,
-                CalculationMethod = "Flow/Person"
-            };
+                ZoneVentilation = new ZoneVentilation()
+                {
+                    Name = "Ventilation_" + Name,
+                    ZoneName = Name,
+                    scheduleName = Schedules.First(s => s.name.Contains("Ventilation")).name,
+                    CalculationMethod = "Flow/Person"
+                };
+            }
             Light = new Light(Conditions.LHG)
             {
                 Name = "Light_" + Name,

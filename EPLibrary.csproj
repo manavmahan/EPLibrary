@@ -188,6 +188,7 @@
     <Compile Include="ZoneVentilation.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".git_ignore" />
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>

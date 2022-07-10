@@ -997,13 +997,13 @@ namespace IDFObjects
                 return 0;
             }
         }
-        public static List<BuildingDesignParameters> ReadBuildingDesignParameters(string dataFile)
+        public static Queue<KeyValuePair<string, BuildingDesignParameters>> ReadBuildingDesignParameters(string dataFile)
         {
             Dictionary<string, float[]> samples = ReadSampleFile(dataFile, out int Count);
             List<string> zoneListNames = samples.Keys.Where(z => z.Contains(':'))
                 .Select(s => s.Split(':')[0]).Distinct().ToList();
 
-            List<BuildingDesignParameters> values = new List<BuildingDesignParameters>();
+            var values = new Queue<KeyValuePair<string, BuildingDesignParameters>>();
             ProbabilisticBuildingGeometry pGeometry = new ProbabilisticBuildingGeometry();
             ProbabilisticBuildingConstruction pConstruction = new ProbabilisticBuildingConstruction();
             ProbabilisticBuildingWWR pWWR = new ProbabilisticBuildingWWR();
@@ -1021,7 +1021,7 @@ namespace IDFObjects
                     NFloors = (int)Math.Round(samples.GetSamplesValues(pGeometry.NFloors.Label, s)),
                     Shape = (int)samples.GetSamplesValues(pGeometry.Shape.Label, s),
                     ARatio = samples.GetSamplesValues(pGeometry.ARatio.Label, s),
-                    Orientation = (int) Math.Round(samples.GetSamplesValues(pGeometry.Orientation.Label, s)),
+                    Orientation = (int)Math.Round(samples.GetSamplesValues(pGeometry.Orientation.Label, s)),
 
                     rLenA = samples.GetSamplesValues(pGeometry.rLenA.Label, s),
                     rWidA = samples.GetSamplesValues(pGeometry.rWidA.Label, s),
@@ -1060,16 +1060,16 @@ namespace IDFObjects
                     value.ZConditions.Add(new ZoneConditions()
                     {
                         Name = zlN,
-                        LHG = samples.GetSamplesValues(zlN  +":" + zCondition.LHG.Label, s),
+                        LHG = samples.GetSamplesValues(zlN + ":" + zCondition.LHG.Label, s),
                         EHG = samples.GetSamplesValues(zlN + ":" + zCondition.EHG.Label, s),
                         StartTime = samples.GetSamplesValues(zlN + ":" + zCondition.StartTime.Label, s),
                         OperatingHours = samples.GetSamplesValues(zlN + ":" + zCondition.OperatingHours.Label, s),
                         Occupancy = samples.GetSamplesValues(zlN + ":" + zCondition.Occupancy.Label, s),
                         HeatingSetpoint = samples.GetSamplesValues(zlN + ":" + zCondition.HeatingSetpoint.Label, s),
                         CoolingSetpoint = samples.GetSamplesValues(zlN + ":" + zCondition.CoolingSetpoint.Label, s)
-                    });                   
+                    });
                 }
-                values.Add(value);
+                values.Enqueue(new KeyValuePair<string, BuildingDesignParameters>( $"Shape_{value.Geometry.Shape}_{s:000000}", value ));
             }
             return values;
         }
