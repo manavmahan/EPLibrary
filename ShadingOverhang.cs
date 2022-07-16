@@ -35,10 +35,10 @@ namespace IDFObjects
 
             XYZList createShadingY(XYZList listVertices, float sl)
             {
-                XYZ P1 = listVertices.xyzs.ElementAt(0);
-                XYZ P2 = listVertices.xyzs.ElementAt(1);
-                XYZ P3 = listVertices.xyzs.ElementAt(2);
-                XYZ P4 = listVertices.xyzs.ElementAt(3);
+                XYZ P1 = listVertices.XYZs.ElementAt(0);
+                XYZ P2 = listVertices.XYZs.ElementAt(1);
+                XYZ P3 = listVertices.XYZs.ElementAt(2);
+                XYZ P4 = listVertices.XYZs.ElementAt(3);
 
                 float shadingLength = sl;
 
@@ -51,15 +51,15 @@ namespace IDFObjects
                 XYZ Vertice3 = new XYZ(P1.X - shadingLength, Y + shadingLength, Z);
                 XYZ Vertice4 = new XYZ(P1.X, Y, Z);
 
-                return new XYZList(new List<XYZ>() { Vertice1, Vertice2, Vertice3, Vertice4 });
+                return new XYZList(Vertice1, Vertice2, Vertice3, Vertice4);
             }
 
             XYZList createShadingX(XYZList listVertices, float sl)
             {
-                XYZ P1 = listVertices.xyzs.ElementAt(0);
-                XYZ P2 = listVertices.xyzs.ElementAt(1);
-                XYZ P3 = listVertices.xyzs.ElementAt(2);
-                XYZ P4 = listVertices.xyzs.ElementAt(3);
+                XYZ P1 = listVertices.XYZs.ElementAt(0);
+                XYZ P2 = listVertices.XYZs.ElementAt(1);
+                XYZ P3 = listVertices.XYZs.ElementAt(2);
+                XYZ P4 = listVertices.XYZs.ElementAt(3);
 
                 float shadingLength = sl;
 
@@ -72,7 +72,7 @@ namespace IDFObjects
                 XYZ Vertice3 = new XYZ(X + shadingLength, P1.Y + shadingLength, Z);
                 XYZ Vertice4 = new XYZ(X, P1.Y, Z);
 
-                return new XYZList(new List<XYZ>() { Vertice1, Vertice2, Vertice3, Vertice4 });
+                return new XYZList(  Vertice1, Vertice2, Vertice3, Vertice4 );
             }
         }
         public List<string> shadingInfo()

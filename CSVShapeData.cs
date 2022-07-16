@@ -29,17 +29,17 @@ namespace IDFObjects
             building.zones.SelectMany(z => z.Surfaces.Where(s => s.SurfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors")).ToList().
             ForEach(w=>WallPoints.Add(w.Name, w.XYZList));
             
-            BuildingShapeData = new List<string>() { string.Join(",", File, GroundPoints.To2DPointString()) };
+            BuildingShapeData = new List<string>() { string.Join(",", File, GroundPoints.ToString(true)) };
             ZoneShapeData = new List<string>();
             foreach (KeyValuePair<string, List<XYZList>> z in ZonePoints)
             {
                 ZoneShapeData.Add(string.Join(",", File, z.Key, string.Join(";", z.Value.Select(
-                    v=>v.ToCSVString()))));
+                    v=>v.ToString()))));
             }
             WallShapeData = new List<string>();
             foreach (KeyValuePair<string, XYZList> w in WallPoints)
             {
-                WallShapeData.Add(string.Join(",", File, w.Key, w.Value.ToCSVString()));
+                WallShapeData.Add(string.Join(",", File, w.Key, w.Value.ToString()));
             }
         }
     }

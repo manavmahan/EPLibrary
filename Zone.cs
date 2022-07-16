@@ -40,13 +40,13 @@ namespace IDFObjects
         public void CreateDaylighting(float lightingLux)
         {
             List<XYZ[]> exWallPoints = Surfaces.Where(s => s.SurfaceType == SurfaceType.Wall &&
-                       s.OutsideCondition == "Outdoors").Select(w => w.XYZList.xyzs.Take(2).ToArray()).ToList();
-            List<XYZList> floorPoints = Surfaces.Where(s => s.SurfaceType == SurfaceType.Floor).
-                Select(f=>f.XYZList).ToList();
+                       s.OutsideCondition == "Outdoors").Select(w => w.XYZList.XYZs.Take(2).ToArray()).ToList();
+            var floorPoints = Surfaces.Where(s => s.SurfaceType == SurfaceType.Floor).
+                                Select(f => f.XYZList);
             if (exWallPoints != null && exWallPoints.Count > 0)
             {
                 XYZList dlPoint = Utility.GetDayLightPointsXYZList(floorPoints, exWallPoints);
-                new DayLighting(this, "Occupancy Schedule", dlPoint.ChangeZValue(floorPoints[0].xyzs[0].Z+0.9f).xyzs, lightingLux);
+                new DayLighting(this, "Occupancy Schedule", dlPoint.XYZs, lightingLux);
             }
         }
         internal void CalcAreaVolume()

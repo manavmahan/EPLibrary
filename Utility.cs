@@ -87,30 +87,28 @@ namespace IDFObjects
             float topRoofBase = 0;
             foreach (XYZList roof in allRoofs)
             {
-                float mi = roof.xyzs.Select(p => p.Z).Min();
+                float mi = roof.XYZs.Select(p => p.Z).Min();
                 if (mi > topRoofBase)
                     topRoofBase = mi;
             }
-            return allRoofs.Where(r => r.xyzs.Select(ro => ro.Z).Any(Z=>Z == topRoofBase)).ToList();
+            return allRoofs.Where(r => r.XYZs.Select(ro => ro.Z).Any(Z=>Z == topRoofBase)).ToList();
         }
         public static List<XYZ> GetIntersections(this XYZList firstLoop, XYZList secondLoop)
         {
             List<XYZ> intersections = new List<XYZ>();
-            foreach (Line l in GetExternalEdges(firstLoop.xyzs))
+            foreach (Line l in firstLoop.Loop)
             {
-                foreach(Line sl in GetExternalEdges(secondLoop.xyzs))
+                foreach(Line sl in secondLoop.Loop)
                 {
-                    try
-                    { intersections.Add(l.GetIntersection(sl)); }
-                    catch { }
+                    if (l.GetIntersection(sl, out var intersection))
+                        intersections.Add(intersection);
                 }               
             }
             return intersections;
         }
-        public static bool IsFLoopInsideSLoop(this XYZList FLoop, XYZList SLoop) 
+        public static bool IsFirstLoopInsideSecondLoop(this XYZList firstLoop, XYZList secondLoop) 
         {
-            List<Line> edges = GetExternalEdges(SLoop.xyzs);
-            return FLoop.xyzs.All(p=>PointInsideLoopExceptZ(edges,p)); 
+            return firstLoop.XYZs.All(p=> secondLoop.IsPointInside(p)); 
         }
         public static FieldInfo GetMonthlyFieldInfo<T>(FieldInfo fieldInfo)
         {
@@ -216,12 +214,12 @@ namespace IDFObjects
                     e.Dispose();
             }
         }
-        public static List<Line> GetOffset(List<Line> perimeterLines, float offsetDist)
+        public static List<Line> GetOffset(IEnumerable<Line> perimeterLines, float offsetDist)
         {
             List<Line> offsetLines = new List<Line>();
             for (int i = 0; i < perimeterLines.Count(); i++)
             {
-                Line c = perimeterLines[i], c1, c2;
+                Line c = perimeterLines.ElementAt(i), c1, c2;
 
                 try { c2 = perimeterLines.ElementAt(i + 1); }
                 catch { c2 = perimeterLines.First(); }
@@ -234,9 +232,9 @@ namespace IDFObjects
             }
             return offsetLines;
         }
-        public static List<XYZ> GetOffset(List<XYZ> perimeterPoints, float offsetDist)
+        public static XYZList GetOffset(XYZList perimeterPoints, float offsetDist)
         {
-            return GetOffset(GetExternalEdges(perimeterPoints), offsetDist).Select(l => l.P0).ToList();          
+            return new XYZList(GetOffset(perimeterPoints.Loop, offsetDist).Select(l => l.P0));          
         }
         public static XYZ RotateToNormal(Line line, int corner)
         {
@@ -251,14 +249,14 @@ namespace IDFObjects
         
         public static float GetAngle(Line c1, Line c2)
         {
-            return c1.Direction().AngleOnPlaneTo(c2.Direction(), new XYZ(0, 0, -1))*((float) Math.PI/180);
+            return c1.Direction.AngleOnPlaneTo(c2.Direction, new XYZ(0, 0, -1))*((float) Math.PI/180);
         }
         public static Line GetOffset(Line line, Line prevLine, Line nextLine, float offsetDistance)
         {
             XYZ p0 = line.P0.MovePoint(RotateToNormal(line, 1), (-1) * offsetDistance),
             p1 = line.P1.MovePoint(RotateToNormal(line, 0), offsetDistance);
 
-            XYZ dir1 = new Line(p0, p1).Direction();
+            XYZ dir1 = new Line(p0, p1).Direction;
 
             p0 = p0.MovePoint( p1, (float) Math.Sin(GetAngle(prevLine, line)) * offsetDistance);
             p1 = p1.MovePoint( p0, (float) Math.Sin(GetAngle(line, nextLine)) * offsetDistance);
@@ -266,8 +264,8 @@ namespace IDFObjects
             try
             {
                 Line l1 = new Line (p0, p1);
-                XYZ x = l1.Direction();
-                return l1.Direction() == dir1 ? l1 : null;
+                XYZ x = l1.Direction;
+                return x.Equals(dir1) ? l1 : null;
             }
             catch
             {
@@ -280,7 +278,7 @@ namespace IDFObjects
             Dictionary<ZoneGeometryInformation, List<Line>> allRoomSegment = new Dictionary<ZoneGeometryInformation, List<Line>>();
             foreach (ZoneGeometryInformation zone in zones)
             {
-                float baseZ = zone.FloorPoints[0].xyzs.First().Z;
+                float baseZ = zone.FloorPoints.ElementAt(0).XYZs.First().Z;
                 string cRoom = zone.Name.Remove(zone.Name.LastIndexOf(":"));
                 List<Line> walls = rooms.First(ro => ro.Key == cRoom).Value;
                 allRoomSegment.Add(zone, walls.Select(l=>l.ChangeZValue(baseZ)).ToList());
@@ -292,7 +290,7 @@ namespace IDFObjects
         {
             List<ZoneGeometryInformation> zoneInfoList = new List<ZoneGeometryInformation>();
             List<string> zNames = allRooms.Select(x => x.Key).ToList();
-            List<Line> externalEdgesIDF = GetExternalEdges(floors[0].xyzs);
+            List<Line> externalEdgesIDF = floors[0].Loop;
             for (int f = 0; f < floors.Count; f++)
             {
                 foreach (string zName in zNames) 
@@ -300,10 +298,10 @@ namespace IDFObjects
                     ZoneGeometryInformation zInfo = new ZoneGeometryInformation();
                     zInfo.Name = zName+':'+f;
                     List<Line> thisRoomSegments = allRooms[zName];
-                    List<XYZ> floorPoints = thisRoomSegments.Select(x => x.P0).ToList();
+                    var floorPoints = thisRoomSegments.Select(x => x.P0).ToArray();
                     XYZList flPointList = new XYZList(floorPoints);
-                    flPointList.RemoveCollinearPoints();
-                    zInfo.FloorPoints.Add(flPointList.ChangeZValue(floors[f].xyzs.First().Z));
+
+                    zInfo.FloorPoints = zInfo.FloorPoints.Append(flPointList.ChangeZValue(floors[f].XYZs.First().Z));
                     List<XYZList> ceilingOrRoof = new List<XYZList>();
                     try
                     {
@@ -314,7 +312,7 @@ namespace IDFObjects
                         ceilingOrRoof = roofs;
                     }
                     List<XYZList> rOrc = ceilingOrRoof.Select(c =>
-                        new XYZList(flPointList.xyzs.Select(p => p.GetVerticalProjection(c)).ToList())).ToList();
+                        new XYZList(flPointList.XYZs.Select(p => p.GetVerticalProjection(c)))).ToList();
 
                     if (f != floors.Count - 1)
                         zInfo.CeilingPoints = rOrc;
@@ -324,7 +322,7 @@ namespace IDFObjects
                     zInfo.Level = f;
 
                     zInfo.Height =
-                        rOrc.SelectMany(ro => ro.xyzs.Select(p => p.Z)).Average() - zInfo.FloorPoints[0].xyzs.First().Z;
+                        rOrc.SelectMany(ro => ro.XYZs.Select(p => p.Z)).Average() - zInfo.FloorPoints.ElementAt(0).XYZs.First().Z;
                     zoneInfoList.Add(zInfo);
                 }
             }
@@ -356,8 +354,7 @@ namespace IDFObjects
                         if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
                             con = "Outdoors";
                     }
-                    zone.WallCreationDataKey.Add(con);
-                    zone.WallCreationDataValue.Add(c.ChangeZValue(zone.FloorPoints[0].xyzs.First().Z));
+                    zone.WallGeometryData.Append(new KeyValuePair<string, Line>(con, c.ChangeZValue(zone.FloorPoints.ElementAt(0).XYZs.First().Z)));
                 }
             }
             return zoneInfoList;
@@ -381,16 +378,16 @@ namespace IDFObjects
                 try { ceiling = massFloors[level + 1];  } catch { ceiling = roofs.First(); }
 
                 List<Line> thisRoomSegments = allRoomSegmentsIDF[zName];
-                List<XYZ> floorPoints = thisRoomSegments.Select(x => x.P0).ToList();
+                var floorPoints = thisRoomSegments.Select(x => x.P0).ToArray();
                 XYZList flPointList = new XYZList(floorPoints);
-                flPointList.RemoveCollinearPoints();
-                zInfo.FloorPoints.Add(flPointList);
 
-                float heightFl = ceiling.xyzs.First().Z - floorPoints.First().Z;
+                zInfo.FloorPoints = zInfo.FloorPoints.Append(flPointList);
+
+                float heightFl = ceiling.XYZs.First().Z - floorPoints.First().Z;
                 zInfo.Height = heightFl;
                             
                 zInfo.CeilingPoints = new List<XYZList>();
-                zInfo.CeilingPoints.Add(flPointList.OffsetHeight(heightFl));
+                zInfo.CeilingPoints = zInfo.CeilingPoints.Append(flPointList.OffsetHeight(heightFl));
                 zoneInfoList.Add(zInfo);
                 newAllRoomSegmentsIDF.Add(zInfo.Name, thisRoomSegments);
             }
@@ -411,8 +408,7 @@ namespace IDFObjects
                     {
                         KeyValuePair<string, List<Line>> matchingCurve = allRoomSegmentsNotThisRoom
                             .First(x => x.Value.Any(y => CompareCurves(c, y)));
-                        zone.WallCreationDataKey.Add(matchingCurve.Key);
-                        zone.WallCreationDataValue.Add(c);
+                        zone.AddWallGeometryData(matchingCurve.Key, c);
 
                         List<Line> matchingZoneSegments = newAllRoomSegmentsIDF[matchingCurve.Key];
                         matchingZoneSegments.Remove(matchingZoneSegments.First(x => CompareCurves(c, x)));
@@ -420,8 +416,8 @@ namespace IDFObjects
                     catch
                     {
                         if (externalEdgesIDF.Any(y => IsCollinear(y, c)))
-                        { zone.WallCreationDataKey.Add("Outdoors"); zone.WallCreationDataValue.Add(c); }
-                        else { zone.WallCreationDataKey.Add("Adiabatic"); zone.WallCreationDataValue.Add(c); }
+                        { zone.AddWallGeometryData("Outdoors", c); }
+                        else { zone.AddWallGeometryData("Adiabatic", c); }
                     }
                 }
             }
@@ -434,8 +430,8 @@ namespace IDFObjects
         public static bool IsCollinear(Line c1, Line c2)
         {
             XYZ p1 = c1.P0, p2 = c1.P1, p3 = c2.P0, p4 = c2.P1;
-            return new XYZList(new List<XYZ>() { p1, p2, p3 }).CalculateArea() == 0 &&
-                new XYZList(new List<XYZ>() { p1, p2, p4 }).CalculateArea() == 0;
+            return new XYZList( p1, p2, p3 ).CalculateArea() == 0 &&
+                new XYZList( p1, p2, p4 ).CalculateArea() == 0;
         }
         public static XYZ GetDirection(Line Line)
         {
@@ -443,42 +439,33 @@ namespace IDFObjects
             float dist = (float) Math.Sqrt(Math.Pow(x, 2) + Math.Pow(y, 2) + Math.Pow(z, 2));
             return new XYZ(x / dist, y / dist, z / dist);
         }
-        public static XYZList GetDayLightPointsXYZList(List<XYZList> FloorFacePoints, List<XYZ[]> ExWallEdges)
+        public static XYZList GetDayLightPointsXYZList(IEnumerable<XYZList> FloorFacePoints, List<XYZ[]> ExWallEdges)
         {
-            XYZList DLList = new XYZList();
-            if (FloorFacePoints.Count == 1)
+            XYZList dlList = new XYZList();
+            foreach (XYZList f in FloorFacePoints)
             {
-                List<XYZ> floorPoints = FloorFacePoints[0].xyzs;
-                List<Line> WallEdges = GetExternalEdges(floorPoints);
+                List<XYZ> floorPoints = f.XYZs;
+                List<Line> WallEdges = f.Loop;
                 List<XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
-                DLList = new XYZList(CentersOfMass.Where(p => PointInsideLoopExceptZ(WallEdges, p) &&
-                CheckMinimumDistance(ExWallEdges, p, 0.2f)).Distinct().ToList());
+                dlList = new XYZList(CentersOfMass.Where(p => f.IsPointInside(p) &&
+                CheckMinimumDistance(ExWallEdges, p, 0.2f)).Distinct());
             }
-            else
-            {
-                foreach (XYZList f in FloorFacePoints)
-                {
-                    List<XYZ> floorPoints = f.xyzs;
-                    List<Line> WallEdges = GetExternalEdges(floorPoints);
-                    List<XYZ> CentersOfMass = TriangleAndCentroid(floorPoints);
-                    DLList = new XYZList(CentersOfMass.Where(p => PointInsideLoopExceptZ(WallEdges, p) &&
-                    CheckMinimumDistance(ExWallEdges, p, 0.2f)).Distinct().ToList());
-                }
-            }
-            return DLList;
+            if (dlList.XYZs == null)
+                return new XYZList();
+            return dlList.ChangeZValue(FloorFacePoints.First().XYZs.FirstOrDefault().Z + 0.9f);
         }
-        public static Dictionary<string, List<Line>> GetAllRooms(List<XYZ> groundPoints,
+        public static Dictionary<string, List<Line>> GetAllRooms(XYZList groundPoints,
             float offsetDistance, string zoneName)
         {
             Dictionary<string, List<Line>> roomSegments = new Dictionary<string, List<Line>>();
             if (offsetDistance == 0)
             {
-                roomSegments.Add(zoneName, GetExternalEdges(groundPoints));
+                roomSegments.Add(zoneName, groundPoints.Loop);
                 return roomSegments;
             }
             else
             {
-                List<Line> perimeterLines = GetExternalEdges(groundPoints);
+                List<Line> perimeterLines = groundPoints.Loop;
                 List<Line> offsetLines = GetOffset(perimeterLines, offsetDistance);
 
                 if (offsetLines.Count == perimeterLines.Count)
@@ -503,7 +490,7 @@ namespace IDFObjects
                 return roomSegments;
             }
         }
-        private static Line[] CreateDiagonalLines(Line perimeterLine, Line coreLine)
+        public static Line[] CreateDiagonalLines(Line perimeterLine, Line coreLine)
         {
             return new Line[]
             {
@@ -511,26 +498,17 @@ namespace IDFObjects
                 new Line( coreLine.P0, perimeterLine.P0)
             };
         }
-        public static bool PointInsideLoopExceptZ(List<Line> WallEdges, XYZ point)
+        
+        public static bool ArePointsInside(this XYZList boundaryPoints, List<XYZ> points)
         {
-            int intersections = 0;
-            foreach (Line edge in WallEdges)
-            {
-                float r = (point.Y - edge.P1.Y) / (edge.P0.Y - edge.P1.Y);
-                if (r >= 0 && r < 1)
-                {
-                    float Xvalue = r * (edge.P0.X - edge.P1.X) + edge.P1.X;
-                    if (point.X < Xvalue)
-                    {
-                        intersections++;
-                    }
-                }
-            }
-            return intersections % 2 != 0;
+            return points.
+                    Select(p => p.ChangeZValue(0)).
+                    Distinct().
+                    All(po => boundaryPoints.IsPointInside(po));
         }
+
         public static bool CheckMinimumDistance(List<IDFObjects.XYZ[]> WallEdges, IDFObjects.XYZ point, float distance)
         {
-            
             return WallEdges.All(wEdge => GetPerpendicularDistance(wEdge, point) > distance);
         }
         public static float GetPerpendicularDistance(XYZ[] WallEdge, XYZ p3)
@@ -545,14 +523,7 @@ namespace IDFObjects
                 points.Select(p => p.Y).Average(),
                 points.Select(p => p.Z).Average());
         }
-        public static List<Line> GetExternalEdges(List<IDFObjects.XYZ> groundPoints)
-        {
-            List<Line> wallEdges = new List<Line>();
-            int n = groundPoints.Count();
-            for (int i = 0; i < groundPoints.Count; i++)
-                wallEdges.Add(new Line(groundPoints[i], groundPoints[(i + 1) % n]));
-            return wallEdges;
-        }
+        
         public static List<IDFObjects.XYZ> TriangleAndCentroid(List<IDFObjects.XYZ> AllPoints)
         {
             List<IDFObjects.XYZ> CentersOfMass = new List<IDFObjects.XYZ>();
@@ -615,46 +586,41 @@ namespace IDFObjects
         {
             return ((float) Math.Round(value / 0.092903, 4));
         }
-        public static XYZ GetVerticalProjection(this XYZ point, List<XYZList> faces)
+        public static XYZ GetVerticalProjection(this XYZ point, IEnumerable<XYZList> faces)
         {
-            return point.GetVerticalProjection(faces.First());
+            return point.GetVerticalProjection(faces.FirstOrDefault(f => f.XYZs != null));
         }
         public static XYZ GetVerticalProjection(this XYZ point, XYZList face)
         {
-            return point.ChangeZValue(face.xyzs.First().Z);
+            return point.ChangeZValue(face.XYZs.FirstOrDefault().Z);
         }
-        public static void CreateZoneWalls(Zone z, List<string> wallDataKey, List<Line> wallDataValue, List<XYZList> ceilings, List<XYZList> roofs)
+        public static void CreateZoneWalls(Zone z, ZoneGeometryInformation info)
         {
-            for (int i=0; i<wallDataValue.Count;i++)
+            for (int i=0; i < info.WallGeometryData.Count(); i++)
             {
-                List<XYZList> roofCeilings = new List<XYZList>();
-                roofCeilings.AddRange(ceilings); roofCeilings.AddRange(roofs);
-                XYZ p1 = wallDataValue[i].P0, p2 = wallDataValue[i].P1,
-                    p3 = p2.GetVerticalProjection(roofCeilings), p4 = p1.GetVerticalProjection(roofCeilings);
-                XYZList wallPoints = new XYZList(new List<XYZ>() { p1, p2, p3, p4 });
-                float area = p1.DistanceTo(p2) * p2.DistanceTo(p3);
-                Surface wall = new Surface(z, wallPoints, area, SurfaceType.Wall);
+                var roofCeilings = info.CeilingPoints.Union(info.RoofPoints);
 
-                try
+                XYZ p1 = info.WallGeometryData.ElementAt(i).Value.P0,
+                    p2 = info.WallGeometryData.ElementAt(i).Value.P1,
+                    p3 = p2.GetVerticalProjection(roofCeilings), 
+                    p4 = p1.GetVerticalProjection(roofCeilings);
+                XYZList wallPoints = new XYZList( p1, p2, p3, p4 );
+                Surface wall = new Surface(z, wallPoints, SurfaceType.Wall, p1.DistanceTo(p2) * p2.DistanceTo(p3));
+
+                if (info.WallGeometryData.ElementAt(i).Key != "Outdoors")
                 {
-                    if (wallDataKey[i] != "Outdoors")
+                    if (info.WallGeometryData.ElementAt(i).Key == "Adiabatic")
                     {
-                        if (wallDataKey[i] == "Adiabatic")
-                        {
-                            wall.OutsideCondition = "Adiabatic"; wall.OutsideObject = "";
-                        }
-                        else
-                        {
-                            wall.OutsideCondition = "Zone"; wall.OutsideObject = wallDataKey[i];
-                        }
-                        wall.ConstructionName = "InternalWall";
-                        wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind";
-                        wall.Fenestrations = null;
+                        wall.OutsideCondition = "Adiabatic"; wall.OutsideObject = "";
                     }
-                }
-                catch
-                {
+                    else{
+                        wall.OutsideCondition = "Zone"; wall.OutsideObject 
+                            = info.WallGeometryData.ElementAt(i).Key;
+                    }
 
+                    wall.ConstructionName = "InternalWall";
+                    wall.SunExposed = "NoSun"; wall.WindExposed = "NoWind";
+                    wall.Fenestrations = null;
                 }
             }
         }
@@ -997,13 +963,13 @@ namespace IDFObjects
                 return 0;
             }
         }
-        public static Queue<KeyValuePair<string, BuildingDesignParameters>> ReadBuildingDesignParameters(string dataFile)
+        public static Queue<BuildingDesignParameters> ReadBuildingDesignParameters(string dataFile)
         {
             Dictionary<string, float[]> samples = ReadSampleFile(dataFile, out int Count);
             List<string> zoneListNames = samples.Keys.Where(z => z.Contains(':'))
                 .Select(s => s.Split(':')[0]).Distinct().ToList();
 
-            var values = new Queue<KeyValuePair<string, BuildingDesignParameters>>();
+            var values = new Queue<BuildingDesignParameters>();
             ProbabilisticBuildingGeometry pGeometry = new ProbabilisticBuildingGeometry();
             ProbabilisticBuildingConstruction pConstruction = new ProbabilisticBuildingConstruction();
             ProbabilisticBuildingWWR pWWR = new ProbabilisticBuildingWWR();
@@ -1069,7 +1035,8 @@ namespace IDFObjects
                         CoolingSetpoint = samples.GetSamplesValues(zlN + ":" + zCondition.CoolingSetpoint.Label, s)
                     });
                 }
-                values.Enqueue(new KeyValuePair<string, BuildingDesignParameters>( $"Shape_{value.Geometry.Shape}_{s:000000}", value ));
+                value.Name = $"Shape_{value.Geometry.Shape}_{s:000000}";
+                values.Enqueue( value );
             }
             return values;
         }
@@ -1088,6 +1055,7 @@ namespace IDFObjects
         public static void Serialise<T>(this T obj, string filePath)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            File.Delete(filePath);
             TextWriter tW = File.CreateText(filePath);
             new JsonSerializer() { Formatting = Formatting.Indented }.Serialize(tW, obj);
             tW.Close();
@@ -1095,10 +1063,11 @@ namespace IDFObjects
         public static T DeSerialise<T>(string filePath)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            TextReader tR = File.OpenText(filePath);
-            T val = new JsonSerializer().Deserialize<T>(new JsonTextReader(tR));
-            tR.Close();
-            return val;
+            using (var tR = File.OpenText(filePath))
+            {
+                T val = new JsonSerializer().Deserialize<T>(new JsonTextReader(tR));
+                return val;
+            }
         }
         public static float ConvertKWhfromJoule(this float d) { return d * 2.7778E-7f; }
         public static float ConvertWfromJoule(this float d) { return d * 2.7778E-4f / 8760; }
@@ -1189,61 +1158,17 @@ namespace IDFObjects
         }
         public static List<SizingPeriodDesignDay> CreateDesignDays(Location location)
         {
-            SizingPeriodDesignDay winterday, summerday, summerday1, summerday2, summerday3, summerday4;
-            switch (location)
+            var sdd = new SizingPeriodDesignDay()
             {
-                case Location.MUNICH_DEU:
-                    winterday = new SizingPeriodDesignDay("MUNICH Ann Htg 99.6% Condns DB", 2, 21, "WinterDesignDay",
-                        -12.8f, 0.0f, -13.9f, 0.0f, 95900.0f, 1.0f, 130.0f, "No", "No", "No", "AshraeClearSky", 0.0f);
-
-                    summerday = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns Enth=>MDB", 7, 21, "SummerDesignDay",
-                        31.5f, 10.9f, 17.8f, 0.0f, 95300.0f, 1.5f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
-
-                    summerday1 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 6)", 6, 21, "SummerDesignDay",
-                        29.0f, 10.9f, 13.9f, 0.0f, 95200.0f, 1.0f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
-
-                    summerday2 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 7)", 7, 21, "SummerDesignDay",
-                        29.0f, 10.9f, 13.9f, 0.0f, 95200.0f, 1.0f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
-
-                    summerday3 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 8)", 8, 21, "SummerDesignDay",
-                        29.0f, 10.9f, 13.9f, 0.0f, 95200.0f, 1.0f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
-
-                    summerday4 = new SizingPeriodDesignDay("MUNICH Ann Clg .4% Condns DB=>MWB (month 9)", 9, 21, "SummerDesignDay",
-                        29.0f, 10.9f, 13.9f, 0.0f, 95200.0f, 1.0f, 240.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
-                    return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
-                case Location.BRUSSELS_BEL:
-                    winterday = new SizingPeriodDesignDay("BRUSSELS Ann Htg 99.6% Condns DB", 1, 21, "WinterDesignDay",
-                        -4.9f, 0.0f, -6.2f, 0.0f, 102600.0f, 1.0f, 70.0f, "No", "No", "No", "AshraeClearSky", 0.0f);
-
-                    summerday = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4% Condns Enth=>MDB", 7, 21, "SummerDesignDay",
-                        33.6f, 8.4f, 19.5f, 0.0f, 100600.0f, 4.4f, 90.0f, "No", "No", "No", "AshraeClearSky", 1.0f);
-
-                    summerday1 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 6)", 6, 21, "SummerDesignDay",
-                        28.7f, 8.4f, 13.6f, 0, 101300, 3.0f, 290, "No", "No", "No", "AshraeClearSky", 1.0f);
-
-                    summerday2 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 7)", 7, 21, "SummerDesignDay",
-                        28.7f, 8.4f, 13.6f, 0, 101300, 3.0f, 290, "No", "No", "No", "AshraeClearSky", 1.0f);
-
-                    summerday3 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 8)", 8, 21, "SummerDesignDay",
-                       28.7f, 8.4f, 13.6f, 0, 101300, 3.0f, 290, "No", "No", "No", "AshraeClearSky", 1.0f);
-
-                    summerday4 = new SizingPeriodDesignDay("BRUSSELS Ann Clg .4 % Condns DB => MWB(month 9)", 9, 21, "SummerDesignDay",
-                       28.7f, 8.4f, 13.6f, 0, 101300, 3.0f, 290, "No", "No", "No", "AshraeClearSky", 1.0f);
-                    return new List<SizingPeriodDesignDay>() { winterday, summerday, summerday1, summerday2, summerday3, summerday4 };
-                case Location.BERLIN_DEU:
-                default:
-                    SizingPeriodDesignDay sdd = new SizingPeriodDesignDay()
-                    {
-                        name = "Summer including Extreme Summer days",
-                        strData = new List<string>() { "7,18,7,25,SummerDesignDay, Yes, Yes;" }
-                    },
-                    wdd = new SizingPeriodDesignDay()
-                    {
-                        name = "Winter including Extreme Winter days",
-                        strData = new List<string>() { "1,25,2,1,WinterDesignDay, Yes, Yes;" }
-                    };
-                    return new List<SizingPeriodDesignDay>() { sdd, wdd };
-            }       
+                name = "Summer including Extreme Summer days",
+                strData = new List<string>() { "7,18,7,25,SummerDesignDay, Yes, Yes;" }
+            };
+            var wdd = new SizingPeriodDesignDay()
+            {
+                name = "Winter including Extreme Winter days",
+                strData = new List<string>() { "1,25,2,1,WinterDesignDay, Yes, Yes;" }
+            };
+            return new List<SizingPeriodDesignDay>() { sdd, wdd };
         }
     }
 }

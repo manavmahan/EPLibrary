@@ -13,6 +13,8 @@ namespace IDFObjects
     [Serializable]
     public class Building
     {
+        public bool intialised = false;
+
         public string name = "Building1";
         public float northAxis = 0;
         public string terrain = String.Empty;
@@ -111,21 +113,15 @@ namespace IDFObjects
         } 
         public void UpdateFenestrations()
         {
-            if (Parameters.WWR.EachWallSeparately)
-                AdjustWindows();
-            else
+            foreach (Zone zone in zones)
             {
-                foreach (Zone zone in zones)
-                {
-                    foreach (Surface toupdate in zone.Surfaces.Where(s => s.SurfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors"))
-                    {
-                        toupdate.CreateWindowsShadingControlShadingOverhang(zone, Parameters.WWR, shadingLength);
-                    }
-                    if (!zone.Surfaces.Any(s => s.Fenestrations != null))
-                    {
-                        zone.DayLightControl = null;
-                    }
-                }
+                var walls = zone.Surfaces.Where(s => s.SurfaceType == SurfaceType.Wall &&
+                                                        s.OutsideCondition == "Outdoors");
+                foreach (var wall in walls)
+                    wall.CreateWindowsShadingControlShadingOverhang(zone, Parameters.WWR, shadingLength);
+                
+                if (zone.Surfaces.All(s => s.Fenestrations == null))
+                    zone.DayLightControl = null;
             }
         }
         
@@ -730,64 +726,6 @@ namespace IDFObjects
                 Utility.IDFLineFormatter(maxNWarmUpDays, "Maximum Number of Warmup Days"),
                 Utility.IDFLastLineFormatter(minNWarmUpDays, "Minimum Number of Warmup Days")
             };
-        }      
-        public void AdjustWindows()
-        {
-            if (Parameters.WWR.EachWallSeparately)
-            {
-                List<Surface> allExWalls = zones.SelectMany(z => z.Surfaces).Where(s =>
-                 s.SurfaceType == SurfaceType.Wall && s.OutsideCondition == "Outdoors").ToList();
-
-                if (DialogResult.Yes == MessageBox.Show(string.Format(
-                    "A total of {0} external walls found.\n" +
-                    "Would you like to define for each level separately?", allExWalls.Count),
-                    "Window-to-Wall Ratio", MessageBoxButtons.YesNo))
-                {
-                    foreach (Zone zone in zones)
-                    {
-                        List<IDFObjects.Surface> exZoneWalls = allExWalls.Where(s => s.ZoneName == zone.Name).ToList();
-                        WWR_Input wWR = new WWR_Input(zone.Name, exZoneWalls);
-                        wWR.ShowDialog();
-                        foreach (IDFObjects.Surface toupdate in exZoneWalls)
-                        {
-                            toupdate.CreateWindows(zone);
-                        }
-                        if (!zone.Surfaces.Any(s => s.Fenestrations != null))
-                        {
-                            zone.DayLightControl = null;
-                        }
-                    }
-                }
-                else
-                {
-                    List<string> allZoneNames = zones.Select(z => z.Name).ToList();
-                    List<string> zoneNameLevel = zones.Select(z => z.Name.Remove(z.Name.IndexOf(':'))).Distinct().ToList();
-                    foreach (string zoneName in zoneNameLevel)
-                    {
-                        List<string> zoneNamesWLevelMatching = allZoneNames.Where(s => s.Contains(zoneName)).ToList();
-                        string zoneNameWLevel = zoneNamesWLevelMatching.First();
-
-                        List<IDFObjects.Surface> exZoneWalls = allExWalls.Where(s => s.ZoneName == zoneNameWLevel).ToList();
-                        WWR_Input wWR = new WWR_Input(zoneName, exZoneWalls);
-                        wWR.ShowDialog();
-
-                        foreach (string zoneNameWLevelMatching in zoneNamesWLevelMatching)
-                        {
-                            exZoneWalls = allExWalls.Where(s => s.ZoneName == zoneNameWLevelMatching).ToList();
-                            wWR.AssociateWithCorrespondingWalls(exZoneWalls);
-                            Zone zone = zones.First(z => z.Name == zoneNameWLevelMatching);
-                            foreach (Surface toupdate in exZoneWalls)
-                            {
-                                toupdate.CreateWindows(zone);
-                            }
-                            if (!zone.Surfaces.Any(s => s.Fenestrations != null))
-                            {
-                                zone.DayLightControl = null;
-                            }
-                        }
-                    }
-                }
-            }
         }
         public void AdjustScheduleFromFile(List<ScheduleCompact> schedules)
         {
@@ -812,25 +750,8 @@ namespace IDFObjects
             }
             remove.ForEach(z => ZoneLists.Remove(z));
         }
-        public bool intialised = false;
-        public void MergeFloorCeiligs()
-        {
-            List<Surface> ceilings = zones.Select(z => z.Surfaces.First(s => s.SurfaceType == SurfaceType.Ceiling)).ToList();
-            foreach(Zone z in zones.Where(z => z.Level != 0))
-            {
-                Surface fl = z.Surfaces.First(s => s.SurfaceType == SurfaceType.Floor);
-                if (ceilings.Any(c => c.XYZList == fl.XYZList))
-                {
-                    fl.OutsideCondition = "Zone";
-                    fl.OutsideObject = ceilings.First(c => c.XYZList == fl.XYZList).ZoneName;
-                    Surface remove = ceilings.First(c => c.XYZList == fl.XYZList);
-                    fl.OutsideObject = remove.ZoneName;
-                    zones.First(zl => zl.Name == remove.ZoneName).Surfaces.Remove(remove);
-                }
-            }
-        }
         public void InitialiseBuilding(List<ZoneGeometryInformation> zonesInformation, 
-           BuildingDesignParameters parameters, Location location, float offsetDistance)
+           BuildingDesignParameters parameters, Location location, float offsetDistance = 0)
         {
             if (zonesInformation == null)
             {
@@ -840,39 +761,59 @@ namespace IDFObjects
                                                     GroundPoints.ChangeZValue(i * Parameters.Geometry.Height)).ToList();
                     RoofPoints = new List<XYZList>() { GroundPoints.ChangeZValue(Parameters.Geometry.Height * Parameters.Geometry.NFloors + 1) };
                 }
-                zonesInformation = Utility.GetZoneGeometryInformation(Utility.GetAllRooms(FloorPoints[0].xyzs, offsetDistance, parameters.ZConditions.First().Name),
+                zonesInformation = Utility.GetZoneGeometryInformation(Utility.GetAllRooms(FloorPoints[0], offsetDistance, parameters.ZConditions.First().Name),
                     FloorPoints, RoofPoints);
             }
-            BuildingGeometry geometry = Parameters.Geometry.DeepClone();
             Parameters = parameters;
-            Parameters.Geometry = geometry;
-
+            
             CreateZoneLists();
             foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
             {
                 Zone zone = new Zone(zoneInfo.Height, zoneInfo.Name, zoneInfo.Level);
-                zoneInfo.FloorPoints.ForEach(c => new Surface(zone, c.Reverse(), c.CalculateArea(), SurfaceType.Floor));
+                
+                foreach (var c in zoneInfo.FloorPoints)
+                    new Surface(zone, c, SurfaceType.Floor);
 
-                if (zoneInfo.Level != 0)
-                    zone.Surfaces.Where(s => s.SurfaceType == SurfaceType.Floor).AsParallel().ForAll(
-                        s => { s.ConstructionName = "Floor_Ceiling"; s.OutsideCondition = "Adiabatic"; } );
-                
-                Utility.CreateZoneWalls(zone, zoneInfo.WallCreationDataKey, zoneInfo.WallCreationDataValue, 
-                    zoneInfo.CeilingPoints, zoneInfo.RoofPoints);
-                zoneInfo.CeilingPoints.ForEach(c => new Surface(zone, c, c.CalculateArea(), SurfaceType.Ceiling));
-                zoneInfo.RoofPoints.ForEach(c => new Surface(zone, c, c.CalculateArea(), SurfaceType.Roof));
-                
-                zoneInfo.OverhangPoints.ForEach(c => 
-                    new Surface(zone, c.Reverse(), c.CalculateArea(), SurfaceType.Floor) {
+                foreach (var c in zoneInfo.OverhangPoints)
+                    new Surface(zone, c, SurfaceType.Floor)
+                    {
                         OutsideCondition = "Outdoors",
                         SunExposed = "SunExposed",
                         WindExposed = "WindExposed"
-                    });
+                    };
+
+                if (zoneInfo.Level != 0)
+                {
+                    foreach (var surface  in zone.Surfaces.
+                        Where(s => s.SurfaceType == SurfaceType.Floor))
+                    { 
+                        surface.ConstructionName = "Floor_Ceiling"; 
+                        surface.OutsideCondition = "Adiabatic"; 
+                    };
+                }
                 
+                Utility.CreateZoneWalls(zone, zoneInfo);
+
+                foreach (var c in zoneInfo.CeilingPoints)
+                    new Surface(zone, c.Reverse(true), SurfaceType.Ceiling);
+
+                foreach (var c in zoneInfo.RoofPoints)
+                    new Surface(zone, c.Reverse(true), SurfaceType.Roof);
+
                 zone.CreateDaylighting(500);
+                
                 AddZone(zone);
-                try { ZoneLists.First(zList => zList.Name == zone.Name.Split(':').First()).ZoneNames.Add(zone.Name); }
-                catch { ZoneLists.FirstOrDefault().ZoneNames.Add(zone.Name); }
+                ZoneList zoneList;
+                try 
+                { 
+                    zoneList = ZoneLists.
+                        FirstOrDefault(zList => zList.Name == zone.Name.Split(':').First()); 
+                }
+                catch 
+                { 
+                    zoneList = ZoneLists.FirstOrDefault(); 
+                }
+                zoneList.ZoneNames.Add(zone.Name);
             }          
             UpdateBuildingConstructionWWROperations(location);
             RemoveEmptyZoneList();

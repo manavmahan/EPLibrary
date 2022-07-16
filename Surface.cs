@@ -25,11 +25,12 @@ namespace IDFObjects
         //public Zone Zone;
         public string ZoneName;
         public Surface() { }
-        private void AddName(string zoneName, int sCount)
+        private void AddName(Zone zone)
         {
-            ZoneName = zoneName;
-            Name = SurfaceType == SurfaceType.Wall  ? ZoneName + ":" + Direction + ":" + SurfaceType + ":" + (sCount + 1)
-                                                        : ZoneName + ":" + SurfaceType + ":" + (sCount + 1);          
+            ZoneName = zone.Name;
+            int count = zone.Surfaces.Count + 1;
+            Name = SurfaceType == SurfaceType.Wall  ? ZoneName + ":" + Direction + ":" + SurfaceType + ":" + (count)
+                                                        : ZoneName + ":" + SurfaceType + ":" + (count);          
         }
         public void CreateWindowsShadingControlShadingOverhang(Zone zone, BuildingWWR wWR, ShadingLength shadingLength)
         {
@@ -89,36 +90,40 @@ namespace IDFObjects
                 }
             }
         }
-        public Surface(Zone zone, XYZList verticesList, float area, SurfaceType surfaceType)
+        public Surface(Zone zone, XYZList verticesList, SurfaceType surfaceType, float area = 0)
         {
+           XYZList = verticesList;
+            if (area == 0)
+                area = XYZList.CalculateArea();
+
             Area = area;
-            GrossArea = area;
-            XYZList = verticesList;
-            this.SurfaceType = surfaceType;
-            switch (this.SurfaceType)
+            GrossArea = Area;
+
+            SurfaceType = surfaceType;
+            switch (SurfaceType)
             {
-                case (SurfaceType.Floor):
+                case SurfaceType.Floor:
                     ConstructionName = "GroundFloor";
                     OutsideCondition = "Ground";
                     OutsideObject = "";
                     SunExposed = "NoSun";
                     WindExposed = "NoWind";
                     break;
-                case (SurfaceType.Wall):
+                case SurfaceType.Wall:
                     OutsideObject = "";
                     OutsideCondition = "Outdoors";
                     SunExposed = "SunExposed";
                     WindExposed = "WindExposed";
                     ConstructionName = "ExternalWall";
-                    Orientation = verticesList.GetWallOrientation(out Direction);                    
+                    Orientation = verticesList.GetWallOrientation(out Direction);
                     break;
-                case (SurfaceType.Ceiling):
+                case SurfaceType.Ceiling:
                     ConstructionName = "Floor_Ceiling";
                     OutsideCondition = "Adiabatic";
                     SunExposed = "NoSun";
                     WindExposed = "NoWind";
                     break;
-                case (SurfaceType.Roof):
+                case SurfaceType.Roof:
                     ConstructionName = "Roof";
                     OutsideObject = "";
                     OutsideCondition = "Outdoors";
@@ -126,7 +131,7 @@ namespace IDFObjects
                     WindExposed = "WindExposed";
                     break;
             }
-            AddName(zone.Name, zone.Surfaces.Count());
+            AddName(zone);
             zone.Surfaces.Add(this);
         }
 
@@ -138,14 +143,14 @@ namespace IDFObjects
             info.Add("\t" + SurfaceType + ",\t\t\t\t\t!-Surface Type");
             info.Add("\t" + ConstructionName + ",\t\t\t\t!-Construction Name");
             info.Add("\t" + ZoneName + ",\t\t\t\t\t\t!-Zone Name");
-            //info.Add("\t" + String.Empty + ",\t\t\t\t\t\t!-Space Name");
+            //info.Add("\t" + string.Empty + ",\t\t\t\t\t\t!-Space Name");
             info.Add("\t" + OutsideCondition + ",\t\t\t\t\t!-Outside Boundary Condition");
             info.Add("\t" + OutsideObject + ",\t\t\t\t\t\t!-Outside Boundary Condition Object");
             info.Add("\t" + SunExposed + ",\t\t\t\t\t\t!-Sun Exposure");
             info.Add("\t" + WindExposed + ",\t\t\t\t\t\t!-Wind Exposure");
             info.Add("\t" + ",\t\t\t\t\t\t!-View Factor to Ground");
             info.AddRange(XYZList.WriteInfo());
-            return info;
+            return info; 
         }
 
         internal void CreateFenestration(int count)
@@ -157,17 +162,17 @@ namespace IDFObjects
                 for (int i = 0; i < count; i++)
                 {
                     Fenestration fen = new Fenestration(this);
-                    XYZ P1 = XYZList.xyzs.ElementAt(0);
-                    XYZ P2 = XYZList.xyzs.ElementAt(1);
-                    XYZ P3 = XYZList.xyzs.ElementAt(2);
-                    XYZ P4 = XYZList.xyzs.ElementAt(3);
+                    XYZ P1 = XYZList.XYZs.ElementAt(0);
+                    XYZ P2 = XYZList.XYZs.ElementAt(1);
+                    XYZ P3 = XYZList.XYZs.ElementAt(2);
+                    XYZ P4 = XYZList.XYZs.ElementAt(3);
                     float openingFactor = (float) Math.Sqrt(WWR / count);
 
                     XYZ pMid = new XYZ((P1.X + P3.X) / (count - i + 1), (P1.Y + P3.Y) / (count - i + 1), (P1.Z + P3.Z) / 2);
 
-                    fen.VerticesList = new XYZList(XYZList.xyzs.Select(v => new XYZ(pMid.X + (v.X - pMid.X) * openingFactor,
+                    fen.VerticesList = new XYZList(XYZList.XYZs.Select(v => new XYZ(pMid.X + (v.X - pMid.X) * openingFactor,
                                                                 pMid.Y + (v.Y - pMid.Y) * openingFactor,
-                                                                pMid.Z + (v.Z - pMid.Z) * openingFactor)).ToList());
+                                                                pMid.Z + (v.Z - pMid.Z) * openingFactor)));
                     fen.Area = fenArea;
                     fenestrationList.Add(fen);
                 }

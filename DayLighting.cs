@@ -41,7 +41,7 @@ namespace IDFObjects
         }
         public DayLighting(Zone zone, string schedule, List<XYZ> points, float illuminance)
         {
-            if (points.Count > 0)
+            if (points!= null && points.Count > 0)
             {
                 Name = "DayLight Control For " + zone.Name;
                 ZoneName = zone.Name;

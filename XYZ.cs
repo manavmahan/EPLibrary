@@ -9,11 +9,28 @@ namespace IDFObjects
     [Serializable]
     public class XYZ : IEquatable<XYZ>
     {
-        public float X = 0, Y = 0, Z = 0;
-        public XYZ() { }
+        public float X, Y, Z;
+        public XYZ() { X = 0; Y = 0; Z = 0; }
         public XYZ(float x, float y, float z) { X = (float) Math.Round(x,5); Y = (float) Math.Round(y,5); Z = (float)Math.Round(z,5); }
         public XYZ(float x, float y) { X = (float)Math.Round(x, 5); Y = (float)Math.Round(y, 5); Z = 0; }
         public XYZ(float[] point) { new XYZ(point[0], point[1], point[2]); }
+        public static XYZ Create(string p)
+        {
+            p.Replace("\r", "");
+            p.Replace("\n", "");
+            if (!string.IsNullOrWhiteSpace(p))
+            {
+                XYZ n = new XYZ();
+                var s = p.Split(',');
+                n.X = (float) Math.Round(float.Parse(s[0]), 5);
+                n.Y = (float) Math.Round(float.Parse(s[1]), 5);
+
+                if (s.Length > 2)
+                    n.Z = (float) Math.Round(float.Parse(s[2]), 5);
+                return n;
+            }
+            return null;
+        }
         public XYZ Subtract(XYZ newXYZ) { return new XYZ(X - newXYZ.X, Y - newXYZ.Y, Z - newXYZ.Z); }
         public XYZ Transform(float angle)
         {
@@ -22,19 +39,7 @@ namespace IDFObjects
             float y1 = X * (float) Math.Sin(angleRad) + Y * (float) Math.Cos(angleRad);
             return new XYZ(x1, y1, Z);
         }
-        public bool Equals(XYZ point1)
-        {
-            return Math.Round(X - point1.X, 3) == 0 && Math.Round(Y - point1.Y, 3) == 0 && Math.Round(Z - point1.Z, 3) == 0;
-        }
-        public bool EqualsExceptZ(XYZ point1)
-        {
-            return X == point1.X && Y == point1.Y;
-        }
         
-        public override int GetHashCode()
-        {
-            return (X+Y+Z).GetHashCode();
-        }
 
         public XYZ OffsetHeight(float height)
         {
@@ -42,7 +47,7 @@ namespace IDFObjects
         }
         public override string ToString()
         {
-            return string.Join(",", X, Y, Z);
+            return $"{X:0.00000},{Y:0.00000},{Z:.0.00000}";
         }
         public float DotProduct(XYZ newXYZ)
         {
@@ -85,13 +90,19 @@ namespace IDFObjects
             return new XYZ((p1.X + p2.X) * .5f, (p1.Y + p2.Y) * .5f, (p1.Z + p2.Z) * .5f);
         }
 
-        public string To2DPointString()
+        public string ToString(bool twoDimensions)
         {
-            return string.Join(",", X, Y);
+            if (twoDimensions)
+                return $"{X:0.00000},{Y:0.00000}";
+            
+            return ToString();
         }
-        public XYZ ChangeZValue(float z)
+        public XYZ ChangeZValue(float z, bool inPlace = false)
         {
-            return new XYZ(X, Y, z);
+            if (!inPlace)
+                return new XYZ(X, Y, z);
+            Z = z;
+            return this;
         }
         public XYZ Add(XYZ xYZ)
         {
@@ -105,6 +116,20 @@ namespace IDFObjects
         {
             float distBetPoints = DistanceTo(towardsPoint);
             return Math.Round(distBetPoints, 3) > 0 ? Add(Subtract(towardsPoint).Multiply(distance / distBetPoints)) : this;
+        }
+        public bool EqualsExceptZ(XYZ point1)
+        {
+            return Math.Round(X - point1.X, 4) == 0 && Math.Round(Y - point1.Y, 4) == 0;
+        }
+
+        public bool Equals(XYZ pt)
+        {
+            return this.ToString().Equals(pt.ToString());
+        }  
+
+        public override int GetHashCode()
+        {
+            return ToString().GetHashCode();
         }
     }
 }

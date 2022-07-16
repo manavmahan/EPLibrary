@@ -12,13 +12,17 @@ namespace IDFObjects
     {
         public string Name;
         public float Height;
-        public List<XYZList> FloorPoints = new List<XYZList>();
-        public List<XYZList> OverhangPoints = new List<XYZList>();
-        public List<XYZList> CeilingPoints = new List<XYZList>();
-        public List<XYZList> RoofPoints = new List<XYZList>();
+        public IEnumerable<XYZList> FloorPoints = new List<XYZList>();
+        public IEnumerable<XYZList> OverhangPoints = new List<XYZList>();
+        public IEnumerable<XYZList> CeilingPoints = new List<XYZList>();
+        public IEnumerable<XYZList> RoofPoints = new List<XYZList>();
         public int Level;
-        public List<string> WallCreationDataKey = new List<string>();
-        public List<Line> WallCreationDataValue = new List<Line>();
+        public IEnumerable<KeyValuePair<string, Line>> WallGeometryData = new List<KeyValuePair<string, Line>> ();
         public ZoneGeometryInformation() { }
+
+        public void AddWallGeometryData(string key, Line value)
+        {
+            WallGeometryData = WallGeometryData.Append(new KeyValuePair<string, Line> (key, value));
+        }
     }
 }

@@ -1,13 +1,6 @@
-﻿using IDFObjects;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Xml.Serialization;
 
 namespace IDFObjects
 {
@@ -25,7 +18,7 @@ namespace IDFObjects
 
         public List<XYZList>[] Floors, Ceilings, Roofs, OverhangFloors;
         public List<XYZList>[] Walls;
-        public List<XYZ> ScaledLoop;
+        public XYZList ScaledLoop;
         public float Area;
 
         public RandomBuilding() { }
@@ -51,21 +44,21 @@ namespace IDFObjects
                 Walls[f] = geometry.Walls[f].Select(p => LoopEdgesScaleRotate(p)).ToList();
             }
             float minX = Floors.Concat(OverhangFloors).SelectMany(
-                x => x.SelectMany(p => p.xyzs.Select(p1 => p1.X))).Min();
+                x => x.SelectMany(p => p.XYZs.Select(p1 => p1.X))).Min();
             float minY = Floors.Concat(OverhangFloors).SelectMany(
-                x => x.SelectMany(p => p.xyzs.Select(p1 => p1.Y))).Min();
+                x => x.SelectMany(p => p.XYZs.Select(p1 => p1.Y))).Min();
 
             XYZ origin = new XYZ(minX, minY);
             for (int f=0; f<NFloors; f++)
             {
-                Floors[f].ForEach(l => l.Transform(origin));
-                Roofs[f].ForEach(l => l.Transform(origin));
-                Ceilings[f].ForEach(l => l.Transform(origin));
-                OverhangFloors[f].ForEach(l => l.Transform(origin));
-                Walls[f].ForEach(l => l.Transform(origin));
+                Floors[f] = Floors[f].Select(l => l.Transform(origin)).ToList();
+                Roofs[f] = Roofs[f].Select(l => l.Transform(origin)).ToList();
+                Ceilings[f] = Ceilings[f].Select(l => l.Transform(origin)).ToList();
+                OverhangFloors[f] = OverhangFloors[f].Select(l => l.Transform(origin)).ToList();
+                Walls[f] = Walls[f].Select(l => l.Transform(origin)).ToList();
             }
         }
-        public RandomBuilding(float area, float minimumEdgeLength, float maxEdgeLength, uint maxBoxes, XYZList SitePoints, float Orientation, Random random)
+        public RandomBuilding(float area, float minimumEdgeLength, float maxEdgeLength, uint maxBoxes, XYZList site, float Orientation, Random random)
         {
             int minPoints = (int) Math.Ceiling(area / (maxEdgeLength * maxEdgeLength));
             int maxPoints = (int) Math.Floor(area / (minimumEdgeLength * minimumEdgeLength));
@@ -77,18 +70,15 @@ namespace IDFObjects
 
             EdgeSize = (float) Math.Round(Math.Sqrt(area / RequiredGridPoints),2);
             
-            XYZList sPoints = IDFObjects.Utility.DeepClone(SitePoints);
-            sPoints.Transform(-Orientation); 
+            XYZList sPoints = site.Transform(-Orientation); 
             
-            List<XYZ> scSitePoints = Utility.GetOffset(sPoints.xyzs, 0.5f * EdgeSize * (float) Math.Cos(2));
-            scSitePoints = sPoints.xyzs.Select(x => new XYZ(x.X / EdgeSize, x.Y / EdgeSize, x.Z)).ToList();
+            var scSitePoints = Utility.GetOffset(sPoints, 0.5f * EdgeSize * (float) Math.Cos(2));
             
-
-            float minX = scSitePoints.Select(x => x.X).Min();
-            float maxX = scSitePoints.Select(x => x.X).Max();
-            float minY = scSitePoints.Select(x => x.Y).Min();
-            float maxY = scSitePoints.Select(x => x.Y).Max();
-            List<Line> SiteEdges = IDFObjects.Utility.GetExternalEdges(scSitePoints);
+            float minX = scSitePoints.XYZs.Select(x => x.X).Min();
+            float maxX = scSitePoints.XYZs.Select(x => x.X).Max();
+            float minY = scSitePoints.XYZs.Select(x => x.Y).Min();
+            float maxY = scSitePoints.XYZs.Select(x => x.Y).Max();
+            List<Line> SiteEdges = scSitePoints.Loop;
 
             Area = RequiredGridPoints * EdgeSize * EdgeSize;
             float d = 0.1f;
@@ -103,7 +93,7 @@ namespace IDFObjects
                     {
                         for (float y = (float) Math.Floor(minY-yd); y <= Math.Ceiling(maxY+yd); y++)
                         {
-                            if (IDFObjects.Utility.PointInsideLoopExceptZ(SiteEdges, new XYZ(x, y, 0)))
+                            if (site.IsPointInside(new XYZ(x, y, 0)))
                             {
                                 a.Add(new GridPoint(x, y));
                             }
@@ -296,19 +286,14 @@ namespace IDFObjects
         public XYZList LoopEdgesScaleRotate(List<GridPoint> points)
         {
             if (points.Count > 0)
-            {
-                XYZList rVal = ScaleBuilding(GetLoop(ReturnEdges(points)));
-                rVal.Transform(Orientation);
-               
-                return rVal;
-            } 
+                return ScaleBuilding(GetLoop(ReturnEdges(points))).Transform(Orientation);
             else
-                return null;
+                return (XYZList) null;
         }
 
         public XYZList ScaleBuilding(XYZList loop)
         {
-            return new XYZList(loop.xyzs.Select(p => new XYZ(p.X * EdgeSize, p.Y * EdgeSize, 0)).ToList());
+            return new XYZList(loop.XYZs.Select(p => new XYZ(p.X * EdgeSize, p.Y * EdgeSize, 0)));
         }
         public List<XYZList> ScaleBuilding(List<XYZList> loops)
         {

@@ -9,6 +9,7 @@ namespace IDFObjects
     [Serializable]
     public class BuildingDesignParameters
     {
+        public string Name;
         public BuildingGeometry Geometry;
         public BuildingConstruction Construction;
         public BuildingWWR WWR;          

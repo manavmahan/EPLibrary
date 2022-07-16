@@ -99,14 +99,10 @@
     <Compile Include="GridPointGeometry.cs" />
     <Compile Include="Line.cs" />
     <Compile Include="PEASettings.cs" />
+    <Compile Include="PythonScripts\IntersectionHelper.cs" />
+    <Compile Include="PythonScripts\PythonHelper.cs" />
     <Compile Include="RandomBuilding.cs" />
     <Compile Include="RandomGeometry.cs" />
-    <Compile Include="WWRInput.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="WWRInput.Designer.cs">
-      <DependentUpon>WWRInput.cs</DependentUpon>
-    </Compile>
     <Compile Include="ZoneConditions.cs" />
     <Compile Include="BuildingService.cs" />
     <Compile Include="CSVMLData.cs" />
@@ -188,12 +184,14 @@
     <Compile Include="ZoneVentilation.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include=".git_ignore" />
     <None Include="app.config" />
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="WWRInput.resx" />
+    <None Include="PythonScripts\intersect.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="PythonScripts\plotting.py">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

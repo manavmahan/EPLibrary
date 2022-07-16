@@ -22,7 +22,7 @@ namespace IDFObjects
             "Shading:Building:Detailed ,",
             Utility.IDFLineFormatter(Name, "Detached Shading"),
             Utility.IDFLineFormatter(ShadowingTransmittanceSchedule, "Shadowing Transmittance & Schedule"),
-            Utility.IDFLineFormatter(XYZList.xyzs.Count, "No. of Vertices"),
+            Utility.IDFLineFormatter(XYZList.XYZs.Count, "No. of Vertices"),
             string.Join("\n", XYZList.WriteInfo())
         };
     }

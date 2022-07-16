@@ -13,7 +13,6 @@ namespace IDFObjects
         public List<List<List<GridPoint>>> Floors = new List<List<List<GridPoint>>>(), Roofs = new List<List<List<GridPoint>>>(), 
             Ceilings = new List<List<List<GridPoint>>>(), OverhangFloors = new List<List<List<GridPoint>>>();
 
-        List<List<List<GridPoint>>> CompleteFloors = new List<List<List<GridPoint>>>();
         public List<List<List<GridPoint>>> Walls = new List<List<List<GridPoint>>>();
 
         public GridPointGeometry() { }
@@ -25,8 +24,7 @@ namespace IDFObjects
             {
                 NPoints += gridPoints[f].Count;
                 Walls.Add(DifferentiateLoops(gridPoints[f]));
-                CompleteFloors.Add(DifferentiateLoops(gridPoints[f]));
-
+                
                 Floors.Add(new List<List<GridPoint>>());
                 if (f == 0)
                 {

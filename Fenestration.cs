@@ -26,7 +26,7 @@ namespace IDFObjects
             FaceName = wallFace.Name;
             ZoneName = wallFace.ZoneName;
             Orientation = wallFace.Orientation;
-            VerticesList = new XYZList(new List<XYZ>());
+            VerticesList = new XYZList();
         }
 
         internal List<string> WriteInfo()
