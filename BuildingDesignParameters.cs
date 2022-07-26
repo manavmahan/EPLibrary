@@ -12,10 +12,10 @@ namespace IDFObjects
         public string Name;
         public BuildingGeometry Geometry;
         public BuildingConstruction Construction;
-        public BuildingWWR WWR;          
+        public BuildingWWR WWR;
         public BuildingService Service;
 
-        public List<ZoneConditions> ZConditions = new List<ZoneConditions>();     
+        public List<ZoneConditions> ZConditions = new List<ZoneConditions>();
         public BuildingDesignParameters() { }
         public string Header(string sep) =>
             string.Join(sep,
@@ -32,6 +32,19 @@ namespace IDFObjects
                 WWR.ToString(sep),
                 Service.ToString(sep),
                 string.Join(sep, ZConditions.Select(o => o.ToString(sep))));
-        
+
+        private Random _random;
+        public Random Random {
+            get
+            {
+                if (_random == null)
+                {
+                    int seed = (int)Math.Ceiling(typeof(BuildingGeometry).GetFields().
+                            Where(f => f.FieldType == typeof(float)).Select(f => 1000*(float)f.GetValue(this.Geometry)).Sum());
+                    _random = new Random(seed);
+                }
+                return _random;
+            }
+        }
     }
 }

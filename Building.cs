@@ -1,19 +1,13 @@
-﻿using DocumentFormat.OpenXml.Drawing.Diagrams;
-using IDFObjects;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace IDFObjects
 {
     [Serializable]
     public class Building
     {
-        public bool intialised = false;
+        public bool Intialised = false;
 
         public string name = "Building1";
         public float northAxis = 0;
@@ -38,7 +32,7 @@ namespace IDFObjects
         //Deterministic Attributes
         public BuildingDesignParameters Parameters;
         public EmbeddedEnergyParameters EEParameters;
-        public ShadingLength shadingLength { get; set; } = new ShadingLength(0, 0, 0, 0); //North, West, South, East
+        public ShadingLength Shading { get; set; } = new ShadingLength(0, 0, 0, 0); //North, West, South, East
 
         //Schedules Limits and Schedule
         public List<ScheduleLimits> schedulelimits = new List<ScheduleLimits>();
@@ -77,15 +71,15 @@ namespace IDFObjects
         }
         public void CreateZoneLists()
         {
-            IEnumerable<string> zoneListNames = Parameters.ZConditions.Select(o => o.Name);
-            foreach(string zoneListName in zoneListNames)
+            var names = Parameters.ZConditions.Select(o => o.Name);
+            foreach(string name in names)
             {
-                ZoneConditions con = Parameters.ZConditions.First(o => o.Name == zoneListName);
+                var conditions = Parameters.ZConditions.First(o => o.Name == name);
                 
                 AddZoneList(new ZoneList()
                 {
-                    Name = zoneListName,
-                    Conditions = con                 
+                    Name = name,
+                    Conditions = conditions                 
                 });
             }
         }
@@ -118,7 +112,7 @@ namespace IDFObjects
                 var walls = zone.Surfaces.Where(s => s.SurfaceType == SurfaceType.Wall &&
                                                         s.OutsideCondition == "Outdoors");
                 foreach (var wall in walls)
-                    wall.CreateWindowsShadingControlShadingOverhang(zone, Parameters.WWR, shadingLength);
+                    wall.CreateWindowsShadingControlShadingOverhang(zone, Parameters.WWR, Shading);
                 
                 if (zone.Surfaces.All(s => s.Fenestrations == null))
                     zone.DayLightControl = null;
@@ -750,9 +744,11 @@ namespace IDFObjects
             }
             remove.ForEach(z => ZoneLists.Remove(z));
         }
-        public void InitialiseBuilding(List<ZoneGeometryInformation> zonesInformation, 
-           BuildingDesignParameters parameters, Location location, float offsetDistance = 0)
+        public void InitialiseBuilding(List<ZoneGeometryInformation> zonesInformation, Location location, float offsetDistance = 0)
         {
+            if (Intialised)
+                CleanBuilding();
+
             if (zonesInformation == null)
             {
                 if (FloorPoints == null || FloorPoints.Count == 0)
@@ -761,10 +757,9 @@ namespace IDFObjects
                                                     GroundPoints.ChangeZValue(i * Parameters.Geometry.Height)).ToList();
                     RoofPoints = new List<XYZList>() { GroundPoints.ChangeZValue(Parameters.Geometry.Height * Parameters.Geometry.NFloors + 1) };
                 }
-                zonesInformation = Utility.GetZoneGeometryInformation(Utility.GetAllRooms(FloorPoints[0], offsetDistance, parameters.ZConditions.First().Name),
+                zonesInformation = Utility.GetZoneGeometryInformation(Utility.GetAllRooms(FloorPoints[0], offsetDistance, Parameters.ZConditions.First().Name),
                     FloorPoints, RoofPoints);
             }
-            Parameters = parameters;
             
             CreateZoneLists();
             foreach (ZoneGeometryInformation zoneInfo in zonesInformation)
@@ -817,7 +812,21 @@ namespace IDFObjects
             }          
             UpdateBuildingConstructionWWROperations(location);
             RemoveEmptyZoneList();
-            intialised = true;
+            Intialised = true;
+        }
+
+        private void CleanBuilding()
+        {
+            //Material, WindowMaterial, Shade, Shading Control, Constructions and Window Constructions
+            materials.Clear();
+            windowMaterials.Clear();
+            windowMaterialShades.Clear();
+            constructions.Clear();
+
+            //Zone, ZoneList, BuidlingSurface, ShadingOverhangs
+            zones.Clear();
+            ZoneLists.Clear();
+            DetachedShading.Clear();
         }
     }    
 }

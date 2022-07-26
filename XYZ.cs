@@ -11,8 +11,9 @@ namespace IDFObjects
     {
         public float X, Y, Z;
         public XYZ() { X = 0; Y = 0; Z = 0; }
-        public XYZ(float x, float y, float z) { X = (float) Math.Round(x,5); Y = (float) Math.Round(y,5); Z = (float)Math.Round(z,5); }
-        public XYZ(float x, float y) { X = (float)Math.Round(x, 5); Y = (float)Math.Round(y, 5); Z = 0; }
+        public XYZ(float x, float y, float z) { 
+            X = (float) Math.Round(x, 5); Y = (float) Math.Round(y, 5); Z = (float) Math.Round(z, 5); }
+        public XYZ(float x, float y) { X = (float) Math.Round(x, 5); Y = (float) Math.Round(y, 5); Z = 0; }
         public XYZ(float[] point) { new XYZ(point[0], point[1], point[2]); }
         public static XYZ Create(string p)
         {
@@ -32,6 +33,7 @@ namespace IDFObjects
             return null;
         }
         public XYZ Subtract(XYZ newXYZ) { return new XYZ(X - newXYZ.X, Y - newXYZ.Y, Z - newXYZ.Z); }
+        
         public XYZ Transform(float angle)
         {
             float angleRad = angle * (float) Math.PI/180;
@@ -39,24 +41,27 @@ namespace IDFObjects
             float y1 = X * (float) Math.Sin(angleRad) + Y * (float) Math.Cos(angleRad);
             return new XYZ(x1, y1, Z);
         }
-        
 
         public XYZ OffsetHeight(float height)
         {
             return new XYZ(X, Y, Z + height);
         }
+
         public override string ToString()
         {
-            return $"{X:0.00000},{Y:0.00000},{Z:.0.00000}";
+            return $"{X:0.000},{Y:0.000},{Z:.0.000}";
         }
+
         public float DotProduct(XYZ newXYZ)
         {
             return X * newXYZ.X + Y * newXYZ.Y + Z * newXYZ.Z;
         }
+
         public XYZ CrossProduct(XYZ newXYZ)
         {
             return new XYZ(Y * newXYZ.Z - Z * newXYZ.Y, Z * newXYZ.X - X * newXYZ.Z, X * newXYZ.Y - Y * newXYZ.X);
         }
+
         public float AngleOnPlaneTo(XYZ right, XYZ normalPlane)
         {
             float nfloat = DotProduct(right);
@@ -64,13 +69,15 @@ namespace IDFObjects
             if (anglePI < 0) { anglePI = (float)Math.PI * 2 + anglePI; }
             return (float) Math.Round(180 * anglePI / Math.PI);
         }
+
         public float AngleBetweenVectors(XYZ newXYZ)
         {
-            return (float) (Math.Round(Math.Acos((X * newXYZ.X + Y * newXYZ.Y + Z * newXYZ.Z) / (AbsoluteValue() * newXYZ.AbsoluteValue())), 2));
+            return (float) Math.Round(Math.Acos((X * newXYZ.X + Y * newXYZ.Y + Z * newXYZ.Z) / (AbsoluteValue() * newXYZ.AbsoluteValue())), 4);
         }
+
         public float DistanceTo(XYZ newXYZ)
         {
-            return (float)Math.Sqrt(Math.Pow(X - newXYZ.X, 2) + Math.Pow(Y - newXYZ.Y, 2) + Math.Pow(Z - newXYZ.Z, 2));
+            return (float) Math.Round(Math.Sqrt(Math.Pow(X - newXYZ.X, 2) + Math.Pow(Y - newXYZ.Y, 2) + Math.Pow(Z - newXYZ.Z, 2)), 4);
         }
         public float AbsoluteValue()
         {
@@ -93,12 +100,13 @@ namespace IDFObjects
         public string ToString(bool twoDimensions)
         {
             if (twoDimensions)
-                return $"{X:0.00000},{Y:0.00000}";
+                return $"{X:0.000},{Y:0.000}";
             
             return ToString();
         }
         public XYZ ChangeZValue(float z, bool inPlace = false)
         {
+            z = (float) Math.Round(z, 5);
             if (!inPlace)
                 return new XYZ(X, Y, z);
             Z = z;
@@ -119,12 +127,12 @@ namespace IDFObjects
         }
         public bool EqualsExceptZ(XYZ point1)
         {
-            return Math.Round(X - point1.X, 4) == 0 && Math.Round(Y - point1.Y, 4) == 0;
+            return ToString(true).Equals(point1.ToString(true));
         }
 
         public bool Equals(XYZ pt)
         {
-            return this.ToString().Equals(pt.ToString());
+            return ToString().Equals(pt.ToString());
         }  
 
         public override int GetHashCode()

@@ -1,23 +1,58 @@
-﻿using System;
-using System.Collections.Generic;
+﻿//using IronPython.Hosting;
+//using IronPython.Runtime;
+using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace IDFObjects.PythonScripts
 {
     public static class PythonHelper
     {
-        public static string ExecuteCommand(string command)
+        public const string ScriptFolder = "PythonScripts";
+
+        public static string Program = string.Empty;
+        private static void SetProgram()
         {
-            int exitCode;
+            if (Program == string.Empty)
+            {
+                var os = Environment.OSVersion.ToString();
+                if (os.Contains("Window"))
+                {
+                    var dirs = Directory.GetDirectories("C:\\Users\\manav\\AppData\\Local\\Microsoft\\WindowsApps",
+                        "PythonSoftwareFoundation*");
+                    foreach (var s in dirs)
+                    {
+                        var p = Directory.GetFiles(s).FirstOrDefault(f => f.Contains("python.exe"));
+                        if ( p != null)
+                        {
+                            Program = p;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    Program = "/usr/bin/python3";
+                }
+
+                if (Program == string.Empty)
+                    throw new Exception("Python3 not found!");
+
+                if (!File.Exists(Program))
+                    throw new Exception("Python3 not found!");
+            }
+        }
+        public static string ExecuteCommand(string program, string args)
+        {
+            SetProgram();
+            //int exitCode;
             ProcessStartInfo processInfo;
             Process process;
 
-            //Console.WriteLine(command);
+            //Console.WriteLine($"/c {Python3} " + $"{ScriptFolder}/{program}.py {args}");
 
-            processInfo = new ProcessStartInfo("cmd.exe", "/c " + command)
+            processInfo = new ProcessStartInfo(Program, $"{ScriptFolder}/{program}.py {args}")
             {
                 CreateNoWindow = true,
                 UseShellExecute = false,
@@ -26,29 +61,46 @@ namespace IDFObjects.PythonScripts
             };
 
             process = Process.Start(processInfo);
-            process.WaitForExit();
+
 
             // *** Read the streams ***
             // Warning: This approach can lead to deadlocks, see Edit #2
-            string output = process.StandardOutput.ReadToEnd();
-            string error = process.StandardError.ReadToEnd();
+            var output = string.Empty;
+            var error = string.Empty;
+            process.BeginOutputReadLine();
+            process.OutputDataReceived += new DataReceivedEventHandler((sender, e) =>
+            { output += e.Data; });
 
-            exitCode = process.ExitCode;
+            process.ErrorDataReceived += new DataReceivedEventHandler((sender, e) =>
+            { error += e.Data; });
+
+            process.WaitForExit();
+
+            if (!string.IsNullOrEmpty(error))
+                throw new Exception($"Python error.\n{error}");
+
+            //exitCode = process.ExitCode;
 
             //Console.WriteLine("output>>" + (String.IsNullOrEmpty(output) ? "(none)" : output));
             //Console.WriteLine("error>>" + (String.IsNullOrEmpty(error) ? "(none)" : error));
             //Console.WriteLine("ExitCode: " + exitCode.ToString(), "ExecuteCommand");
+            
             process.Close();
-            return output;
+            return output; 
         }
 
-        public static void Plot(params XYZList[] loops)
-        {
-            var loopStr = string.Join(":", loops.Select(p => p.ToString(true)));
-            string python = "python3";
-            string arg = $"{nameof(PythonScripts)}/{nameof(Plot).ToLower()}.py" + " " + loopStr;
-            ExecuteCommand(string.Join(" ", new[] { python, arg }));
-        }
-        
+        //public static string ExecuteCommandIPython(string program, string args)
+        //{
+        //    var engine = Python.CreateEngine();
+        //    var scope = engine.GetSysModule(); 
+        //    scope.SetVariable("args", args);
+
+        //    var output = engine.ExecuteFile($"{ScriptFolder}/{program}.py");
+        //    //engine.Runtime.IO.RedirectToConsole();
+        //    var o2 = ExecuteCommand(program, args);
+
+        //    return string.Empty;
+        //}
+
     }
 }

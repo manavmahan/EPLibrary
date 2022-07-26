@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace IDFObjects
         public List<XYZ> XYZs { get; set; }
 
         private List<Line> _loop;
+        [JsonIgnore]
         public List<Line> Loop
         {
             get
@@ -26,7 +28,15 @@ namespace IDFObjects
 
                     for (int i = 0; i < XYZs.Count; i++)
                     {
-                        _loop.Add(new Line(XYZs[i], XYZs[(i + 1) % XYZs.Count]));
+                        try
+                        {
+                            _loop.Add(new Line(XYZs[i], XYZs[(i + 1) % XYZs.Count]));
+                        }
+                        catch
+                        {
+                            XYZs.RemoveAt(i);
+                            return Loop;
+                        }
                     }
                 }
                 return _loop;
@@ -42,12 +52,14 @@ namespace IDFObjects
         public XYZList(string pointStr)
         {
             var points = pointStr.Split(';');
-            foreach (var p in points)
+            XYZs = new List<XYZ>();
+            foreach (var ps in points)
             {
-                var po = XYZ.Create(p);
-                if (po != null)
-                    Add(po);
+                var p = XYZ.Create(ps);
+                if (p != null)
+                    XYZs.Add(p);
             }
+            _loop = null;
         }
         public XYZList(IEnumerable<XYZ> points)
         {
@@ -62,14 +74,6 @@ namespace IDFObjects
 
             if (XYZs.Any(p1 => p1.Equals(p)))
                 return false;
-
-            var lastLine = Loop.LastOrDefault();
-            if (lastLine != null)
-            {
-                var newLine = new Line(XYZs.Last(), p);
-                if (newLine.Direction.Equals(lastLine.Direction))
-                    XYZs.RemoveAt(XYZs.Count - 1);
-            }
 
             XYZs.Add(p);
             _loop = null;
@@ -169,6 +173,8 @@ namespace IDFObjects
         }
         public override string ToString()
         {
+            if (XYZs == null)
+                return String.Empty;
             return string.Join(";", XYZs.Select(xyz => xyz.ToString()));
         }
         public string ToString(bool twoDimensions)

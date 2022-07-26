@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace IDFObjects
 {
@@ -28,7 +25,7 @@ namespace IDFObjects
                 insulation.thickness = (float) Math.Round(insulation.conductivity * ((1 / requiredUValue) - sum),5);
                 if (!(insulation.thickness > 0))
                 {
-                    MessageBox.Show(string.Format("U-value of {0} for construction {1} requires an insulation thickness of {2}\n" +
+                    Console.WriteLine(string.Format("U-value of {0} for construction {1} requires an insulation thickness of {2}\n" +
                         "Please check value properly.\n" +
                         "To proceed safely, material {3} has been removed from the construction!", requiredUValue, this.name,
                         insulation.thickness, insulation.name));

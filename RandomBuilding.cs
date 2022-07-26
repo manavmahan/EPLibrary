@@ -9,7 +9,7 @@ namespace IDFObjects
         GridPoint StartPoint;
         List<GridPoint> BuildingGrid;
 
-        float EdgeSize;
+        public float EdgeSize;
         List<GridPoint> AllowedPoints = new List<GridPoint>();
 
         public int NFloors = 0;

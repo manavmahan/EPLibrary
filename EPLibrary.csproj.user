@@ -3,8 +3,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <StartAction>Program</StartAction>
     <StartProgram>C:\Users\manav\source\repos\manavmahan\IDFWrite\IDFWrite\bin\Debug\IDFWrite.exe</StartProgram>
+    <StartArguments>Z:\MLCNN_22_07_08\TestData 11 1</StartArguments>
   </PropertyGroup>
   <PropertyGroup>
     <ProjectView>ProjectFiles</ProjectView>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Users\manav\source\repos\manavmahan\IDFWrite\IDFWrite\bin\Release\IDFWrite.exe</StartProgram>
+    <StartArguments>Z:\MLCNN_22_07_08\TestData 39 1</StartArguments>
   </PropertyGroup>
 </Project>

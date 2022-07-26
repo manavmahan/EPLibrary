@@ -19,6 +19,10 @@ namespace IDFObjects
             West = west;
             South = south;
         }
+        public override string ToString()
+        {
+            return this.ToString(",");
+        }
         public string ToString(string sep)
         {
             return string.Join(sep, North, East, West, South);

@@ -1,5 +1,4 @@
-﻿using DocumentFormat.OpenXml.Wordprocessing;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -217,15 +216,13 @@ namespace IDFObjects
         public static List<Line> GetOffset(IEnumerable<Line> perimeterLines, float offsetDist)
         {
             List<Line> offsetLines = new List<Line>();
-            for (int i = 0; i < perimeterLines.Count(); i++)
+            int n = perimeterLines.Count();
+            for (int i = 0; i < n; i++)
             {
-                Line c = perimeterLines.ElementAt(i), c1, c2;
+                Line c = perimeterLines.ElementAt(i);
 
-                try { c2 = perimeterLines.ElementAt(i + 1); }
-                catch { c2 = perimeterLines.First(); }
-
-                try { c1 = perimeterLines.ElementAt(i - 1); }
-                catch { c1 = perimeterLines.Last(); }
+                var c2 = perimeterLines.ElementAt((i + 1) % n);
+                var c1 = perimeterLines.ElementAt(Math.Max(0, i - 1));
 
                 Line offsetLine = GetOffset(c, c1, c2, offsetDist);
                 if (offsetLine != null) { offsetLines.Add(offsetLine); }
@@ -234,7 +231,8 @@ namespace IDFObjects
         }
         public static XYZList GetOffset(XYZList perimeterPoints, float offsetDist)
         {
-            return new XYZList(GetOffset(perimeterPoints.Loop, offsetDist).Select(l => l.P0));          
+            var offPoints = GetOffset(perimeterPoints.Loop, offsetDist);
+            return new XYZList(offPoints.Select(l => l.P0));          
         }
         public static XYZ RotateToNormal(Line line, int corner)
         {
@@ -253,8 +251,8 @@ namespace IDFObjects
         }
         public static Line GetOffset(Line line, Line prevLine, Line nextLine, float offsetDistance)
         {
-            XYZ p0 = line.P0.MovePoint(RotateToNormal(line, 1), (-1) * offsetDistance),
-            p1 = line.P1.MovePoint(RotateToNormal(line, 0), offsetDistance);
+            var p0 = line.P0.MovePoint(RotateToNormal(line, 1), (-1) * offsetDistance);
+            var p1 = line.P1.MovePoint(RotateToNormal(line, 0), offsetDistance);
 
             XYZ dir1 = new Line(p0, p1).Direction;
 
@@ -264,8 +262,10 @@ namespace IDFObjects
             try
             {
                 Line l1 = new Line (p0, p1);
-                XYZ x = l1.Direction;
-                return x.Equals(dir1) ? l1 : null;
+                var x = Math.Abs(l1.Direction.AngleBetweenVectors(dir1));
+                if ( x.Equals( float.NaN ) || x <= 1E-3 )
+                    return l1;
+                throw new Exception("Direction not same!");
             }
             catch
             {
@@ -301,7 +301,7 @@ namespace IDFObjects
                     var floorPoints = thisRoomSegments.Select(x => x.P0).ToArray();
                     XYZList flPointList = new XYZList(floorPoints);
 
-                    zInfo.FloorPoints = zInfo.FloorPoints.Append(flPointList.ChangeZValue(floors[f].XYZs.First().Z));
+                    zInfo.FloorPoints = zInfo.FloorPoints.Append(flPointList.ChangeZValue(floors[f].XYZs.First().Z)).ToList();
                     List<XYZList> ceilingOrRoof = new List<XYZList>();
                     try
                     {
@@ -381,13 +381,13 @@ namespace IDFObjects
                 var floorPoints = thisRoomSegments.Select(x => x.P0).ToArray();
                 XYZList flPointList = new XYZList(floorPoints);
 
-                zInfo.FloorPoints = zInfo.FloorPoints.Append(flPointList);
+                zInfo.FloorPoints = zInfo.FloorPoints.Append(flPointList).ToList();
 
                 float heightFl = ceiling.XYZs.First().Z - floorPoints.First().Z;
                 zInfo.Height = heightFl;
                             
                 zInfo.CeilingPoints = new List<XYZList>();
-                zInfo.CeilingPoints = zInfo.CeilingPoints.Append(flPointList.OffsetHeight(heightFl));
+                zInfo.CeilingPoints = zInfo.CeilingPoints.Append(flPointList.OffsetHeight(heightFl)).ToList();
                 zoneInfoList.Add(zInfo);
                 newAllRoomSegmentsIDF.Add(zInfo.Name, thisRoomSegments);
             }
@@ -903,10 +903,10 @@ namespace IDFObjects
                 {
                     if (line == "start")
                     {
-                        List<List<string>> pInfo = new List<List<string>>();
+                        List<string[]> pInfo = new List<string[]>();
                         while ((line = reader.ReadLine()) != "end")
                         {
-                            pInfo.Add(line.Split('\t').Skip(1).ToList());
+                            pInfo.Add(line.Split('\t').Skip(1).ToArray());
                         }
                         rValues.Add(GetPointInfo(pInfo));
                     }
@@ -916,16 +916,16 @@ namespace IDFObjects
             return rValues;
         }
 
-        static List<List<GridPoint>> GetPointInfo(List<List<string>> text)
+        static List<List<GridPoint>> GetPointInfo(List<string[]> text)
         {
             text.Reverse();
             List<List<GridPoint>> points = new List<List<GridPoint>>();
-            for (int f = 0; f < text.First().Count; f++)
+            for (int f = 0; f < text.Select(t=>t.Count()).Max(); f++)
                 points.Add(new List<GridPoint>());
 
             for (int r = 0; r < text.Count; r++)
             {
-                List<string> line = text[r];
+                var line = text[r];
 
                 int f = 0;
                 foreach (string vals in line)
@@ -1055,7 +1055,7 @@ namespace IDFObjects
         public static void Serialise<T>(this T obj, string filePath)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-            File.Delete(filePath);
+            if (File.Exists(filePath)) { File.Delete(filePath); }
             TextWriter tW = File.CreateText(filePath);
             new JsonSerializer() { Formatting = Formatting.Indented }.Serialize(tW, obj);
             tW.Close();
