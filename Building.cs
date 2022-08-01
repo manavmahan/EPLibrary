@@ -779,8 +779,8 @@ namespace IDFObjects
 
                 if (zoneInfo.Level != 0)
                 {
-                    foreach (var surface  in zone.Surfaces.
-                        Where(s => s.SurfaceType == SurfaceType.Floor))
+                    foreach (var surface in zone.Surfaces.
+                        Where(s => s.SurfaceType == SurfaceType.Floor && s.OutsideCondition != "Outdoors"))
                     { 
                         surface.ConstructionName = "Floor_Ceiling"; 
                         surface.OutsideCondition = "Adiabatic"; 

@@ -19,8 +19,7 @@ namespace IDFObjects.PythonScripts
                 var os = Environment.OSVersion.ToString();
                 if (os.Contains("Window"))
                 {
-                    var dirs = Directory.GetDirectories("C:\\Users\\manav\\AppData\\Local\\Microsoft\\WindowsApps",
-                        "PythonSoftwareFoundation*");
+                    var dirs = Directory.GetDirectories("C:\\Users\\manav\\AppData\\Local\\Programs\\Python");
                     foreach (var s in dirs)
                     {
                         var p = Directory.GetFiles(s).FirstOrDefault(f => f.Contains("python.exe"));

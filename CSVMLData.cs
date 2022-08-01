@@ -20,10 +20,10 @@ namespace IDFObjects
         };
 
         public string
-            Wall = string.Join(",", "File", "Zone Name", "Name", "Area", "Orientation", parH.pConstruction.UWall.Label, "Solar Radiation", "Heat Flow"),
+            Wall = string.Join(",", "File", "Zone Name", "Name", "Area", "Orientation", parH.pConstruction.UWall.Label, "Exposure", "Solar Radiation", "Heat Flow"),
             Window = string.Join(",", "File", "Zone Name", "Name", "Area", "Orientation", parH.pConstruction.UWindow.Label, parH.pConstruction.GWindow.Label, "Solar Radiation", "Heat Flow"),
 
-            WallWindow = string.Join(",", "File", "Zone Name", "Name", "Wall Area", "Window Area", "Orientation",parH.pConstruction.UWall.Label, parH.pConstruction.UWindow.Label, parH.pConstruction.GWindow.Label, "Solar Radiation", "Heat Flow"), 
+            WallWindow = string.Join(",", "File", "Zone Name", "Name", "Wall Area", "Window Area", "Orientation",parH.pConstruction.UWall.Label, parH.pConstruction.UWindow.Label, parH.pConstruction.GWindow.Label, "Exposure", "Solar Radiation", "Heat Flow"), 
             Floor = string.Join(",", "File", "Zone Name", "Name", "Area", parH.pConstruction.UGFloor.Label, 
                 "Exposure", "Heat Capacity", "Heat Flow"), 
             Roof = string.Join(",", "File", "Zone Name", "Name", "Area", parH.pConstruction.URoof.Label, "Heat Capacity", "Heat Flow"), 
@@ -81,11 +81,11 @@ namespace IDFObjects
             {
                 ZoneList zList = building.ZoneLists.First(zL => zL.ZoneNames.Contains(z.Name));
                 object[] spaChr = GetSpaceChr(building, z);
-                foreach (Surface s in z.Surfaces.Where(w => w.SurfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors"))
+                foreach (Surface s in z.Surfaces.Where(w => w.SurfaceType == SurfaceType.Wall))
                 {
                     WallWindowData.Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, s.GrossArea * s.WWR,
                         s.Orientation, buildingConstruction.UWall, buildingConstruction.UWindow,
-                        buildingConstruction.GWindow, s.SolarRadiation,
+                        buildingConstruction.GWindow, s.OutsideCondition, s.SolarRadiation,
                         s.HeatFlow));
 
                     float wallHeatFlow = s.HeatFlow, solarRadiation = s.SolarRadiation;
@@ -101,7 +101,7 @@ namespace IDFObjects
                         }
                     }
                     WallData.Add(string.Join(",", idfFile, z.Name, s.Name, s.Area,
-                        s.Orientation, buildingConstruction.UWall, solarRadiation, wallHeatFlow));
+                        s.Orientation, buildingConstruction.UWall, s.OutsideCondition, solarRadiation, wallHeatFlow));
                 }
                 z.Surfaces.Where(w => w.SurfaceType == SurfaceType.Floor).ToList().ForEach(
                     s => FloorData.Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, 
@@ -137,9 +137,9 @@ namespace IDFObjects
                 foreach (Surface s in z.Surfaces.Where(w => w.SurfaceType == SurfaceType.Wall && w.OutsideCondition == "Outdoors"))
                 {
                     WallWindowData.Add(string.Join(",", idfFile, z.Name, s.Name, s.GrossArea * (1 - s.WWR), s.GrossArea * s.WWR,
-                    s.Orientation, buildingConstruction.UWall, buildingConstruction.UWindow,
-                    buildingConstruction.GWindow, s.h_SolarRadiation.ToCSVString(),
-                    s.h_HeatFlow.ToCSVString()));
+                        s.Orientation, buildingConstruction.UWall, buildingConstruction.UWindow,
+                        buildingConstruction.GWindow, s.OutsideCondition, s.h_SolarRadiation.ToCSVString(),
+                        s.h_HeatFlow.ToCSVString()));
                 }
                 z.Surfaces.Where(w => w.SurfaceType == SurfaceType.Floor && w.OutsideCondition == "Ground").ToList().ForEach(
                     s => FloorData.Add(string.Join(",", idfFile, z.Name, s.Name, s.Area, buildingConstruction.UGFloor, buildingConstruction.hcGFloor,
