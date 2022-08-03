@@ -13,4 +13,9 @@
     <StartProgram>C:\Users\manav\source\repos\manavmahan\IDFWrite\IDFWrite\bin\Release\IDFWrite.exe</StartProgram>
     <StartArguments>Z:\MLCNN_22_07_08\TestData 39 1</StartArguments>
   </PropertyGroup>
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Default' ">
+    <StartAction>Program</StartAction>
+    <StartProgram>..\..\z\MLCNN\Programs\DataCollection\CSharp\IDFWrite.exe</StartProgram>
+    <StartArguments>/home/manav/z/MLCNN/TestData</StartArguments>
+  </PropertyGroup>
 </Project>

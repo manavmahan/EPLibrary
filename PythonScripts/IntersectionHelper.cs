@@ -38,7 +38,7 @@ namespace IDFObjects.PythonScripts
             var args = string.Join(" ", new[] { loopStr });
             AddFileName(ref args, $"{_buildingName}_{_intersections.Count}");
 
-            var output = PythonHelper.ExecuteCommand(nameof(Intersect).ToLower(), args);
+            var output = PythonHelper.ExecuteCommand(nameof(Intersect).ToLower(), args).Item1;
             _intersections.Add(loopStr, output);
             return Intersect(loops);
         }

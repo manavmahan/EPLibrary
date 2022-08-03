@@ -12,37 +12,27 @@ namespace IDFObjects.PythonScripts
         public const string ScriptFolder = "PythonScripts";
 
         public static string Program = string.Empty;
-        private static void SetProgram()
+        public static void SetProgram(string program = "")
         {
-            if (Program == string.Empty)
-            {
-                var os = Environment.OSVersion.ToString();
-                if (os.Contains("Window"))
-                {
-                    var dirs = Directory.GetDirectories("C:\\Users\\manav\\AppData\\Local\\Programs\\Python");
-                    foreach (var s in dirs)
-                    {
-                        var p = Directory.GetFiles(s).FirstOrDefault(f => f.Contains("python.exe"));
-                        if ( p != null)
-                        {
-                            Program = p;
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    Program = "/usr/bin/python3";
-                }
+            if (!string.IsNullOrEmpty(Program))
+                return;
 
-                if (Program == string.Empty)
-                    throw new Exception("Python3 not found!");
+            Program = program;
+            if (string.IsNullOrEmpty(Program))
+                Program = "/usr/bin/python3";
 
-                if (!File.Exists(Program))
-                    throw new Exception("Python3 not found!");
-            }
+            CheckPython();
         }
-        public static string ExecuteCommand(string program, string args)
+
+        private static void CheckPython()
+        {
+            if(ExecuteCommand("CheckLibraries", string.Empty).Item3 != 0){
+                throw new Exception("Cannot locate python with shapely library!");
+            }
+            return;
+        }
+
+        public static (string, string, int) ExecuteCommand(string program, string args)
         {
             SetProgram();
             //int exitCode;
@@ -78,14 +68,14 @@ namespace IDFObjects.PythonScripts
             if (!string.IsNullOrEmpty(error))
                 throw new Exception($"Python error.\n{error}");
 
-            //exitCode = process.ExitCode;
+            var exitCode = process.ExitCode;
 
             //Console.WriteLine("output>>" + (String.IsNullOrEmpty(output) ? "(none)" : output));
             //Console.WriteLine("error>>" + (String.IsNullOrEmpty(error) ? "(none)" : error));
             //Console.WriteLine("ExitCode: " + exitCode.ToString(), "ExecuteCommand");
             
             process.Close();
-            return output; 
+            return (output, error, exitCode); 
         }
 
         //public static string ExecuteCommandIPython(string program, string args)
