@@ -15,7 +15,7 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(RunConfiguration)' == 'Default' ">
     <StartAction>Program</StartAction>
-    <StartProgram>..\..\z\MLCNN\Programs\DataCollection\CSharp\IDFWrite.exe</StartProgram>
-    <StartArguments>/home/manav/z/MLCNN/TestData</StartArguments>
+    <StartProgram>..\IDFWrite\IDFWrite\bin\Debug\IDFWrite.exe</StartProgram>
+    <StartArguments>/Volumes/ga54dax/MLCNN/Example1</StartArguments>
   </PropertyGroup>
 </Project>
