@@ -222,7 +222,7 @@ namespace IDFObjects
                 Line c = perimeterLines.ElementAt(i);
 
                 var c2 = perimeterLines.ElementAt((i + 1) % n);
-                var c1 = perimeterLines.ElementAt(Math.Max(0, i - 1));
+                var c1 = perimeterLines.ElementAt(i-1<0 ? n-1 : i-1);
 
                 Line offsetLine = GetOffset(c, c1, c2, offsetDist);
                 if (offsetLine != null) { offsetLines.Add(offsetLine); }
